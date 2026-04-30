@@ -12,7 +12,7 @@
     justificativas: "Configuracoes_Justificativas",
     perfisPerda: "Configuracoes_Perfil_Perdas",
     justificativasPerda: "Configuracoes_Justificativas_Perdas",
-    logs: "Logs_Sistema"
+    logs: "Logs_Sistema",
   };
 
   function clone(value) {
@@ -43,7 +43,7 @@
       record.tipoOM || record.tipoDemanda,
       record.competencia,
       record.vencimento,
-      record.origem
+      record.origem,
     ]
       .filter(Boolean)
       .map(normalizeText)
@@ -53,8 +53,14 @@
       hash = (hash << 5) - hash + raw.charCodeAt(index);
       hash |= 0;
     }
-    const suffix = Math.abs(hash).toString(36).toUpperCase().padStart(6, "0").slice(0, 6);
-    return record.ordem ? `DEM-SAP-${record.ordem}` : `DF-${record.competencia || "SEMCOMP"}-${suffix}`;
+    const suffix = Math.abs(hash)
+      .toString(36)
+      .toUpperCase()
+      .padStart(6, "0")
+      .slice(0, 6);
+    return record.ordem
+      ? `DEM-SAP-${record.ordem}`
+      : `DF-${record.competencia || "SEMCOMP"}-${suffix}`;
   }
 
   function slugify(value) {
@@ -72,7 +78,7 @@
       matricula: item.Matricula || item.Matrícula || item.matricula || "",
       area: item.Area || item.Área || item.area || "",
       perfil: item.PerfilAcesso || item.Perfil || item.perfil || "Visualizador",
-      ativo: item.Ativo !== false && item.Ativo !== "Não"
+      ativo: item.Ativo !== false && item.Ativo !== "Não",
     };
   }
 
@@ -86,7 +92,7 @@
       historicoPlanejamento: clone(sample.historicoPlanejamento || []),
       historicoReplanejamento: clone(sample.historicoReplanejamento || []),
       historicoRealizadoPerdas: clone(sample.historicoRealizadoPerdas || []),
-      logs: clone(sample.logs || [])
+      logs: clone(sample.logs || []),
     };
   }
 
@@ -134,9 +140,15 @@
       const next = clone(record);
       next.id = next.id || stableDemandId(next);
       next.dataUltimaAtualizacao = new Date().toISOString();
-      const index = this.database.demandas.findIndex((item) => item.id === next.id || (next.ordem && item.ordem === next.ordem));
+      const index = this.database.demandas.findIndex(
+        (item) =>
+          item.id === next.id || (next.ordem && item.ordem === next.ordem),
+      );
       if (index >= 0) {
-        this.database.demandas[index] = { ...this.database.demandas[index], ...next };
+        this.database.demandas[index] = {
+          ...this.database.demandas[index],
+          ...next,
+        };
       } else {
         this.database.demandas.unshift(next);
       }
@@ -156,14 +168,20 @@
       const map = {
         planejamento: "historicoPlanejamento",
         replanejamento: "historicoReplanejamento",
-        realizadoPerda: "historicoRealizadoPerdas"
+        realizadoPerda: "historicoRealizadoPerdas",
       };
       const key = map[type];
       if (!key) return null;
       const next = {
-        id: uid(type === "realizadoPerda" ? "HPR" : type === "replanejamento" ? "HR" : "HP"),
+        id: uid(
+          type === "realizadoPerda"
+            ? "HPR"
+            : type === "replanejamento"
+              ? "HR"
+              : "HP",
+        ),
         dataHora: new Date().toISOString(),
-        ...entry
+        ...entry,
       };
       this.database[key].unshift(next);
       this.persist();
@@ -174,7 +192,7 @@
       const next = {
         id: uid("LOG"),
         dataHora: new Date().toISOString(),
-        ...entry
+        ...entry,
       };
       this.database.logs.unshift(next);
       this.persist();
@@ -184,19 +202,25 @@
     async addConfigItem(group, value, parentId = "") {
       const clean = String(value || "").trim();
       if (!clean) return null;
-      this.database.configuracoes[group] = this.database.configuracoes[group] || [];
+      this.database.configuracoes[group] =
+        this.database.configuracoes[group] || [];
       const items = this.database.configuracoes[group];
       const exists = items.some((item) => {
         const name = typeof item === "string" ? item : item.nome;
         const parent = item.motivoId || item.perfilId || "";
-        return normalizeText(name) === normalizeText(clean) && (!parentId || parent === parentId);
+        return (
+          normalizeText(name) === normalizeText(clean) &&
+          (!parentId || parent === parentId)
+        );
       });
       if (!exists) {
         const item = { id: slugify(clean), nome: clean, ativo: true };
         if (group === "justificativas") item.motivoId = parentId;
         if (group === "justificativasPerda") item.perfilId = parentId;
         this.database.configuracoes[group].push(item);
-        this.database.configuracoes[group].sort((a, b) => String(a.nome || a).localeCompare(String(b.nome || b), "pt-BR"));
+        this.database.configuracoes[group].sort((a, b) =>
+          String(a.nome || a).localeCompare(String(b.nome || b), "pt-BR"),
+        );
         this.persist();
       }
       return clean;
@@ -206,7 +230,7 @@
       const next = {
         id: uid("USR"),
         ativo: true,
-        ...user
+        ...user,
       };
       this.database.usuarios.push(next);
       this.persist();
@@ -221,11 +245,19 @@
 
     async getCurrentUserIdentity() {
       const params = new URLSearchParams(global.location.search);
-      const email = params.get("user") || (params.get("debugUsers") === "1" ? global.localStorage.getItem("cce.currentUser") : "") || "";
-      const user = this.database.usuarios.find((item) => normalizeText(item.email) === normalizeText(email)) || this.database.usuarios.find((item) => item.ativo);
+      const email =
+        params.get("user") ||
+        (params.get("debugUsers") === "1"
+          ? global.localStorage.getItem("cce.currentUser")
+          : "") ||
+        "";
+      const user =
+        this.database.usuarios.find(
+          (item) => normalizeText(item.email) === normalizeText(email),
+        ) || this.database.usuarios.find((item) => item.ativo);
       return {
         email: user?.email || email,
-        nome: user?.nome || email || "Usuário local"
+        nome: user?.nome || email || "Usuário local",
       };
     }
   }
@@ -233,7 +265,8 @@
   class SharePointRestRepository {
     constructor(options = {}) {
       this.mode = "SharePoint REST";
-      this.webUrl = options.webUrl || global._spPageContextInfo?.webAbsoluteUrl || "";
+      this.webUrl =
+        options.webUrl || global._spPageContextInfo?.webAbsoluteUrl || "";
       this.digest = "";
     }
 
@@ -242,8 +275,8 @@
       const response = await fetch(`${this.webUrl}/_api/contextinfo`, {
         method: "POST",
         headers: {
-          Accept: "application/json;odata=nometadata"
-        }
+          Accept: "application/json;odata=nometadata",
+        },
       });
       const payload = await response.json();
       this.digest = payload.FormDigestValue;
@@ -255,7 +288,7 @@
       const headers = {
         Accept: "application/json;odata=nometadata",
         "Content-Type": "application/json;odata=nometadata",
-        ...(options.headers || {})
+        ...(options.headers || {}),
       };
       if (method !== "GET") {
         headers["X-RequestDigest"] = await this.ensureDigest();
@@ -263,81 +296,111 @@
       const response = await fetch(`${this.webUrl}/_api/${path}`, {
         ...options,
         method,
-        headers
+        headers,
       });
       if (!response.ok) {
-        throw new Error(`SharePoint ${response.status}: ${await response.text()}`);
+        throw new Error(
+          `SharePoint ${response.status}: ${await response.text()}`,
+        );
       }
       if (response.status === 204) return null;
       return response.json();
     }
 
     async listItems(listName, query = "") {
-      const payload = await this.spFetch(`web/lists/getbytitle('${listName}')/items${query}`);
+      const payload = await this.spFetch(
+        `web/lists/getbytitle('${listName}')/items${query}`,
+      );
       return payload.value || [];
     }
 
     async createItem(listName, item) {
       return this.spFetch(`web/lists/getbytitle('${listName}')/items`, {
         method: "POST",
-        body: JSON.stringify(item)
+        body: JSON.stringify(item),
       });
     }
 
     async updateItem(listName, itemId, item) {
-      return this.spFetch(`web/lists/getbytitle('${listName}')/items(${itemId})`, {
-        method: "POST",
-        headers: {
-          "IF-MATCH": "*",
-          "X-HTTP-Method": "MERGE"
+      return this.spFetch(
+        `web/lists/getbytitle('${listName}')/items(${itemId})`,
+        {
+          method: "POST",
+          headers: {
+            "IF-MATCH": "*",
+            "X-HTTP-Method": "MERGE",
+          },
+          body: JSON.stringify(item),
         },
-        body: JSON.stringify(item)
-      });
+      );
     }
 
     async getAll() {
-      const [demandas, usuarios, logs, motivos, justificativas, perfisPerda, justificativasPerda] = await Promise.all([
+      const [
+        demandas,
+        usuarios,
+        logs,
+        motivos,
+        justificativas,
+        perfisPerda,
+        justificativasPerda,
+      ] = await Promise.all([
         this.listItems(LIST_NAMES.controleDemandas, "?$top=5000"),
         this.listItems(LIST_NAMES.usuarios, "?$top=5000"),
         this.listItems(LIST_NAMES.logs, "?$top=5000&$orderby=Created desc"),
         this.listItems(LIST_NAMES.motivos, "?$top=5000"),
         this.listItems(LIST_NAMES.justificativas, "?$top=5000"),
         this.listItems(LIST_NAMES.perfisPerda, "?$top=5000"),
-        this.listItems(LIST_NAMES.justificativasPerda, "?$top=5000")
+        this.listItems(LIST_NAMES.justificativasPerda, "?$top=5000"),
       ]);
       return {
         demandas,
         usuarios: usuarios.map(mapSharePointUser),
         logs,
         configuracoes: {
-          motivos: motivos.map((item) => ({ id: item.Chave || slugify(item.Title), nome: item.Title, ativo: item.Ativo !== false })),
+          motivos: motivos.map((item) => ({
+            id: item.Chave || slugify(item.Title),
+            nome: item.Title,
+            ativo: item.Ativo !== false,
+          })),
           justificativas: justificativas.map((item) => ({
             id: item.Chave || slugify(item.Title),
-            motivoId: item.MotivoChave || item.MotivoId || slugify(item.Motivo || ""),
+            motivoId:
+              item.MotivoChave || item.MotivoId || slugify(item.Motivo || ""),
             nome: item.Title,
-            ativo: item.Ativo !== false
+            ativo: item.Ativo !== false,
           })),
-          perfisPerda: perfisPerda.map((item) => ({ id: item.Chave || slugify(item.Title), nome: item.Title, ativo: item.Ativo !== false })),
+          perfisPerda: perfisPerda.map((item) => ({
+            id: item.Chave || slugify(item.Title),
+            nome: item.Title,
+            ativo: item.Ativo !== false,
+          })),
           justificativasPerda: justificativasPerda.map((item) => ({
             id: item.Chave || slugify(item.Title),
-            perfilId: item.PerfilChave || item.PerfilPerdaId || slugify(item.PerfilPerda || ""),
+            perfilId:
+              item.PerfilChave ||
+              item.PerfilPerdaId ||
+              slugify(item.PerfilPerda || ""),
             nome: item.Title,
-            ativo: item.Ativo !== false
-          }))
+            ativo: item.Ativo !== false,
+          })),
         },
         parametros: {
           sharePointLibrary: "Documentos Compartilhados/SAP_BO",
           sapExcelFileName: "base_ordens_sap.xlsx",
-          realizedExcelFileName: "base_realizados_sap.xlsx"
+          realizedExcelFileName: "base_realizados_sap.xlsx",
         },
         historicoPlanejamento: [],
         historicoReplanejamento: [],
-        historicoRealizadoPerdas: []
+        historicoRealizadoPerdas: [],
       };
     }
 
     async upsertDemanda(record) {
-      const next = { ...record, ID_Demanda_Controle: record.id || stableDemandId(record) };
+      const next = {
+        ...record,
+        ID_Demanda_Controle: record.id || stableDemandId(record),
+      };
       await this.createItem(LIST_NAMES.controleDemandas, next);
       return next;
     }
@@ -354,7 +417,7 @@
       const list = {
         planejamento: LIST_NAMES.historicoPlanejamento,
         replanejamento: LIST_NAMES.historicoReplanejamento,
-        realizadoPerda: LIST_NAMES.historicoRealizadoPerdas
+        realizadoPerda: LIST_NAMES.historicoRealizadoPerdas,
       }[type];
       return list ? this.createItem(list, entry) : null;
     }
@@ -364,17 +427,26 @@
     }
 
     async getRealizadosFileBuffer(parameters = {}) {
-      const libraryPath = parameters.sharePointLibrary || "Documentos Compartilhados/SAP_BO";
-      const fileName = parameters.realizedExcelFileName || "base_realizados_sap.xlsx";
-      const serverRelativeBase = global._spPageContextInfo?.webServerRelativeUrl || "";
+      const libraryPath =
+        parameters.sharePointLibrary || "Documentos Compartilhados/SAP_BO";
+      const fileName =
+        parameters.realizedExcelFileName || "base_realizados_sap.xlsx";
+      const serverRelativeBase =
+        global._spPageContextInfo?.webServerRelativeUrl || "";
       const cleanBase = serverRelativeBase.replace(/\/$/, "");
       const cleanLibrary = String(libraryPath).replace(/^\/|\/$/g, "");
-      const serverRelativeUrl = `${cleanBase}/${cleanLibrary}/${fileName}`.replace(/\/{2,}/g, "/");
-      const response = await fetch(`${this.webUrl}/_api/web/GetFileByServerRelativeUrl('${serverRelativeUrl.replace(/'/g, "''")}')/$value`, {
-        headers: { Accept: "application/octet-stream" }
-      });
+      const serverRelativeUrl =
+        `${cleanBase}/${cleanLibrary}/${fileName}`.replace(/\/{2,}/g, "/");
+      const response = await fetch(
+        `${this.webUrl}/_api/web/GetFileByServerRelativeUrl('${serverRelativeUrl.replace(/'/g, "''")}')/$value`,
+        {
+          headers: { Accept: "application/octet-stream" },
+        },
+      );
       if (!response.ok) {
-        throw new Error(`SharePoint ${response.status}: não foi possível ler ${fileName}`);
+        throw new Error(
+          `SharePoint ${response.status}: não foi possível ler ${fileName}`,
+        );
       }
       return response.arrayBuffer();
     }
@@ -386,12 +458,12 @@
         motivos: LIST_NAMES.motivos,
         justificativas: LIST_NAMES.justificativas,
         perfisPerda: LIST_NAMES.perfisPerda,
-        justificativasPerda: LIST_NAMES.justificativasPerda
+        justificativasPerda: LIST_NAMES.justificativasPerda,
       }[group];
       const item = {
         Title: title,
         Chave: slugify(title),
-        Ativo: true
+        Ativo: true,
       };
       if (group === "justificativas") item.MotivoChave = parentId;
       if (group === "justificativasPerda") item.PerfilChave = parentId;
@@ -405,14 +477,14 @@
         Matricula: user.matricula,
         Area: user.area,
         PerfilAcesso: user.perfil,
-        Ativo: true
+        Ativo: true,
       });
     }
 
     async updateParameters(parameters) {
       await this.addLog({
         Acao: "Parâmetros",
-        Detalhe: JSON.stringify(parameters)
+        Detalhe: JSON.stringify(parameters),
       });
       return parameters;
     }
@@ -421,13 +493,18 @@
       if (global._spPageContextInfo?.userEmail) {
         return {
           email: global._spPageContextInfo.userEmail,
-          nome: global._spPageContextInfo.userDisplayName || global._spPageContextInfo.userLoginName || global._spPageContextInfo.userEmail
+          nome:
+            global._spPageContextInfo.userDisplayName ||
+            global._spPageContextInfo.userLoginName ||
+            global._spPageContextInfo.userEmail,
         };
       }
-      const payload = await this.spFetch("web/currentuser?$select=Title,Email,LoginName");
+      const payload = await this.spFetch(
+        "web/currentuser?$select=Title,Email,LoginName",
+      );
       return {
         email: payload.Email || "",
-        nome: payload.Title || payload.LoginName || payload.Email || ""
+        nome: payload.Title || payload.LoginName || payload.Email || "",
       };
     }
   }
@@ -440,6 +517,185 @@
     }
     return new LocalRepository();
   }
+  const SHAREPOINT_SITE_URL =
+    "https://globalvale.sharepoint.com/sites/ControlePCMEletrovia";
+
+  const SHAREPOINT_LISTS = {
+    demandas: "Controle_Demandas_Eletrovia",
+    usuarios: "Usuarios_Central_Eletrovia",
+    motivos: "Configuracoes_Motivos",
+    justificativas: "Configuracoes_Justificativas",
+    perfilPerdas: "Configuracoes_Perfil_Perdas",
+    justificativasPerdas: "Configuracoes_Justificativas_Perdas",
+    historicoPlanejamento: "Historico_Planejamento",
+    historicoReplanejamento: "Historico_Replanejamento",
+    historicoRealizadoPerdas: "Historico_Realizado_Perdas",
+    logs: "Logs_Sistema",
+  };
+
+  async function spRequestDigest() {
+    const response = await fetch(`${SHAREPOINT_SITE_URL}/_api/contextinfo`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        Accept: "application/json;odata=verbose",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error("Erro ao obter Request Digest: " + errorText);
+    }
+
+    const data = await response.json();
+    return data.d.GetContextWebInformation.FormDigestValue;
+  }
+
+  async function spGetItems(listName, select = "*", filter = "", top = 100) {
+    let url = `${SHAREPOINT_SITE_URL}/_api/web/lists/getbytitle('${listName}')/items?$select=${select}&$top=${top}`;
+
+    if (filter) {
+      url += `&$filter=${encodeURIComponent(filter)}`;
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json;odata=verbose",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error("Erro ao buscar itens SharePoint: " + errorText);
+    }
+
+    const data = await response.json();
+    return data.d.results;
+  }
+
+  async function spCreateItem(listName, itemType, fields) {
+    const digest = await spRequestDigest();
+
+    const response = await fetch(
+      `${SHAREPOINT_SITE_URL}/_api/web/lists/getbytitle('${listName}')/items`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json;odata=verbose",
+          "Content-Type": "application/json;odata=verbose",
+          "X-RequestDigest": digest,
+        },
+        body: JSON.stringify({
+          __metadata: {
+            type: itemType,
+          },
+          ...fields,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error("Erro ao criar item SharePoint: " + errorText);
+    }
+
+    const data = await response.json();
+    return data.d;
+  }
+
+  async function spUpdateItem(listName, itemType, itemId, fields) {
+    const digest = await spRequestDigest();
+
+    const response = await fetch(
+      `${SHAREPOINT_SITE_URL}/_api/web/lists/getbytitle('${listName}')/items(${itemId})`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json;odata=verbose",
+          "Content-Type": "application/json;odata=verbose",
+          "X-RequestDigest": digest,
+          "IF-MATCH": "*",
+          "X-HTTP-Method": "MERGE",
+        },
+        body: JSON.stringify({
+          __metadata: {
+            type: itemType,
+          },
+          ...fields,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error("Erro ao atualizar item SharePoint: " + errorText);
+    }
+
+    return true;
+  }
+
+  async function criarDemandaFuturaSharePoint(demanda) {
+    const digest = await getRequestDigest();
+
+    const response = await fetch(
+      `${SHAREPOINT_SITE_URL}/_api/web/lists/getbytitle('Controle_Demandas_Eletrovia')/items`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json;odata=verbose",
+          "Content-Type": "application/json;odata=verbose",
+          "X-RequestDigest": digest,
+        },
+        body: JSON.stringify({
+          __metadata: {
+            type: "SP.Data.Controle_x005f_Demandas_x005f_EletroviaListItem",
+          },
+
+          Title: demanda.ID_Demanda_Controle,
+          OrdemSAP: demanda.OrdemSAP || "",
+          TipoDemanda: "Antecipada",
+          Descricao: demanda.Descricao,
+          CentroTrabalho: demanda.CentroTrabalho,
+          LocalInstalacao: demanda.LocalInstalacao,
+          Competencia: demanda.Competencia,
+          TipoOM: demanda.TipoOM || "Sistematica",
+          Prioridade: demanda.Prioridade || "Media",
+          StatusOperacional: "A Planejar",
+          SubstatusOperacional: "Pendente",
+          Perda: false,
+          OrigemInformacao: "Demanda Antecipada",
+          QuantidadeReplanejamentos: 0,
+          DataUltimaAtualizacao: new Date().toISOString(),
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("Erro completo:", error);
+      throw new Error(error);
+    }
+
+    return await response.json();
+  }
+
+  async function getRequestDigest() {
+    const response = await fetch(`${SHAREPOINT_SITE_URL}/_api/contextinfo`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        Accept: "application/json;odata=verbose",
+      },
+    });
+
+    const data = await response.json();
+    return data.d.GetContextWebInformation.FormDigestValue;
+  }
 
   global.CCEData = {
     LIST_NAMES,
@@ -447,7 +703,7 @@
     SharePointRestRepository,
     createRepository,
     stableDemandId,
-    normalizeText
-    ,slugify
+    normalizeText,
+    slugify,
   };
 })(window);

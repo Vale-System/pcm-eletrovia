@@ -1,0 +1,16 @@
+[
+  {
+    "OrdemSAP": "202505462033",
+    "Descricao": "SUBSTITUIÇÃO DE FERRAMENTA DE SOCA",
+    "TipoOM": "YEM",
+    "Gerencia": "Eletrovia",
+    "CentroTrabalho": "CCGSL1",
+    "LocalInstalacao": "EFCJ-MTR-EMV-SOCAD-SL042",
+    "Vencimento": "2025-10-17",
+    "Prioridade": "Alta",
+    "StatusSistema": "LIB_CONF_CAPC_CCOP_DMPV_IMPR_OBCR_SCDM",
+    "Competencia": "2025-10",
+    "ToleranciaMin": "",
+    "ToleranciaMax": ""
+  }
+]

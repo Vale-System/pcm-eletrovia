@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Central de Controle Eletrovia</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script defer src="data/sample-data.js"></script>
+    <script defer src="sharepoint-adapter.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+        <div class="brand">
+          <span class="brand-mark" data-icon="grid" aria-hidden="true"></span>
+          <div>
+            <strong>Controle</strong>
+            <span>Eletrovia</span>
+          </div>
+        </div>
+
+        <nav class="nav-stack" id="mainNav">
+          <button class="nav-item is-active" data-view="carteira" type="button">
+            <span class="nav-icon" data-icon="target" aria-hidden="true"></span>
+            <span class="nav-text">Carteira</span>
+          </button>
+          <button class="nav-item" data-view="lote" type="button">
+            <span class="nav-icon" data-icon="sync" aria-hidden="true"></span>
+            <span class="nav-text">Carga em Lote</span>
+          </button>
+          <button class="nav-item" data-view="futuras" type="button">
+            <span class="nav-icon" data-icon="calendar" aria-hidden="true"></span>
+            <span class="nav-text">Demandas Futuras</span>
+          </button>
+          <button class="nav-item" data-view="indicadores" type="button">
+            <span class="nav-icon" data-icon="chart" aria-hidden="true"></span>
+            <span class="nav-text">Indicadores</span>
+          </button>
+          <button class="nav-item" data-view="administracao" type="button">
+            <span class="nav-icon" data-icon="settings" aria-hidden="true"></span>
+            <span class="nav-text">Administração</span>
+          </button>
+          <button class="nav-item" data-view="logs" type="button">
+            <span class="nav-icon" data-icon="logs" aria-hidden="true"></span>
+            <span class="nav-text">Logs</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="storage-mode">
+            <span>Última atualização</span>
+            <strong id="lastUpdateSide">Agora</strong>
+            <small id="storageMode">Local</small>
+          </div>
+          <button class="collapse-button" id="collapseSidebar" type="button">
+            <span data-icon="chevron-left" aria-hidden="true"></span>
+            <span class="nav-text">Recolher</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="section-label">Central de Controle PCM</p>
+            <h1>Central de Controle Eletrovia</h1>
+          </div>
+          <div class="user-panel">
+            <div class="sync-state">
+              <span class="pulse" aria-hidden="true"></span>
+              <span id="lastSync">Sincronizado agora</span>
+            </div>
+            <button class="alert-button" id="alertButton" type="button" aria-label="Alertas operacionais">
+              <span data-icon="bell" aria-hidden="true"></span>
+              <strong id="alertCount">0</strong>
+            </button>
+            <button class="help-button" type="button" aria-label="Ajuda">
+              <span data-icon="help" aria-hidden="true"></span>
+            </button>
+            <div class="user-card" id="userCard">
+              <div>
+                <strong id="userName">Usuário</strong>
+                <span id="roleChip">Visualizador</span>
+              </div>
+              <span data-icon="chevron-down" aria-hidden="true"></span>
+            </div>
+            <label class="user-select dev-user-select hidden">
+              <span>Usuário de teste</span>
+              <select id="userSelect"></select>
+            </label>
+            <div class="alert-menu hidden" id="alertMenu"></div>
+          </div>
+        </header>
+
+        <section class="view is-active" id="view-carteira" data-view-panel="carteira">
+          <div class="filter-panel" aria-label="Filtros da carteira">
+            <label>
+              Gerência
+              <select id="filterGerencia" data-filter="gerencia"></select>
+            </label>
+            <label>
+              Centro Trabalho
+              <select id="filterCentro" data-filter="centroTrabalho"></select>
+            </label>
+            <label>
+              Tipo OM
+              <select id="filterTipo" data-filter="tipoOM"></select>
+            </label>
+            <label>
+              Competência
+              <select id="filterCompetencia" data-filter="competencia"></select>
+            </label>
+            <label>
+              Status Operacional
+              <select id="filterStatusOperacional" data-filter="statusOperacional"></select>
+            </label>
+            <label class="search-field">
+              Busca rápida
+              <input id="quickSearch" type="search" placeholder="Ordem, ID ou descrição" />
+            </label>
+            <label class="advanced-filter hidden">
+              Local Instalação
+              <select id="filterLocal" data-filter="localInstalacao"></select>
+            </label>
+            <label class="advanced-filter hidden">
+              Prioridade
+              <select id="filterPrioridade" data-filter="prioridade"></select>
+            </label>
+            <label class="advanced-filter hidden">
+              Status Sistema
+              <select id="filterStatusSistema" data-filter="statusSistema"></select>
+            </label>
+            <label class="advanced-filter hidden">
+              Ano Vencimento
+              <select id="filterAno" data-filter="anoVencimento"></select>
+            </label>
+            <label class="advanced-filter hidden">
+              Mês Vencimento
+              <select id="filterMes" data-filter="mesVencimento"></select>
+            </label>
+            <label class="advanced-filter hidden">
+              Perda
+              <select id="filterPerda" data-filter="perda">
+                <option value="">Todos</option>
+                <option value="sim">Sim</option>
+                <option value="nao">Não</option>
+              </select>
+            </label>
+            <label class="advanced-filter hidden">
+              Planejado
+              <select id="filterPlanejado" data-filter="planejado">
+                <option value="">Todos</option>
+                <option value="sim">Sim</option>
+                <option value="nao">Não</option>
+              </select>
+            </label>
+            <label class="advanced-filter hidden">
+              Realizado
+              <select id="filterRealizado" data-filter="realizado">
+                <option value="">Todos</option>
+                <option value="sim">Sim</option>
+                <option value="nao">Não</option>
+              </select>
+            </label>
+            <div class="filter-actions">
+              <button class="button secondary" id="toggleAdvancedFilters" type="button">Filtros avançados</button>
+              <button class="button secondary" id="clearFilters" type="button">Limpar</button>
+              <button class="button" id="exportCsv" type="button">Exportar CSV</button>
+            </div>
+          </div>
+
+          <div class="kpi-strip" id="kpiStrip"></div>
+
+          <section class="content-grid">
+            <div class="table-panel">
+              <div class="panel-toolbar">
+                <div>
+                  <h2>Carteira de Ordens e Demandas</h2>
+                  <span id="resultCount">0 registros filtrados</span>
+                </div>
+                <div class="toolbar-actions">
+                  <label>
+                    Página
+                    <select id="pageSize">
+                      <option value="12">12</option>
+                      <option value="24">24</option>
+                      <option value="48">48</option>
+                    </select>
+                  </label>
+                  <button class="button admin-only" id="refreshData" type="button">Atualizar</button>
+                </div>
+              </div>
+
+              <div class="table-scroll">
+                <table class="data-table portfolio-table" aria-describedby="resultCount">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Ordem SAP</th>
+                      <th>Descrição</th>
+                      <th>Status</th>
+                      <th>Substatus</th>
+                      <th>Vencimento</th>
+                      <th>Competência</th>
+                      <th>Tipo OM</th>
+                      <th>Centro Trabalho</th>
+                      <th>Local Instalação</th>
+                      <th>Prioridade</th>
+                      <th>Planejada</th>
+                      <th>Replanejada</th>
+                      <th>Realizada</th>
+                      <th>Perda</th>
+                      <th>Motivo</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="demandTableBody"></tbody>
+                </table>
+              </div>
+
+              <div class="pagination">
+                <button class="button secondary" id="prevPage" type="button">Anterior</button>
+                <span id="pageInfo">Página 1 de 1</span>
+                <button class="button secondary" id="nextPage" type="button">Próxima</button>
+              </div>
+            </div>
+
+            <aside class="detail-panel" id="detailPanel" aria-live="polite">
+              <div class="empty-detail">
+                <strong>Selecione uma demanda</strong>
+                <span>O resumo operacional, histórico e ações permitidas aparecem aqui.</span>
+              </div>
+            </aside>
+          </section>
+        </section>
+
+        <section class="view" id="view-lote" data-view-panel="lote">
+          <div class="page-heading">
+            <div>
+              <h2>Carga em Lote</h2>
+            </div>
+            <button class="button" id="downloadTemplate" type="button">Baixar Modelo CSV</button>
+          </div>
+
+          <div class="batch-layout">
+            <section class="upload-panel">
+              <label class="file-drop">
+                <input id="batchFile" type="file" accept=".csv,.xlsx,.xls" />
+                <strong>Selecionar arquivo Excel ou CSV</strong>
+                <span>Colunas aceitas: ordem, descrição, centro trabalho, local instalação, competência, data planejada, motivo, justificativa, perda, motivo perda, justificativa perda e comentário.</span>
+              </label>
+              <div class="batch-actions">
+                <button class="button" id="validateBatch" type="button">Validar Arquivo</button>
+                <button class="button secondary" id="clearBatch" type="button">Limpar Validação</button>
+              </div>
+            </section>
+
+            <section class="validation-panel">
+              <div class="validation-summary" id="validationSummary"></div>
+              <div class="validation-groups" id="validationGroups"></div>
+              <div class="batch-save-actions">
+                <label class="confirm-alerts">
+                  <input id="confirmWarnings" type="checkbox" />
+                  Confirmar registros com alerta
+                </label>
+                <button class="button" id="saveValidBatch" type="button">Salvar Válidos</button>
+                <button class="button danger" id="saveConfirmedBatch" type="button">Salvar Válidos + Alertas</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-futuras" data-view-panel="futuras">
+          <div class="page-heading">
+            <div>
+              <h2>Demandas Futuras/Sistemáticas</h2>
+            </div>
+          </div>
+
+          <div class="future-layout">
+            <form class="future-form" id="futureDemandForm">
+              <label>
+                Descrição
+                <input name="descricao" required placeholder="Ex.: Inspeção preventiva em via energizada" />
+              </label>
+              <label>
+                Tipo de Demanda
+                <select name="tipoDemanda" required>
+                  <option value="Sistemática">Sistemática</option>
+                  <option value="Antecipada">Antecipada</option>
+                  <option value="Extraordinária">Extraordinária</option>
+                </select>
+              </label>
+              <label>
+                Centro Trabalho
+                <input name="centroTrabalho" required placeholder="EVT-PCM-01" />
+              </label>
+              <label>
+                Local Instalação
+                <input name="localInstalacao" required placeholder="ELV-TR-0001" />
+              </label>
+              <label>
+                Competência Prevista
+                <input name="competencia" required placeholder="2026-06" />
+              </label>
+              <label>
+                Vencimento Previsto
+                <input name="vencimento" required type="date" />
+              </label>
+              <label>
+                Frequência
+                <select name="frequencia">
+                  <option value="Mensal">Mensal</option>
+                  <option value="Bimestral">Bimestral</option>
+                  <option value="Trimestral">Trimestral</option>
+                  <option value="Semestral">Semestral</option>
+                  <option value="Anual">Anual</option>
+                  <option value="Única">Única</option>
+                </select>
+              </label>
+              <label>
+                Responsável
+                <input name="responsavel" placeholder="Nome do responsável" />
+              </label>
+              <label class="span-2">
+                Observação
+                <textarea name="comentario" rows="3"></textarea>
+              </label>
+              <button class="button editor-only" type="submit">Criar Demanda Futura</button>
+            </form>
+
+            <section class="future-list">
+              <div class="panel-toolbar">
+                <div>
+                  <h2>Sem Ordem Vinculada</h2>
+                  <span id="futureCount">0 demandas</span>
+                </div>
+              </div>
+              <div id="futureDemandList" class="future-demand-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-indicadores" data-view-panel="indicadores">
+          <div class="page-heading">
+            <div>
+              <h2>Painel de Indicadores</h2>
+            </div>
+          </div>
+          <div class="indicator-grid" id="indicatorGrid"></div>
+          <div class="charts-grid">
+            <section class="chart-panel">
+              <h3>Perdas por Centro de Trabalho</h3>
+              <div id="lossByCenter"></div>
+            </section>
+            <section class="chart-panel">
+              <h3>Motivos Mais Frequentes</h3>
+              <div id="lossReasons"></div>
+            </section>
+            <section class="chart-panel">
+              <h3>Ranking de Replanejamento</h3>
+              <div id="replanRanking"></div>
+            </section>
+            <section class="chart-panel">
+              <h3>Vencimentos Próximos</h3>
+              <div id="dueSoonList"></div>
+            </section>
+            <section class="chart-panel">
+              <h3>Status Operacional</h3>
+              <div id="statusChart"></div>
+            </section>
+            <section class="chart-panel">
+              <h3>Demandas por Competência</h3>
+              <div id="competenceChart"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-administracao" data-view-panel="administracao">
+          <div class="page-heading">
+            <div>
+              <h2>Administração</h2>
+            </div>
+          </div>
+          <div class="admin-tabs" id="adminTabs">
+            <button class="is-active" data-admin-tab="usuarios" type="button">Usuários</button>
+            <button data-admin-tab="motivos" type="button">Motivos e Justificativas</button>
+            <button data-admin-tab="perfisPerda" type="button">Perfis e Justificativas de Perda</button>
+            <button data-admin-tab="parametros" type="button">Parâmetros</button>
+          </div>
+          <div id="adminContent" class="admin-content"></div>
+        </section>
+
+        <section class="view" id="view-logs" data-view-panel="logs">
+          <div class="page-heading">
+            <div>
+              <h2>Logs do Sistema</h2>
+            </div>
+            <button class="button" id="exportLogs" type="button">Exportar Logs</button>
+          </div>
+          <div class="table-panel">
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Data/Hora</th>
+                    <th>Usuário</th>
+                    <th>Ação</th>
+                    <th>Lista</th>
+                    <th>Referência</th>
+                    <th>Detalhe</th>
+                  </tr>
+                </thead>
+                <tbody id="logsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="actionDialog" class="modal">
+      <form method="dialog" class="modal-card" id="actionForm">
+        <div class="modal-header">
+          <div>
+            <span id="modalDemandId"></span>
+            <h2 id="modalTitle">Ação</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Fechar" type="submit">×</button>
+        </div>
+        <div id="modalBody" class="modal-body"></div>
+        <div class="modal-footer">
+          <button class="button secondary" value="cancel" type="submit">Cancelar</button>
+          <button class="button" id="modalSave" value="default" type="button">Salvar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toastHost" class="toast-host" aria-live="polite"></div>
+  </body>
+</html>

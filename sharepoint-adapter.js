@@ -638,7 +638,7 @@
     return true;
   }
 
-  async function criarDemandaFuturaSharePoint(demanda) {
+  window.criarDemandaFuturaSharePoint = async function (demanda) {
     const digest = await getRequestDigest();
 
     const response = await fetch(
@@ -655,10 +655,8 @@
           __metadata: {
             type: "SP.Data.Controle_x005f_Demandas_x005f_EletroviaListItem",
           },
-
           Title: demanda.ID_Demanda_Controle,
           OrdemSAP: demanda.OrdemSAP || "",
-          TipoDemanda: "Antecipada",
           Descricao: demanda.Descricao,
           CentroTrabalho: demanda.CentroTrabalho,
           LocalInstalacao: demanda.LocalInstalacao,
@@ -682,9 +680,9 @@
     }
 
     return await response.json();
-  }
+  };
 
-  async function getRequestDigest() {
+  window.getRequestDigest = async function () {
     const response = await fetch(`${SHAREPOINT_SITE_URL}/_api/contextinfo`, {
       method: "POST",
       credentials: "include",
@@ -695,7 +693,7 @@
 
     const data = await response.json();
     return data.d.GetContextWebInformation.FormDigestValue;
-  }
+  };
 
   global.CCEData = {
     LIST_NAMES,

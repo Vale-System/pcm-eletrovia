@@ -1,19 +1,20 @@
 (function bootstrapCentral(global, document) {
   const $ = (selector, root = document) => root.querySelector(selector);
-  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+  const $$ = (selector, root = document) =>
+    Array.from(root.querySelectorAll(selector));
 
   const STATUS_OPTIONS = [
     "A Planejar",
     "Planejado",
     "Replanejado",
-    "Realizado"
+    "Realizado",
   ];
 
   const PROFILE_RULES = {
     Visualizador: { edit: false, admin: false, approve: false, export: true },
     Editor: { edit: true, admin: false, approve: false, export: true },
     Administrador: { edit: true, admin: true, approve: true, export: true },
-    Gestor: { edit: false, admin: false, approve: true, export: true }
+    Gestor: { edit: false, admin: false, approve: true, export: true },
   };
 
   const state = {
@@ -33,9 +34,9 @@
       rows: [],
       valid: [],
       warnings: [],
-      errors: []
+      errors: [],
     },
-    actionContext: null
+    actionContext: null,
   };
 
   function iconSvg(name) {
@@ -43,18 +44,24 @@
       play: '<path d="M8 5v14l11-7z"></path>',
       sync: '<path d="M21 12a9 9 0 0 0-15.3-6.4L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 15.3 6.4L21 16"></path><path d="M16 16h5v5"></path>',
       check: '<path d="M20 6 9 17l-5-5"></path>',
-      history: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 3v6h6"></path><path d="M12 7v5l3 2"></path>',
+      history:
+        '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 3v6h6"></path><path d="M12 7v5l3 2"></path>',
       bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path>',
       help: '<circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 1 1 5.8 1c-.7 1.2-2.1 1.4-2.6 2.6"></path><path d="M12 17h.01"></path>',
       grid: '<rect x="4" y="4" width="6" height="6"></rect><rect x="14" y="4" width="6" height="6"></rect><rect x="4" y="14" width="6" height="6"></rect><rect x="14" y="14" width="6" height="6"></rect>',
-      target: '<circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle>',
-      calendar: '<path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path>',
-      chart: '<path d="M4 19V5"></path><path d="M4 19h17"></path><path d="m8 16 3-5 4 3 4-8"></path>',
-      settings: '<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V22a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H22a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1Z"></path>',
+      target:
+        '<circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle>',
+      calendar:
+        '<path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path>',
+      chart:
+        '<path d="M4 19V5"></path><path d="M4 19h17"></path><path d="m8 16 3-5 4 3 4-8"></path>',
+      settings:
+        '<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V22a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H22a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1Z"></path>',
       logs: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h5"></path>',
       "chevron-left": '<path d="m15 18-6-6 6-6"></path>',
       "chevron-down": '<path d="m6 9 6 6 6-6"></path>',
-      filter: '<path d="M3 5h18"></path><path d="M6 12h12"></path><path d="M10 19h4"></path>'
+      filter:
+        '<path d="M3 5h18"></path><path d="M6 12h12"></path><path d="M10 19h4"></path>',
     };
     return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icons[name] || icons.help}</svg>`;
   }
@@ -84,10 +91,13 @@
 
   function toDate(value) {
     if (!value) return null;
-    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if (value instanceof Date)
+      return Number.isNaN(value.getTime()) ? null : value;
     const text = String(value).trim();
     if (!text) return null;
-    const normalized = text.includes("/") ? text.split("/").reverse().join("-") : text;
+    const normalized = text.includes("/")
+      ? text.split("/").reverse().join("-")
+      : text;
     const date = new Date(`${normalized.slice(0, 10)}T12:00:00`);
     return Number.isNaN(date.getTime()) ? null : date;
   }
@@ -103,7 +113,7 @@
     if (!date || Number.isNaN(date.getTime())) return "-";
     return new Intl.DateTimeFormat("pt-BR", {
       dateStyle: "short",
-      timeStyle: "short"
+      timeStyle: "short",
     }).format(date);
   }
 
@@ -113,17 +123,38 @@
   }
 
   function monthName(month) {
-    const names = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const names = [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez",
+    ];
     return names[Number(month) - 1] || month;
   }
 
   function getRules() {
-    return PROFILE_RULES[state.currentUser?.perfil] || PROFILE_RULES.Visualizador;
+    return (
+      PROFILE_RULES[state.currentUser?.perfil] || PROFILE_RULES.Visualizador
+    );
   }
 
   function configItems(group) {
     const raw = state.db?.configuracoes?.[group] || [];
-    return raw.map((item) => (typeof item === "string" ? { id: global.CCEData.slugify(item), nome: item, ativo: true } : item)).filter((item) => item.ativo !== false);
+    return raw
+      .map((item) =>
+        typeof item === "string"
+          ? { id: global.CCEData.slugify(item), nome: item, ativo: true }
+          : item,
+      )
+      .filter((item) => item.ativo !== false);
   }
 
   function configNames(group) {
@@ -131,10 +162,15 @@
   }
 
   function childConfigNames(group, parentKey, parentIdOrName) {
-    const parent = configItems(parentKey).find((item) => item.id === parentIdOrName || item.nome === parentIdOrName);
+    const parent = configItems(parentKey).find(
+      (item) => item.id === parentIdOrName || item.nome === parentIdOrName,
+    );
     const parentId = parent?.id || parentIdOrName;
     const field = group === "justificativas" ? "motivoId" : "perfilId";
-    const items = configItems(group).filter((item) => !parentId || item[field] === parentId || item[field] === parent?.nome);
+    const items = configItems(group).filter(
+      (item) =>
+        !parentId || item[field] === parentId || item[field] === parent?.nome,
+    );
     return items.length ? items.map((item) => item.nome) : configNames(group);
   }
 
@@ -157,7 +193,8 @@
       .flatMap((item) => {
         const issues = [];
         if (!item.motivo) issues.push("Sem motivo replanejamento");
-        if (!item.justificativa) issues.push("Sem justificativa replanejamento");
+        if (!item.justificativa)
+          issues.push("Sem justificativa replanejamento");
         return issues;
       });
   }
@@ -167,7 +204,8 @@
     const realized = toDate(demand.dataRealizada);
     const min = toDate(demand.toleranciaMin);
     const max = toDate(demand.toleranciaMax || demand.vencimento);
-    if ((min && realized < min) || (max && realized > max)) return "Fora do Prazo";
+    if ((min && realized < min) || (max && realized > max))
+      return "Fora do Prazo";
     return "No Prazo";
   }
 
@@ -187,7 +225,8 @@
   function pendingIssuesOf(demand) {
     const issues = [];
     if (demand.perda && !demand.motivoPerda) issues.push("Sem motivo de perda");
-    if (demand.perda && !demand.justificativaPerda) issues.push("Sem justificativa de perda");
+    if (demand.perda && !demand.justificativaPerda)
+      issues.push("Sem justificativa de perda");
     issues.push(...replanHistoryIssues(demand));
     return Array.from(new Set(issues));
   }
@@ -213,7 +252,8 @@
     if (status === "A Planejar") return "status-planejar";
     if (status === "Planejado") return "status-planejado";
     if (status === "Replanejado") return "status-replanejado";
-    if (status === "Realizado" || status === "No Prazo") return "status-realizado";
+    if (status === "Realizado" || status === "No Prazo")
+      return "status-realizado";
     if (status === "Fora do Prazo") return "status-fora-prazo";
     if (status === "Perda" || status === "Pendente") return "status-perda";
     return "status-planejado";
@@ -224,7 +264,9 @@
   }
 
   function statusChipGroup(statuses) {
-    return statuses.length ? `<span class="status-stack">${statuses.map(statusChip).join("")}</span>` : '<span class="muted">-</span>';
+    return statuses.length
+      ? `<span class="status-stack">${statuses.map(statusChip).join("")}</span>`
+      : '<span class="muted">-</span>';
   }
 
   function allowedActionsFor(demand) {
@@ -233,7 +275,7 @@
       planejar: status === "A Planejar",
       replanejar: status === "Planejado" || status === "Replanejado",
       realizado: true,
-      historico: true
+      historico: true,
     };
   }
 
@@ -242,7 +284,7 @@
       planejar: ["Planejar", "play", "primary"],
       replanejar: ["Replanejar", "sync", "warning"],
       realizado: ["Realizado/Perda", "check", "success"],
-      historico: ["Histórico", "history", "neutral"]
+      historico: ["Histórico", "history", "neutral"],
     }[action];
     const label = meta[0];
     return `
@@ -258,13 +300,20 @@
   }
 
   function uniqueOptions(values) {
-    return Array.from(new Set(values.filter(Boolean))).sort((a, b) => String(a).localeCompare(String(b), "pt-BR"));
+    return Array.from(new Set(values.filter(Boolean))).sort((a, b) =>
+      String(a).localeCompare(String(b), "pt-BR"),
+    );
   }
 
   function populateSelect(element, values, allLabel = "Todos") {
     const previous = element.value;
     element.innerHTML = [`<option value="">${allLabel}</option>`]
-      .concat(values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`))
+      .concat(
+        values.map(
+          (value) =>
+            `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`,
+        ),
+      )
       .join("");
     if (values.includes(previous)) {
       element.value = previous;
@@ -290,31 +339,62 @@
   }
 
   function toCsv(rows) {
-    const escapeCell = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const escapeCell = (value) =>
+      `"${String(value ?? "").replace(/"/g, '""')}"`;
     return rows.map((row) => row.map(escapeCell).join(";")).join("\n");
   }
 
-  async function loadDatabase() {
-    state.db = await state.repo.getAll();
-    const identity = await state.repo.getCurrentUserIdentity?.();
-    state.identity = identity;
-    const identityEmail = normalizeText(identity?.email);
-    const storedEmail = normalizeText(global.localStorage.getItem("cce.currentUser"));
-    state.currentUser =
-      state.db.usuarios.find((user) => identityEmail && normalizeText(user.email) === identityEmail && user.ativo) ||
-      state.db.usuarios.find((user) => storedEmail && normalizeText(user.email) === storedEmail && user.ativo) ||
-      {
-        id: "USR-CURRENT",
-        nome: identity?.nome || "Usuário não cadastrado",
-        email: identity?.email || "",
-        perfil: "Visualizador",
-        ativo: true
-      };
-    if (!state.selectedDemandId || !state.db.demandas.some((item) => item.id === state.selectedDemandId)) {
-      state.selectedDemandId = state.db.demandas[0]?.id || "";
-    }
-  }
+  async function loadBaseFromJson() {
+    const response = await fetch("./base_ordens.json");
+    const data = await response.json();
 
+    return data.map((item) => ({
+      id: item.OrdemSAP ? `DEM-SAP-${item.OrdemSAP}` : crypto.randomUUID(),
+      ordem: item.OrdemSAP,
+      descricao: item.Descricao,
+      tipoOM: item.TipoOM,
+      gerencia: item.Gerencia,
+      centroTrabalho: item.CentroTrabalho,
+      localInstalacao: item.LocalInstalacao,
+      vencimento: item.Vencimento,
+      prioridade: item.Prioridade,
+      statusSistema: item.StatusSistema,
+      competencia: item.Competencia,
+      toleranciaMin: item.ToleranciaMin,
+      toleranciaMax: item.ToleranciaMax,
+
+      // campos de controle
+      dataPlanejada: "",
+      dataReplanejadaAtual: "",
+      dataRealizada: "",
+      perda: false,
+      motivoPerda: "",
+      justificativaPerda: "",
+      origem: "SAP BO",
+    }));
+  }
+  async function loadDatabase() {
+    const base = await loadBaseFromJson();
+
+    state.db = {
+      demandas: base,
+      usuarios: [],
+      configuracoes: {},
+      parametros: {},
+      historicoPlanejamento: [],
+      historicoReplanejamento: [],
+      historicoRealizadoPerdas: [],
+      logs: [],
+    };
+
+    state.currentUser = {
+      nome: "Weslley",
+      email: "weslley.santos@vale.com",
+      perfil: "Administrador",
+    };
+
+    state.selectedDemandId = base[0]?.id || "";
+  }
   function demandById(id) {
     return state.db.demandas.find((item) => item.id === id);
   }
@@ -326,7 +406,7 @@
         type: "Planejamento",
         date: item.dataHora,
         title: `Planejado para ${formatDate(item.novaData)}`,
-        detail: item.comentario || item.usuario
+        detail: item.comentario || item.usuario,
       }));
     const replanejamento = state.db.historicoReplanejamento
       .filter((item) => item.demandaId === id)
@@ -334,17 +414,21 @@
         type: "Replanejamento",
         date: item.dataHora,
         title: `${formatDate(item.dataAnterior)} para ${formatDate(item.novaData)}`,
-        detail: `${item.motivo || "-"} | ${item.justificativa || "-"}`
+        detail: `${item.motivo || "-"} | ${item.justificativa || "-"}`,
       }));
     const realizados = state.db.historicoRealizadoPerdas
       .filter((item) => item.demandaId === id)
       .map((item) => ({
         type: item.perda ? "Perda" : "Realizado",
         date: item.dataHora,
-        title: item.perda ? item.motivoPerda || "Perda registrada" : `Realizado em ${formatDate(item.dataRealizada)}`,
-        detail: item.comentario || item.justificativaPerda || item.usuario
+        title: item.perda
+          ? item.motivoPerda || "Perda registrada"
+          : `Realizado em ${formatDate(item.dataRealizada)}`,
+        detail: item.comentario || item.justificativaPerda || item.usuario,
       }));
-    return [...planejamento, ...replanejamento, ...realizados].sort((a, b) => new Date(b.date) - new Date(a.date));
+    return [...planejamento, ...replanejamento, ...realizados].sort(
+      (a, b) => new Date(b.date) - new Date(a.date),
+    );
   }
 
   function hydrateStaticUi() {
@@ -353,18 +437,29 @@
     const userSelect = $("#userSelect");
     userSelect.innerHTML = state.db.usuarios
       .filter((user) => user.ativo)
-      .map((user) => `<option value="${escapeHtml(user.email)}">${escapeHtml(user.nome)}</option>`)
+      .map(
+        (user) =>
+          `<option value="${escapeHtml(user.email)}">${escapeHtml(user.nome)}</option>`,
+      )
       .join("");
     if (state.currentUser) userSelect.value = state.currentUser.email;
-    $(".dev-user-select").classList.toggle("hidden", !(state.repo.mode === "Local" && new URLSearchParams(global.location.search).get("debugUsers") === "1"));
-    $("#lastUpdateSide").textContent = todayText().split("-").reverse().join("/") + " agora";
+    $(".dev-user-select").classList.toggle(
+      "hidden",
+      !(
+        state.repo.mode === "Local" &&
+        new URLSearchParams(global.location.search).get("debugUsers") === "1"
+      ),
+    );
+    $("#lastUpdateSide").textContent =
+      todayText().split("-").reverse().join("/") + " agora";
     renderRole();
     buildFilterOptions();
     renderAlerts();
   }
 
   function renderRole() {
-    $("#userName").textContent = state.currentUser?.nome || state.identity?.nome || "Usuário";
+    $("#userName").textContent =
+      state.currentUser?.nome || state.identity?.nome || "Usuário";
     $("#roleChip").textContent = state.currentUser?.perfil || "Visualizador";
     applyPermissions();
   }
@@ -387,18 +482,44 @@
 
   function buildFilterOptions() {
     const demands = state.db.demandas;
-    populateSelect($("#filterGerencia"), uniqueOptions(demands.map((item) => item.gerencia)));
-    populateSelect($("#filterCentro"), uniqueOptions(demands.map((item) => item.centroTrabalho)));
-    populateSelect($("#filterTipo"), uniqueOptions(demands.map((item) => item.tipoOM)));
-    populateSelect($("#filterCompetencia"), uniqueOptions(demands.map((item) => item.competencia)));
-    populateSelect($("#filterLocal"), uniqueOptions(demands.map((item) => item.localInstalacao)));
-    populateSelect($("#filterPrioridade"), uniqueOptions(demands.map((item) => item.prioridade)));
-    populateSelect($("#filterStatusSistema"), uniqueOptions(demands.map((item) => item.statusSistema)));
+    populateSelect(
+      $("#filterGerencia"),
+      uniqueOptions(demands.map((item) => item.gerencia)),
+    );
+    populateSelect(
+      $("#filterCentro"),
+      uniqueOptions(demands.map((item) => item.centroTrabalho)),
+    );
+    populateSelect(
+      $("#filterTipo"),
+      uniqueOptions(demands.map((item) => item.tipoOM)),
+    );
+    populateSelect(
+      $("#filterCompetencia"),
+      uniqueOptions(demands.map((item) => item.competencia)),
+    );
+    populateSelect(
+      $("#filterLocal"),
+      uniqueOptions(demands.map((item) => item.localInstalacao)),
+    );
+    populateSelect(
+      $("#filterPrioridade"),
+      uniqueOptions(demands.map((item) => item.prioridade)),
+    );
+    populateSelect(
+      $("#filterStatusSistema"),
+      uniqueOptions(demands.map((item) => item.statusSistema)),
+    );
     populateSelect($("#filterStatusOperacional"), STATUS_OPTIONS);
-    populateSelect($("#filterAno"), uniqueOptions(demands.map((item) => item.vencimento?.slice(0, 4))));
+    populateSelect(
+      $("#filterAno"),
+      uniqueOptions(demands.map((item) => item.vencimento?.slice(0, 4))),
+    );
     populateSelect(
       $("#filterMes"),
-      uniqueOptions(demands.map((item) => item.vencimento?.slice(5, 7))).map((month) => `${month} - ${monthName(month)}`)
+      uniqueOptions(demands.map((item) => item.vencimento?.slice(5, 7))).map(
+        (month) => `${month} - ${monthName(month)}`,
+      ),
     );
   }
 
@@ -426,23 +547,46 @@
         prioridade: item.prioridade,
         statusSistema: item.statusSistema,
         anoVencimento: item.vencimento?.slice(0, 4),
-        mesVencimento: item.vencimento ? `${item.vencimento.slice(5, 7)} - ${monthName(item.vencimento.slice(5, 7))}` : ""
+        mesVencimento: item.vencimento
+          ? `${item.vencimento.slice(5, 7)} - ${monthName(item.vencimento.slice(5, 7))}`
+          : "",
       };
 
       for (const [key, value] of Object.entries(fields)) {
         if (filters[key] && String(value) !== filters[key]) return false;
       }
-      if (filters.statusOperacional && primaryStatusOf(item) !== filters.statusOperacional) return false;
+      if (
+        filters.statusOperacional &&
+        primaryStatusOf(item) !== filters.statusOperacional
+      )
+        return false;
 
       if (filters.perda === "sim" && !item.perda) return false;
       if (filters.perda === "nao" && item.perda) return false;
-      if (filters.planejado === "sim" && !item.dataPlanejada && !item.dataReplanejadaAtual) return false;
-      if (filters.planejado === "nao" && (item.dataPlanejada || item.dataReplanejadaAtual)) return false;
+      if (
+        filters.planejado === "sim" &&
+        !item.dataPlanejada &&
+        !item.dataReplanejadaAtual
+      )
+        return false;
+      if (
+        filters.planejado === "nao" &&
+        (item.dataPlanejada || item.dataReplanejadaAtual)
+      )
+        return false;
       if (filters.realizado === "sim" && !item.dataRealizada) return false;
       if (filters.realizado === "nao" && item.dataRealizada) return false;
 
       if (search) {
-        const haystack = normalizeText([item.id, item.ordem, item.descricao, item.centroTrabalho, item.localInstalacao].join(" "));
+        const haystack = normalizeText(
+          [
+            item.id,
+            item.ordem,
+            item.descricao,
+            item.centroTrabalho,
+            item.localInstalacao,
+          ].join(" "),
+        );
         if (!haystack.includes(search)) return false;
       }
 
@@ -460,9 +604,17 @@
       const status = primaryStatusOf(item);
       counts[status] = (counts[status] || 0) + 1;
     });
-    const realizedOnTime = demands.filter((item) => primaryStatusOf(item) === "Realizado" && dueClassOf(item) === "No Prazo").length;
-    const planned = demands.filter((item) => item.dataPlanejada || item.dataReplanejadaAtual).length;
-    const adherence = planned ? Math.round((realizedOnTime / planned) * 100) : 0;
+    const realizedOnTime = demands.filter(
+      (item) =>
+        primaryStatusOf(item) === "Realizado" &&
+        dueClassOf(item) === "No Prazo",
+    ).length;
+    const planned = demands.filter(
+      (item) => item.dataPlanejada || item.dataReplanejadaAtual,
+    ).length;
+    const adherence = planned
+      ? Math.round((realizedOnTime / planned) * 100)
+      : 0;
     return {
       total,
       aPlanejar: counts["A Planejar"] || 0,
@@ -471,7 +623,8 @@
       realizadas: counts.Realizado || 0,
       perdas: demands.filter((item) => item.perda).length,
       aderencia: adherence,
-      pendentesPerda: demands.filter((item) => pendingIssuesOf(item).length).length
+      pendentesPerda: demands.filter((item) => pendingIssuesOf(item).length)
+        .length,
     };
   }
 
@@ -486,7 +639,11 @@
           return { item, type: "Pendente", message: pending.join(" | ") };
         }
         if (!item.dataRealizada && days >= 0 && days <= 7) {
-          return { item, type: "Vencimento", message: `Vence em ${days} dia${days === 1 ? "" : "s"}.` };
+          return {
+            item,
+            type: "Vencimento",
+            message: `Vence em ${days} dia${days === 1 ? "" : "s"}.`,
+          };
         }
         return null;
       })
@@ -510,10 +667,10 @@
                 <strong>${escapeHtml(item.ordem || item.id)}</strong>
                 <small>${escapeHtml(message)}</small>
               </button>
-            `
+            `,
             )
             .join("")
-        : '<p>Sem alertas críticos no momento.</p>');
+        : "<p>Sem alertas críticos no momento.</p>");
   }
 
   function renderKpis(demands) {
@@ -525,10 +682,13 @@
       ["Replanejadas", stats.replanejadas, "alteradas"],
       ["Realizadas", stats.realizadas, "com baixa"],
       ["Perdas", stats.perdas, `${stats.pendentesPerda} pendentes`],
-      ["Aderência", `${stats.aderencia}%`, "realizado no prazo"]
+      ["Aderência", `${stats.aderencia}%`, "realizado no prazo"],
     ];
     $("#kpiStrip").innerHTML = kpis
-      .map(([label, value, note]) => `<article class="kpi-card"><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`)
+      .map(
+        ([label, value, note]) =>
+          `<article class="kpi-card"><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`,
+      )
       .join("");
   }
 
@@ -547,7 +707,8 @@
         const status = primaryStatusOf(item);
         const substatuses = substatusListOf(item);
         const allowed = allowedActionsFor(item);
-        const selected = item.id === state.selectedDemandId ? "is-selected" : "";
+        const selected =
+          item.id === state.selectedDemandId ? "is-selected" : "";
         const editDisabled = !canEdit();
         return `
           <tr class="${selected}" data-demand-id="${escapeHtml(item.id)}">
@@ -643,7 +804,7 @@
                       <strong>${escapeHtml(item.type)} | ${escapeHtml(item.title)}</strong>
                       <span>${formatDateTime(item.date)} | ${escapeHtml(item.detail || "-")}</span>
                     </div>
-                  `
+                  `,
                 )
                 .join("")
             : '<span class="muted">Sem histórico operacional registrado.</span>'
@@ -654,7 +815,10 @@
 
   function optionsMarkup(values, selected = "") {
     return values
-      .map((value) => `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(value)}</option>`)
+      .map(
+        (value) =>
+          `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(value)}</option>`,
+      )
       .join("");
   }
 
@@ -663,8 +827,12 @@
     const justificativa = $('[name="justificativa"]');
     if (motivo && justificativa) {
       const update = () => {
-        const selected = justificativa.value || justificativa.dataset.selected || "";
-        justificativa.innerHTML = optionsMarkup(childConfigNames("justificativas", "motivos", motivo.value), selected);
+        const selected =
+          justificativa.value || justificativa.dataset.selected || "";
+        justificativa.innerHTML = optionsMarkup(
+          childConfigNames("justificativas", "motivos", motivo.value),
+          selected,
+        );
       };
       motivo.addEventListener("change", update);
       update();
@@ -673,7 +841,8 @@
     const justificativaPerda = $('[name="justificativaPerda"]');
     if (perfil && justificativaPerda) {
       const update = () => {
-        const selected = justificativaPerda.value || justificativaPerda.dataset.selected || "";
+        const selected =
+          justificativaPerda.value || justificativaPerda.dataset.selected || "";
         justificativaPerda.innerHTML = `<option value=""></option>${optionsMarkup(childConfigNames("justificativasPerda", "perfisPerda", perfil.value), selected)}`;
       };
       perfil.addEventListener("change", update);
@@ -694,7 +863,8 @@
       return;
     }
     state.actionContext = { action, demandId };
-    $("#modalDemandId").textContent = `${demand.id} | ${demand.ordem || "Sem ordem SAP"}`;
+    $("#modalDemandId").textContent =
+      `${demand.id} | ${demand.ordem || "Sem ordem SAP"}`;
 
     if (action === "planejar") {
       $("#modalTitle").textContent = "Planejar Demanda";
@@ -724,7 +894,9 @@
 
     if (action === "realizado") {
       const realizedOnlyLoss = primaryStatusOf(demand) === "Realizado";
-      $("#modalTitle").textContent = realizedOnlyLoss ? "Complementar Perda" : "Registrar Realizado/Perda";
+      $("#modalTitle").textContent = realizedOnlyLoss
+        ? "Complementar Perda"
+        : "Registrar Realizado/Perda";
       $("#modalBody").innerHTML = `
         <div class="modal-grid">
           <label class="${realizedOnlyLoss ? "hidden" : ""}">Data realizada<input name="dataRealizada" type="date" value="${dateText(demand.dataRealizada || todayText())}" ${realizedOnlyLoss ? "disabled" : ""} /></label>
@@ -752,7 +924,7 @@
                       <strong>${escapeHtml(item.type)} | ${escapeHtml(item.title)}</strong>
                       <span>${formatDateTime(item.date)} | ${escapeHtml(item.detail || "-")}</span>
                     </div>
-                  `
+                  `,
                   )
                   .join("")
               : '<span class="muted">Sem histórico operacional registrado.</span>'
@@ -792,26 +964,33 @@
         dataAnterior: previous,
         novaData: nextDate,
         usuario: userEmail,
-        comentario: demand.comentario
+        comentario: demand.comentario,
       });
       await state.repo.addLog({
         usuario: userEmail,
         acao: "Planejamento",
         lista: "Controle_Demandas_Eletrovia",
         referencia: demand.id,
-        detalhe: `Planejado para ${nextDate}`
+        detalhe: `Planejado para ${nextDate}`,
       });
     }
 
     if (context.action === "replanejar") {
-      const previous = demand.dataReplanejadaAtual || demand.dataPlanejada || demand.vencimento;
+      const previous =
+        demand.dataReplanejadaAtual ||
+        demand.dataPlanejada ||
+        demand.vencimento;
       const nextDate = form.get("novaData");
       if (!nextDate || !form.get("motivo") || !form.get("justificativa")) {
-        showToast("Replanejamento exige nova data, motivo e justificativa.", "error");
+        showToast(
+          "Replanejamento exige nova data, motivo e justificativa.",
+          "error",
+        );
         return;
       }
       demand.dataReplanejadaAtual = nextDate;
-      demand.quantidadeReplanejamentos = Number(demand.quantidadeReplanejamentos || 0) + 1;
+      demand.quantidadeReplanejamentos =
+        Number(demand.quantidadeReplanejamentos || 0) + 1;
       demand.comentario = form.get("comentario") || "";
       demand.usuarioResponsavel = userEmail;
       await state.repo.upsertDemanda(demand);
@@ -822,14 +1001,14 @@
         dataAnterior: previous,
         novaData: nextDate,
         usuario: userEmail,
-        quantidadeReplanejamentos: demand.quantidadeReplanejamentos
+        quantidadeReplanejamentos: demand.quantidadeReplanejamentos,
       });
       await state.repo.addLog({
         usuario: userEmail,
         acao: "Replanejamento",
         lista: "Controle_Demandas_Eletrovia",
         referencia: demand.id,
-        detalhe: `${previous} para ${nextDate}`
+        detalhe: `${previous} para ${nextDate}`,
       });
     }
 
@@ -842,7 +1021,9 @@
         showToast("Perda exige perfil e justificativa.", "error");
         return;
       }
-      demand.dataRealizada = alreadyRealized ? demand.dataRealizada : form.get("dataRealizada") || "";
+      demand.dataRealizada = alreadyRealized
+        ? demand.dataRealizada
+        : form.get("dataRealizada") || "";
       demand.perda = lossSelected;
       demand.motivoPerda = form.get("motivoPerda") || "";
       demand.justificativaPerda = form.get("justificativaPerda") || "";
@@ -857,14 +1038,16 @@
         justificativaPerda: demand.justificativaPerda,
         comentario: demand.comentario,
         evidencia: form.get("evidencia") || "",
-        usuario: userEmail
+        usuario: userEmail,
       });
       await state.repo.addLog({
         usuario: userEmail,
         acao: demand.perda ? "Perda" : "Realizado",
         lista: "Historico_Realizado_Perdas",
         referencia: demand.id,
-        detalhe: demand.perda ? demand.motivoPerda : `Realizado em ${demand.dataRealizada}`
+        detalhe: demand.perda
+          ? demand.motivoPerda
+          : `Realizado em ${demand.dataRealizada}`,
       });
     }
 
@@ -888,19 +1071,30 @@
     await autoSyncRealizadosFromSharePoint();
     hydrateStaticUi();
     renderCurrentView();
-    const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const time = new Date().toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     $("#lastSync").textContent = `Sincronizado ${time}`;
-    $("#lastUpdateSide").textContent = todayText().split("-").reverse().join("/") + ` ${time}`;
+    $("#lastUpdateSide").textContent =
+      todayText().split("-").reverse().join("/") + ` ${time}`;
   }
 
   function switchView(view) {
     if (view === "administracao" && !canAdmin()) {
-      showToast("Administração disponível somente para Administrador.", "error");
+      showToast(
+        "Administração disponível somente para Administrador.",
+        "error",
+      );
       return;
     }
     state.currentView = view;
-    $$(".nav-item").forEach((item) => item.classList.toggle("is-active", item.dataset.view === view));
-    $$("[data-view-panel]").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.viewPanel === view));
+    $$(".nav-item").forEach((item) =>
+      item.classList.toggle("is-active", item.dataset.view === view),
+    );
+    $$("[data-view-panel]").forEach((panel) =>
+      panel.classList.toggle("is-active", panel.dataset.viewPanel === view),
+    );
     renderCurrentView();
   }
 
@@ -909,14 +1103,15 @@
     const groups = $("#validationGroups");
     if (!state.batch.rows.length) {
       summary.innerHTML = "";
-      groups.innerHTML = '<div class="empty-detail"><strong>Nenhum arquivo validado</strong><span>Selecione um arquivo para iniciar a validação.</span></div>';
+      groups.innerHTML =
+        '<div class="empty-detail"><strong>Nenhum arquivo validado</strong><span>Selecione um arquivo para iniciar a validação.</span></div>';
       return;
     }
 
     summary.innerHTML = [
       ["Válidos", state.batch.valid.length, "status-realizado"],
       ["Alertas", state.batch.warnings.length, "status-planejar"],
-      ["Erros", state.batch.errors.length, "status-perda"]
+      ["Erros", state.batch.errors.length, "status-perda"],
     ]
       .map(
         ([label, count, klass]) => `
@@ -924,7 +1119,7 @@
           <span class="status-chip ${klass}">${label}</span>
           <strong>${count}</strong>
         </div>
-      `
+      `,
       )
       .join("");
 
@@ -942,7 +1137,7 @@
                   <strong>Linha ${item.line} | ${escapeHtml(item.record.ordem || item.record.id || item.record.descricao || "-")}</strong>
                   <div>${escapeHtml(item.message)}</div>
                 </div>
-              `
+              `,
                   )
                   .join("")
               : '<span class="muted">Nenhum registro.</span>'
@@ -995,7 +1190,7 @@
         headers.reduce((acc, header, index) => {
           acc[header] = cells[index] || "";
           return acc;
-        }, {})
+        }, {}),
       );
   }
 
@@ -1027,7 +1222,7 @@
       JUSTIFICATIVAPERDA: "justificativaPerda",
       COMENTARIO: "comentario",
       TIPOOM: "tipoOM",
-      PRIORIDADE: "prioridade"
+      PRIORIDADE: "prioridade",
     };
     return map[text] || header;
   }
@@ -1035,7 +1230,8 @@
   function normalizeDateInput(value) {
     if (typeof value === "number" && global.XLSX) {
       const parsed = global.XLSX.SSF.parse_date_code(value);
-      if (parsed) return `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`;
+      if (parsed)
+        return `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`;
     }
     const date = toDate(value);
     return dateText(date);
@@ -1044,15 +1240,26 @@
   function normalizeBatchRecord(row) {
     const normalized = {};
     Object.entries(row).forEach(([key, value]) => {
-      normalized[normalizeHeader(key)] = typeof value === "string" ? value.trim() : value;
+      normalized[normalizeHeader(key)] =
+        typeof value === "string" ? value.trim() : value;
     });
-    ["vencimento", "dataPlanejada", "dataReplanejadaAtual", "dataRealizada"].forEach((key) => {
-      if (normalized[key]) normalized[key] = normalizeDateInput(normalized[key]);
+    [
+      "vencimento",
+      "dataPlanejada",
+      "dataReplanejadaAtual",
+      "dataRealizada",
+    ].forEach((key) => {
+      if (normalized[key])
+        normalized[key] = normalizeDateInput(normalized[key]);
     });
     if (normalized.perda) {
-      normalized.perda = ["SIM", "S", "TRUE", "1"].includes(normalizeText(normalized.perda));
+      normalized.perda = ["SIM", "S", "TRUE", "1"].includes(
+        normalizeText(normalized.perda),
+      );
     }
-    normalized.origem = normalized.ordem ? "Carga em Lote" : "Demanda Antecipada";
+    normalized.origem = normalized.ordem
+      ? "Carga em Lote"
+      : "Demanda Antecipada";
     normalized.id = normalized.id || global.CCEData.stableDemandId(normalized);
     return normalized;
   }
@@ -1066,20 +1273,46 @@
       const record = normalizeBatchRecord(row);
       const messages = [];
       const alerts = [];
-      if (!record.ordem && !(record.descricao && record.centroTrabalho && record.localInstalacao && record.competencia && record.vencimento)) {
-        messages.push("Sem ordem SAP e sem campos mínimos para criar ID interno de demanda futura.");
+      if (
+        !record.ordem &&
+        !(
+          record.descricao &&
+          record.centroTrabalho &&
+          record.localInstalacao &&
+          record.competencia &&
+          record.vencimento
+        )
+      ) {
+        messages.push(
+          "Sem ordem SAP e sem campos mínimos para criar ID interno de demanda futura.",
+        );
       }
-      if (record.dataPlanejada && !toDate(record.dataPlanejada)) messages.push("Data planejada inválida.");
-      if (record.dataRealizada && !toDate(record.dataRealizada)) messages.push("Data realizada inválida.");
+      if (record.dataPlanejada && !toDate(record.dataPlanejada))
+        messages.push("Data planejada inválida.");
+      if (record.dataRealizada && !toDate(record.dataRealizada))
+        messages.push("Data realizada inválida.");
       if (record.perda && (!record.motivoPerda || !record.justificativaPerda)) {
         messages.push("Perda exige motivo e justificativa.");
       }
-      if (record.ordem && !state.db.demandas.some((item) => item.ordem === String(record.ordem))) {
-        alerts.push("Ordem não encontrada na carteira atual; será criada na camada de controle.");
+      if (
+        record.ordem &&
+        !state.db.demandas.some((item) => item.ordem === String(record.ordem))
+      ) {
+        alerts.push(
+          "Ordem não encontrada na carteira atual; será criada na camada de controle.",
+        );
       }
-      if (!record.ordem) alerts.push("Demanda sem ordem SAP será salva com ID_Demanda_Controle.");
+      if (!record.ordem)
+        alerts.push(
+          "Demanda sem ordem SAP será salva com ID_Demanda_Controle.",
+        );
 
-      const item = { line: index + 2, record, message: messages.concat(alerts).join(" ") || "Registro pronto para gravação." };
+      const item = {
+        line: index + 2,
+        record,
+        message:
+          messages.concat(alerts).join(" ") || "Registro pronto para gravação.",
+      };
       if (messages.length) errors.push(item);
       else if (alerts.length) warnings.push(item);
       else valid.push(item);
@@ -1092,12 +1325,19 @@
     const extension = file.name.split(".").pop().toLowerCase();
     if (["xlsx", "xls"].includes(extension)) {
       if (!global.XLSX) {
-        throw new Error("Biblioteca XLSX indisponível. Use CSV ou habilite o CDN no ambiente SharePoint.");
+        throw new Error(
+          "Biblioteca XLSX indisponível. Use CSV ou habilite o CDN no ambiente SharePoint.",
+        );
       }
       const buffer = await file.arrayBuffer();
-      const workbook = global.XLSX.read(buffer, { type: "array", cellDates: true });
+      const workbook = global.XLSX.read(buffer, {
+        type: "array",
+        cellDates: true,
+      });
       const sheetName = workbook.SheetNames[0];
-      return global.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+      return global.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        defval: "",
+      });
     }
     const text = await file.text();
     return parseCsv(text);
@@ -1124,8 +1364,14 @@
       showToast("Perfil sem permissão para salvar carga em lote.", "error");
       return;
     }
-    const candidates = includeWarnings ? state.batch.valid.concat(state.batch.warnings) : state.batch.valid;
-    if (includeWarnings && state.batch.warnings.length && !$("#confirmWarnings").checked) {
+    const candidates = includeWarnings
+      ? state.batch.valid.concat(state.batch.warnings)
+      : state.batch.valid;
+    if (
+      includeWarnings &&
+      state.batch.warnings.length &&
+      !$("#confirmWarnings").checked
+    ) {
       showToast("Confirme os registros com alerta antes de salvar.", "error");
       return;
     }
@@ -1135,14 +1381,18 @@
     }
 
     const records = candidates.map((item) => {
-      const existing = item.record.ordem ? state.db.demandas.find((demand) => demand.ordem === String(item.record.ordem)) : null;
+      const existing = item.record.ordem
+        ? state.db.demandas.find(
+            (demand) => demand.ordem === String(item.record.ordem),
+          )
+        : null;
       return {
         ...(existing || {}),
         ...item.record,
         ordem: item.record.ordem ? String(item.record.ordem) : "",
         id: existing?.id || item.record.id,
         usuarioResponsavel: state.currentUser.email,
-        dataUltimaAtualizacao: new Date().toISOString()
+        dataUltimaAtualizacao: new Date().toISOString(),
       };
     });
 
@@ -1152,7 +1402,9 @@
       acao: "Carga em Lote",
       lista: "Controle_Demandas_Eletrovia",
       referencia: `${records.length} registros`,
-      detalhe: includeWarnings ? "Válidos e alertas confirmados" : "Somente válidos"
+      detalhe: includeWarnings
+        ? "Válidos e alertas confirmados"
+        : "Somente válidos",
     });
     await refreshAll();
     state.batch = { rows: [], valid: [], warnings: [], errors: [] };
@@ -1170,7 +1422,9 @@
         unmatched.push(record);
         continue;
       }
-      const demand = state.db.demandas.find((item) => String(item.ordem) === ordem);
+      const demand = state.db.demandas.find(
+        (item) => String(item.ordem) === ordem,
+      );
       if (!demand) {
         unmatched.push(record);
         continue;
@@ -1179,8 +1433,12 @@
       demand.dataRealizada = record.dataRealizada;
       demand.perda = Boolean(record.perda || demand.perda);
       demand.motivoPerda = record.motivoPerda || demand.motivoPerda || "";
-      demand.justificativaPerda = record.justificativaPerda || demand.justificativaPerda || "";
-      demand.comentario = record.comentario || demand.comentario || "Realizado sincronizado pela base SAP BO.";
+      demand.justificativaPerda =
+        record.justificativaPerda || demand.justificativaPerda || "";
+      demand.comentario =
+        record.comentario ||
+        demand.comentario ||
+        "Realizado sincronizado pela base SAP BO.";
       demand.usuarioResponsavel = state.currentUser.email;
       updates.push({ demand, before });
     }
@@ -1196,7 +1454,7 @@
           justificativaPerda: demand.justificativaPerda,
           comentario: "Sincronizado automaticamente pela base de realizado.",
           evidencia: sourceName,
-          usuario: state.currentUser.email
+          usuario: state.currentUser.email,
         });
       }
     }
@@ -1205,40 +1463,71 @@
       acao: "Sincronização Realizados",
       lista: "Historico_Realizado_Perdas",
       referencia: sourceName,
-      detalhe: `${updates.length} realizadas atualizadas. ${unmatched.length} sem correspondência.`
+      detalhe: `${updates.length} realizadas atualizadas. ${unmatched.length} sem correspondência.`,
     });
-    if (showResult) showToast(`${updates.length} ordens realizadas sincronizadas.`, "success");
+    if (showResult)
+      showToast(
+        `${updates.length} ordens realizadas sincronizadas.`,
+        "success",
+      );
     return { updates: updates.length, unmatched: unmatched.length };
   }
 
   function workbookRowsFromBuffer(buffer) {
-    if (!global.XLSX) throw new Error("Biblioteca XLSX indisponível para sincronizar realizados.");
-    const workbook = global.XLSX.read(buffer, { type: "array", cellDates: true });
+    if (!global.XLSX)
+      throw new Error(
+        "Biblioteca XLSX indisponível para sincronizar realizados.",
+      );
+    const workbook = global.XLSX.read(buffer, {
+      type: "array",
+      cellDates: true,
+    });
     const sheetName = workbook.SheetNames[0];
-    return global.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+    return global.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      defval: "",
+    });
   }
 
   async function autoSyncRealizadosFromSharePoint() {
-    if (state.realizedAutoSynced || state.repo.mode !== "SharePoint REST" || !state.repo.getRealizadosFileBuffer) return;
+    if (
+      state.realizedAutoSynced ||
+      state.repo.mode !== "SharePoint REST" ||
+      !state.repo.getRealizadosFileBuffer
+    )
+      return;
     state.realizedAutoSynced = true;
     try {
-      const buffer = await state.repo.getRealizadosFileBuffer(state.db.parametros || {});
+      const buffer = await state.repo.getRealizadosFileBuffer(
+        state.db.parametros || {},
+      );
       const rows = workbookRowsFromBuffer(buffer);
-      const result = await syncRealizedRows(rows, state.db.parametros?.realizedExcelFileName || "base_realizados_sap.xlsx");
+      const result = await syncRealizedRows(
+        rows,
+        state.db.parametros?.realizedExcelFileName ||
+          "base_realizados_sap.xlsx",
+      );
       if (result.updates) await loadDatabase();
     } catch (error) {
       await state.repo.addLog?.({
         usuario: state.currentUser?.email || "",
         acao: "Falha Sincronização Realizados",
         lista: "Base_Realizados_SAP",
-        referencia: state.db.parametros?.realizedExcelFileName || "base_realizados_sap.xlsx",
-        detalhe: error.message
+        referencia:
+          state.db.parametros?.realizedExcelFileName ||
+          "base_realizados_sap.xlsx",
+        detalhe: error.message,
       });
     }
   }
 
   function renderFutureDemandas() {
-    const futures = state.db.demandas.filter((item) => !item.ordem && ["Demanda Antecipada", "Futura"].includes(item.origem || item.tipoDemanda));
+    const futures = state.db.demandas.filter(
+      (item) =>
+        !item.ordem &&
+        ["Demanda Antecipada", "Futura"].includes(
+          item.origem || item.tipoDemanda,
+        ),
+    );
     $("#futureCount").textContent = `${futures.length} demandas`;
     $("#futureDemandList").innerHTML =
       futures
@@ -1270,7 +1559,7 @@
                           </div>
                           <button class="button editor-only" data-link-future="${escapeHtml(item.id)}" data-link-target="${escapeHtml(suggestion.target.id)}" type="button">Vincular</button>
                         </div>
-                      `
+                      `,
                         )
                         .join("")
                     : '<span class="muted">Sem sugestão automática no recorte atual.</span>'
@@ -1279,13 +1568,22 @@
             </article>
           `;
         })
-        .join("") || '<div class="empty-detail"><strong>Nenhuma demanda futura pendente</strong><span>Todas as demandas futuras estão vinculadas ou realizadas.</span></div>';
+        .join("") ||
+      '<div class="empty-detail"><strong>Nenhuma demanda futura pendente</strong><span>Todas as demandas futuras estão vinculadas ou realizadas.</span></div>';
     applyPermissions();
   }
 
   function tokenOverlap(a, b) {
-    const left = new Set(normalizeText(a).split(/\s+/).filter((token) => token.length > 3));
-    const right = new Set(normalizeText(b).split(/\s+/).filter((token) => token.length > 3));
+    const left = new Set(
+      normalizeText(a)
+        .split(/\s+/)
+        .filter((token) => token.length > 3),
+    );
+    const right = new Set(
+      normalizeText(b)
+        .split(/\s+/)
+        .filter((token) => token.length > 3),
+    );
     if (!left.size || !right.size) return 0;
     let hits = 0;
     left.forEach((token) => {
@@ -1302,7 +1600,9 @@
         if (target.centroTrabalho === future.centroTrabalho) score += 30;
         if (target.localInstalacao === future.localInstalacao) score += 30;
         if (target.competencia === future.competencia) score += 20;
-        score += Math.round(tokenOverlap(future.descricao, target.descricao) * 20);
+        score += Math.round(
+          tokenOverlap(future.descricao, target.descricao) * 20,
+        );
         return { target, score };
       })
       .filter((item) => item.score >= 45)
@@ -1327,7 +1627,7 @@
       acao: "Vínculo Demanda/Ordem",
       lista: "Controle_Demandas_Eletrovia",
       referencia: future.id,
-      detalhe: `Vinculada à ordem ${target.ordem}`
+      detalhe: `Vinculada à ordem ${target.ordem}`,
     });
     await refreshAll();
     showToast("Demanda futura vinculada à ordem SAP.", "success");
@@ -1361,7 +1661,7 @@
       acao: "Criação Demanda Futura",
       lista: "Controle_Demandas_Eletrovia",
       referencia: record.id,
-      detalhe: record.descricao
+      detalhe: record.descricao,
     });
     event.currentTarget.reset();
     await refreshAll();
@@ -1377,7 +1677,9 @@
   }
 
   function renderBars(element, counts) {
-    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const entries = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8);
     const max = Math.max(1, ...entries.map(([, count]) => count));
     element.innerHTML =
       entries
@@ -1388,7 +1690,7 @@
           <div class="bar-track"><div class="bar-value" style="width: ${(count / max) * 100}%"></div></div>
           <strong>${count}</strong>
         </div>
-      `
+      `,
         )
         .join("") || '<span class="muted">Sem dados no recorte.</span>';
   }
@@ -1405,7 +1707,10 @@
         return days >= 0 && days <= 20;
       })
       .sort((a, b) => toDate(a.vencimento) - toDate(b.vencimento));
-    const overdue = demands.filter((item) => toDate(item.vencimento) < toDate(todayText()) && !item.dataRealizada).length;
+    const overdue = demands.filter(
+      (item) =>
+        toDate(item.vencimento) < toDate(todayText()) && !item.dataRealizada,
+    ).length;
     const futureNoOrder = demands.filter((item) => !item.ordem).length;
     const cards = [
       ["Total de Ordens", stats.total, "carteira tratada"],
@@ -1417,19 +1722,36 @@
       ["Aderência", `${stats.aderencia}%`, "no prazo"],
       ["Ordens Vencidas", overdue, "sem realização"],
       ["Próximas do Vencimento", dueSoon.length, "20 dias"],
-      ["Futuras sem Ordem", futureNoOrder, "aguardando vínculo"]
+      ["Futuras sem Ordem", futureNoOrder, "aguardando vínculo"],
     ];
     $("#indicatorGrid").innerHTML = cards
-      .map(([label, value, note]) => `<article class="indicator-card"><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`)
+      .map(
+        ([label, value, note]) =>
+          `<article class="indicator-card"><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`,
+      )
       .join("");
-    renderBars($("#lossByCenter"), countBy(demands.filter((item) => item.perda), (item) => item.centroTrabalho));
-    renderBars($("#lossReasons"), countBy(demands.filter((item) => item.perda), (item) => item.motivoPerda));
+    renderBars(
+      $("#lossByCenter"),
+      countBy(
+        demands.filter((item) => item.perda),
+        (item) => item.centroTrabalho,
+      ),
+    );
+    renderBars(
+      $("#lossReasons"),
+      countBy(
+        demands.filter((item) => item.perda),
+        (item) => item.motivoPerda,
+      ),
+    );
     renderBars(
       $("#replanRanking"),
       countBy(
-        demands.filter((item) => Number(item.quantidadeReplanejamentos || 0) > 0),
-        (item) => item.centroTrabalho
-      )
+        demands.filter(
+          (item) => Number(item.quantidadeReplanejamentos || 0) > 0,
+        ),
+        (item) => item.centroTrabalho,
+      ),
     );
     $("#dueSoonList").innerHTML =
       dueSoon
@@ -1441,22 +1763,32 @@
           <span>${escapeHtml(item.ordem || item.id)} | ${escapeHtml(item.descricao)}</span>
           ${statusChipGroup(statusListOf(item))}
         </div>
-      `
+      `,
         )
-        .join("") || '<span class="muted">Sem vencimentos nos próximos 20 dias.</span>';
+        .join("") ||
+      '<span class="muted">Sem vencimentos nos próximos 20 dias.</span>';
     renderBars(
       $("#statusChart"),
-      countBy(demands, (item) => primaryStatusOf(item))
+      countBy(demands, (item) => primaryStatusOf(item)),
     );
-    renderBars($("#competenceChart"), countBy(demands, (item) => item.competencia));
+    renderBars(
+      $("#competenceChart"),
+      countBy(demands, (item) => item.competencia),
+    );
   }
 
   function renderAdmin() {
     if (!canAdmin()) {
-      $("#adminContent").innerHTML = '<div class="empty-detail"><strong>Acesso restrito</strong><span>Somente Administrador pode alterar cadastros.</span></div>';
+      $("#adminContent").innerHTML =
+        '<div class="empty-detail"><strong>Acesso restrito</strong><span>Somente Administrador pode alterar cadastros.</span></div>';
       return;
     }
-    $$("#adminTabs button").forEach((button) => button.classList.toggle("is-active", button.dataset.adminTab === state.adminTab));
+    $$("#adminTabs button").forEach((button) =>
+      button.classList.toggle(
+        "is-active",
+        button.dataset.adminTab === state.adminTab,
+      ),
+    );
     if (state.adminTab === "usuarios") renderUserAdmin();
     else if (state.adminTab === "parametros") renderParameterAdmin();
     else renderConfigAdmin(state.adminTab);
@@ -1480,7 +1812,7 @@
               <div class="admin-list-item">
                 <div><strong>${escapeHtml(user.nome)}</strong><div class="muted">${escapeHtml(user.email)} | ${escapeHtml(user.perfil)} | ${user.ativo ? "Ativo" : "Inativo"}</div></div>
               </div>
-            `
+            `,
             )
             .join("")}
         </div>
@@ -1488,13 +1820,15 @@
     `;
     $("#addUserForm").addEventListener("submit", async (event) => {
       event.preventDefault();
-      await state.repo.addUser(Object.fromEntries(new FormData(event.currentTarget).entries()));
+      await state.repo.addUser(
+        Object.fromEntries(new FormData(event.currentTarget).entries()),
+      );
       await state.repo.addLog({
         usuario: state.currentUser.email,
         acao: "Cadastro Usuário",
         lista: "Usuarios_Central_Eletrovia",
         referencia: event.currentTarget.email.value,
-        detalhe: "Usuário incluído pela administração."
+        detalhe: "Usuário incluído pela administração.",
       });
       await refreshAll();
       showToast("Usuário cadastrado.", "success");
@@ -1509,7 +1843,7 @@
         child: "Justificativa",
         parentGroup: "motivos",
         childGroup: "justificativas",
-        childField: "motivoId"
+        childField: "motivoId",
       },
       perfisPerda: {
         title: "Perfis e Justificativas de Perda",
@@ -1517,8 +1851,8 @@
         child: "Justificativa de perda",
         parentGroup: "perfisPerda",
         childGroup: "justificativasPerda",
-        childField: "perfilId"
-      }
+        childField: "perfilId",
+      },
     };
     const config = labels[group] || labels.motivos;
     const parents = configItems(config.parentGroup);
@@ -1539,7 +1873,9 @@
         <div class="admin-list">
           ${parents
             .map((parent) => {
-              const childList = children.filter((child) => child[config.childField] === parent.id);
+              const childList = children.filter(
+                (child) => child[config.childField] === parent.id,
+              );
               return `
                 <div class="admin-list-item grouped-config">
                   <div>
@@ -1555,13 +1891,16 @@
     `;
     $("#addConfigForm").addEventListener("submit", async (event) => {
       event.preventDefault();
-      await state.repo.addConfigItem(config.parentGroup, new FormData(event.currentTarget).get("value"));
+      await state.repo.addConfigItem(
+        config.parentGroup,
+        new FormData(event.currentTarget).get("value"),
+      );
       await state.repo.addLog({
         usuario: state.currentUser.email,
         acao: "Cadastro Configuração",
         lista: "Configuracoes",
         referencia: config.title,
-        detalhe: new FormData(event.currentTarget).get("value")
+        detalhe: new FormData(event.currentTarget).get("value"),
       });
       await refreshAll();
       showToast("Configuração cadastrada.", "success");
@@ -1569,13 +1908,17 @@
     $("#addChildConfigForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = new FormData(event.currentTarget);
-      await state.repo.addConfigItem(config.childGroup, form.get("value"), form.get("parentId"));
+      await state.repo.addConfigItem(
+        config.childGroup,
+        form.get("value"),
+        form.get("parentId"),
+      );
       await state.repo.addLog({
         usuario: state.currentUser.email,
         acao: "Cadastro Subgrupo",
         lista: "Configuracoes",
         referencia: config.title,
-        detalhe: form.get("value")
+        detalhe: form.get("value"),
       });
       await refreshAll();
       showToast("Subgrupo cadastrado.", "success");
@@ -1597,13 +1940,15 @@
     `;
     $("#parameterForm").addEventListener("submit", async (event) => {
       event.preventDefault();
-      await state.repo.updateParameters(Object.fromEntries(new FormData(event.currentTarget).entries()));
+      await state.repo.updateParameters(
+        Object.fromEntries(new FormData(event.currentTarget).entries()),
+      );
       await state.repo.addLog({
         usuario: state.currentUser.email,
         acao: "Parâmetros",
         lista: "Parametros_Sistema",
         referencia: "Geral",
-        detalhe: "Parâmetros atualizados."
+        detalhe: "Parâmetros atualizados.",
       });
       await refreshAll();
       showToast("Parâmetros salvos.", "success");
@@ -1623,7 +1968,7 @@
           <td>${escapeHtml(log.referencia || "-")}</td>
           <td>${escapeHtml(log.detalhe || "-")}</td>
         </tr>
-      `
+      `,
       )
       .join("");
   }
@@ -1646,7 +1991,7 @@
       "Data Replanejada",
       "Data Realizada",
       "Perda",
-      "Motivo Perda"
+      "Motivo Perda",
     ];
     const body = rows.map((item) => [
       item.id,
@@ -1664,9 +2009,12 @@
       item.dataReplanejadaAtual,
       item.dataRealizada,
       item.perda ? "Sim" : "Não",
-      item.motivoPerda
+      item.motivoPerda,
     ]);
-    downloadFile(`carteira-eletrovia-${todayText()}.csv`, toCsv([header, ...body]));
+    downloadFile(
+      `carteira-eletrovia-${todayText()}.csv`,
+      toCsv([header, ...body]),
+    );
   }
 
   function downloadTemplate() {
@@ -1683,7 +2031,7 @@
       "perda",
       "motivo perda",
       "justificativa perda",
-      "comentario"
+      "comentario",
     ];
     const example = [
       "910123456",
@@ -1698,14 +2046,28 @@
       "Não",
       "",
       "",
-      "Carga modelo"
+      "Carga modelo",
     ];
     downloadFile("modelo-carga-eletrovia.csv", toCsv([header, example]));
   }
 
   function downloadRealizedTemplate() {
-    const header = ["ordem", "data realizada", "perda", "motivo perda", "justificativa perda", "comentario"];
-    const example = ["910123456", "2026-06-18", "Não", "", "", "Realizado sincronizado pelo SAP BO"];
+    const header = [
+      "ordem",
+      "data realizada",
+      "perda",
+      "motivo perda",
+      "justificativa perda",
+      "comentario",
+    ];
+    const example = [
+      "910123456",
+      "2026-06-18",
+      "Não",
+      "",
+      "",
+      "Realizado sincronizado pelo SAP BO",
+    ];
     downloadFile("modelo-realizados-eletrovia.csv", toCsv([header, example]));
   }
 
@@ -1732,7 +2094,9 @@
     });
 
     $("#userSelect").addEventListener("change", async (event) => {
-      state.currentUser = state.db.usuarios.find((user) => user.email === event.target.value);
+      state.currentUser = state.db.usuarios.find(
+        (user) => user.email === event.target.value,
+      );
       global.localStorage.setItem("cce.currentUser", state.currentUser.email);
       renderRole();
       renderCurrentView();
@@ -1741,7 +2105,7 @@
         acao: "Troca de Perfil",
         lista: "Usuarios_Central_Eletrovia",
         referencia: state.currentUser.perfil,
-        detalhe: "Perfil selecionado no protótipo operacional."
+        detalhe: "Perfil selecionado no protótipo operacional.",
       });
     });
 
@@ -1765,8 +2129,11 @@
     });
     $("#toggleAdvancedFilters").addEventListener("click", () => {
       state.advancedFilters = !state.advancedFilters;
-      $$(".advanced-filter").forEach((element) => element.classList.toggle("hidden", !state.advancedFilters));
-      $("#toggleAdvancedFilters").innerHTML = `${iconSvg("filter")} ${state.advancedFilters ? "Ocultar avançados" : "Filtros avançados"}`;
+      $$(".advanced-filter").forEach((element) =>
+        element.classList.toggle("hidden", !state.advancedFilters),
+      );
+      $("#toggleAdvancedFilters").innerHTML =
+        `${iconSvg("filter")} ${state.advancedFilters ? "Ocultar avançados" : "Filtros avançados"}`;
     });
     $("#pageSize").addEventListener("change", (event) => {
       state.pageSize = Number(event.target.value);
@@ -1795,7 +2162,8 @@
     });
     $("#detailPanel").addEventListener("click", (event) => {
       const actionButton = event.target.closest("[data-action]");
-      if (actionButton) openAction(actionButton.dataset.action, actionButton.dataset.id);
+      if (actionButton)
+        openAction(actionButton.dataset.action, actionButton.dataset.id);
     });
     $("#modalSave").addEventListener("click", saveAction);
     $("#exportCsv").addEventListener("click", exportCurrentCarteira);
@@ -1816,7 +2184,8 @@
     $("#futureDemandForm").addEventListener("submit", createFutureDemand);
     $("#futureDemandList").addEventListener("click", (event) => {
       const button = event.target.closest("[data-link-future]");
-      if (button) linkFutureDemand(button.dataset.linkFuture, button.dataset.linkTarget);
+      if (button)
+        linkFutureDemand(button.dataset.linkFuture, button.dataset.linkTarget);
     });
     $("#adminTabs").addEventListener("click", (event) => {
       const button = event.target.closest("[data-admin-tab]");
@@ -1825,14 +2194,28 @@
       renderAdmin();
     });
     $("#exportLogs").addEventListener("click", () => {
-      const rows = state.db.logs.map((log) => [log.dataHora, log.usuario, log.acao, log.lista, log.referencia, log.detalhe]);
-      downloadFile(`logs-eletrovia-${todayText()}.csv`, toCsv([["Data/Hora", "Usuário", "Ação", "Lista", "Referência", "Detalhe"], ...rows]));
+      const rows = state.db.logs.map((log) => [
+        log.dataHora,
+        log.usuario,
+        log.acao,
+        log.lista,
+        log.referencia,
+        log.detalhe,
+      ]);
+      downloadFile(
+        `logs-eletrovia-${todayText()}.csv`,
+        toCsv([
+          ["Data/Hora", "Usuário", "Ação", "Lista", "Referência", "Detalhe"],
+          ...rows,
+        ]),
+      );
     });
   }
 
   async function init() {
     renderStaticIcons();
-    $("#toggleAdvancedFilters").innerHTML = `${iconSvg("filter")} Filtros avançados`;
+    $("#toggleAdvancedFilters").innerHTML =
+      `${iconSvg("filter")} Filtros avançados`;
     state.repo = global.CCEData.createRepository();
     await loadDatabase();
     await autoSyncRealizadosFromSharePoint();

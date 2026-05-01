@@ -345,45 +345,132 @@
   }
 
   async function loadBaseFromJson() {
-    const response = await fetch(
-      "https://globalvale.sharepoint.com/sites/ControlePCMEletrovia/Shared%20Documents/controle-planejamento/base-json/base_ordens.json",
-      {
-        credentials: "include",
-        cache: "no-store",
-      },
-    );
+    const directSharePointUrl =
+      "https://globalvale.sharepoint.com/sites/ControlePCMEletrovia/Shared%20Documents/controle-planejamento/base-json/base_ordens.json";
 
-    if (!response.ok) {
-      throw new Error(`Erro ao carregar JSON: ${response.status}`);
+    const restSharePointUrl =
+      "https://globalvale.sharepoint.com/sites/ControlePCMEletrovia/_api/web/GetFileByServerRelativeUrl('/sites/ControlePCMEletrovia/Shared Documents/controle-planejamento/base-json/base_ordens.json')/$value";
+
+    async function tryLoad(url, label) {
+      const response = await fetch(
+        `${url}${url.includes("?") ? "&" : "?"}v=${Date.now()}`,
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            Accept: "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`${label}: erro HTTP ${response.status}`);
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+
+      if (
+        !contentType.includes("json") &&
+        !contentType.includes("text/plain")
+      ) {
+        const text = await response.text();
+        console.error(`${label}: resposta não parece JSON`, text.slice(0, 500));
+        throw new Error(`${label}: resposta não parece JSON`);
+      }
+
+      return response.json();
     }
 
-    const data = await response.json();
+    let data = [];
 
-    return data.map((item) => ({
-      id:
-        item.ID_Demanda_Controle ||
-        (item.OrdemSAP ? `DEM-SAP-${item.OrdemSAP}` : crypto.randomUUID()),
-      ordem: item.OrdemSAP || "",
-      descricao: item.Descricao || "",
-      tipoOM: item.TipoOM || "",
-      gerencia: item.Gerencia || "",
-      supervisao: item.Supervisao || "",
-      centroTrabalho: item.CentroTrabalho || "",
-      localInstalacao: item.LocalInstalacao || "",
-      statusSistema: item.StatusSistema || "",
-      statusUsuario: item.StatusUsuario || "",
-      competencia: item.Competencia || "",
-      dataRealizada: item.DataRealizada || "",
-      prioridade: item.Prioridade || "",
-      vencimento: item.Vencimento || "",
-      origem: "SAP BO",
+    try {
+      data = await tryLoad(directSharePointUrl, "Link direto SharePoint");
+      console.log(
+        "Base carregada pelo link direto do SharePoint:",
+        data.length,
+      );
+    } catch (directError) {
+      console.warn(
+        "Falha no link direto. Tentando SharePoint REST.",
+        directError,
+      );
 
-      dataPlanejada: "",
-      dataReplanejadaAtual: "",
-      perda: false,
-      motivoPerda: "",
-      justificativaPerda: "",
-    }));
+      try {
+        data = await tryLoad(restSharePointUrl, "SharePoint REST");
+        console.log("Base carregada pelo SharePoint REST:", data.length);
+      } catch (restError) {
+        console.error(
+          "Não foi possível carregar o JSON do SharePoint.",
+          restError,
+        );
+
+        showToast(
+          "Não foi possível carregar a base JSON do SharePoint. Verifique login, permissão ou bloqueio CORS.",
+          "error",
+        );
+
+        data = [];
+      }
+    }
+
+    if (!Array.isArray(data)) {
+      console.error("O arquivo JSON não está no formato de array:", data);
+      throw new Error("base_ordens.json precisa ser um array JSON.");
+    }
+
+    return data.map((item) => {
+      const ordem = String(item.OrdemSAP || "").trim();
+
+      const record = {
+        id:
+          item.ID_Demanda_Controle ||
+          (ordem
+            ? `DEM-SAP-${ordem}`
+            : global.CCEData.stableDemandId({
+                ordem: "",
+                descricao: item.Descricao || "",
+                centroTrabalho: item.CentroTrabalho || "",
+                localInstalacao: item.LocalInstalacao || "",
+                competencia: item.Competencia || "",
+                vencimento: item.Vencimento || "",
+                origem: "SAP BO",
+              })),
+
+        ordem,
+        tipoOM: item.TipoOM || "",
+        descricao: item.Descricao || "",
+        gerencia: item.Gerencia || "",
+        supervisao: item.Supervisao || "",
+        centroTrabalho: item.CentroTrabalho || "",
+        localInstalacao: item.LocalInstalacao || "",
+        statusSistema: item.StatusSistema || "",
+        statusUsuario: item.StatusUsuario || "",
+        competencia: item.Competencia || "",
+        dataRealizada: item.DataRealizada || "",
+        vencimento: item.Vencimento || "",
+
+        prioridade: item.Prioridade || "",
+        toleranciaMin: item.ToleranciaMin || "",
+        toleranciaMax: item.ToleranciaMax || "",
+
+        dataPlanejada: "",
+        dataReplanejadaAtual: "",
+        perda: false,
+        motivoPerda: "",
+        justificativaPerda: "",
+        comentario: "",
+        usuarioResponsavel: "",
+        dataUltimaAtualizacao: "",
+        origem: "SAP BO",
+        quantidadeReplanejamentos: 0,
+        frequencia: "",
+        observacao: "",
+        vinculadaEm: "",
+      };
+
+      return record;
+    });
   }
   async function loadDatabase() {
     const base = await loadBaseFromJson();

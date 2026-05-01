@@ -345,7 +345,7 @@
   }
 
   async function loadBaseFromJson() {
-    const response = await fetch("./base_ordens.json");
+    const response = await fetch("./base/base_ordens.json");
     const data = await response.json();
 
     return data.map((item) => ({

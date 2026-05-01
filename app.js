@@ -345,32 +345,43 @@
   }
 
   async function loadBaseFromJson() {
-    const response = await fetch("./base/base_ordens.json");
+    const response = await fetch(
+      "https://globalvale.sharepoint.com/sites/ControlePCMEletrovia/Shared%20Documents/controle-planejamento/base-json/base_ordens.json",
+      {
+        credentials: "include",
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Erro ao carregar JSON: ${response.status}`);
+    }
+
     const data = await response.json();
 
     return data.map((item) => ({
-      id: item.OrdemSAP ? `DEM-SAP-${item.OrdemSAP}` : crypto.randomUUID(),
-      ordem: item.OrdemSAP,
-      descricao: item.Descricao,
-      tipoOM: item.TipoOM,
-      gerencia: item.Gerencia,
-      centroTrabalho: item.CentroTrabalho,
-      localInstalacao: item.LocalInstalacao,
-      vencimento: item.Vencimento,
-      prioridade: item.Prioridade,
-      statusSistema: item.StatusSistema,
-      competencia: item.Competencia,
-      toleranciaMin: item.ToleranciaMin,
-      toleranciaMax: item.ToleranciaMax,
+      id:
+        item.ID_Demanda_Controle ||
+        (item.OrdemSAP ? `DEM-SAP-${item.OrdemSAP}` : crypto.randomUUID()),
+      ordem: item.OrdemSAP || "",
+      descricao: item.Descricao || "",
+      tipoOM: item.TipoOM || "",
+      gerencia: item.Gerencia || "",
+      supervisao: item.Supervisao || "",
+      centroTrabalho: item.CentroTrabalho || "",
+      localInstalacao: item.LocalInstalacao || "",
+      statusSistema: item.StatusSistema || "",
+      statusUsuario: item.StatusUsuario || "",
+      competencia: item.Competencia || "",
+      dataRealizada: item.DataRealizada || "",
+      vencimento: item.Vencimento || "",
+      origem: "SAP BO",
 
-      // campos de controle
       dataPlanejada: "",
       dataReplanejadaAtual: "",
-      dataRealizada: "",
       perda: false,
       motivoPerda: "",
       justificativaPerda: "",
-      origem: "SAP BO",
     }));
   }
   async function loadDatabase() {

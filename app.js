@@ -374,6 +374,7 @@
       statusUsuario: item.StatusUsuario || "",
       competencia: item.Competencia || "",
       dataRealizada: item.DataRealizada || "",
+      prioridade: item.Prioridade || "",
       vencimento: item.Vencimento || "",
       origem: "SAP BO",
 

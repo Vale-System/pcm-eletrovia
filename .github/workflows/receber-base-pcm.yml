@@ -1,0 +1,123 @@
+name: Receber base PCM por dispatch
+
+on:
+  repository_dispatch:
+    types:
+      - pcm_base_chunk
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pcm-base-${{ github.event.client_payload.lote_id }}
+  cancel-in-progress: false
+
+jobs:
+  importar-base:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Receber chunk e montar base se completo
+        shell: bash
+        run: |
+          python3 <<'PY'
+          import os
+          import json
+          import base64
+          import pathlib
+          import hashlib
+          import shutil
+
+          event_path = os.environ["GITHUB_EVENT_PATH"]
+
+          with open(event_path, "r", encoding="utf-8") as f:
+              event = json.load(f)
+
+          payload = event.get("client_payload", {})
+
+          base_name = payload.get("base_name", "base_ordens")
+          lote_id = payload.get("lote_id")
+          target_path = payload.get("target_path", "base/base_ordens.json")
+          part_index = int(payload.get("part_index", 0))
+          total_parts = int(payload.get("total_parts", 0))
+          chunk_b64 = payload.get("chunk_b64", "")
+
+          if not lote_id:
+              raise Exception("Payload sem lote_id.")
+
+          if not part_index or not total_parts:
+              raise Exception("Payload sem part_index ou total_parts.")
+
+          if not chunk_b64:
+              raise Exception("Payload sem chunk_b64.")
+
+          root = pathlib.Path(".incoming") / "pcm" / base_name / lote_id
+          root.mkdir(parents=True, exist_ok=True)
+
+          meta = {
+              "base_name": base_name,
+              "lote_id": lote_id,
+              "target_path": target_path,
+              "total_parts": total_parts
+          }
+
+          (root / "meta.json").write_text(
+              json.dumps(meta, ensure_ascii=False, indent=2),
+              encoding="utf-8"
+          )
+
+          chunk_bytes = base64.b64decode(chunk_b64.encode("utf-8"))
+          part_file = root / f"{part_index:05d}.part"
+          part_file.write_bytes(chunk_bytes)
+
+          parts = sorted(root.glob("*.part"))
+
+          print(f"Recebido chunk {part_index}/{total_parts}.")
+          print(f"Partes encontradas: {len(parts)}/{total_parts}.")
+
+          if len(parts) == total_parts:
+              print("Todas as partes chegaram. Montando arquivo final...")
+
+              content = b"".join(part.read_bytes() for part in parts)
+
+              try:
+                  json.loads(content.decode("utf-8-sig"))
+              except Exception as e:
+                  raise Exception(f"Arquivo final não é JSON válido: {e}")
+
+              target = pathlib.Path(target_path)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_bytes(content)
+
+              sha256 = hashlib.sha256(content).hexdigest()
+
+              print(f"Arquivo final salvo em: {target_path}")
+              print(f"SHA256: {sha256}")
+              print(f"Tamanho final: {len(content)} bytes")
+
+              shutil.rmtree(root)
+
+          else:
+              print("Ainda não chegaram todas as partes. Aguardando próximos dispatches.")
+          PY
+
+      - name: Commitar alterações
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Nenhuma alteração para commit."
+            exit 0
+          fi
+
+          git add -A
+          git commit -m "Atualização automática base PCM via dispatch"
+          git pull --rebase
+          git push

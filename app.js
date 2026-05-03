@@ -528,6 +528,7 @@
   }
 
   function populateSelect(element, values, allLabel = "Todos") {
+    if (!element) return;
     const previous = element.value;
     element.innerHTML = [`<option value="">${allLabel}</option>`]
       .concat(

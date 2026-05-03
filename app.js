@@ -345,76 +345,78 @@
   }
 
   async function loadBaseFromJson() {
-  const baseUrl = "./base/base_ordens.json";
+    const baseUrl = "./base/base_ordens.json";
 
-  const response = await fetch(`${baseUrl}?v=${Date.now()}`, {
-    method: "GET",
-    cache: "no-store",
-    headers: {
-      Accept: "application/json"
+    const response = await fetch(`${baseUrl}?v=${Date.now()}`, {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Erro ao carregar base_ordens.json do GitHub: ${response.status}`,
+      );
     }
-  });
 
-  if (!response.ok) {
-    throw new Error(`Erro ao carregar base_ordens.json do GitHub: ${response.status}`);
+    const data = await response.json();
+
+    if (!Array.isArray(data)) {
+      throw new Error("base_ordens.json precisa ser um array JSON.");
+    }
+
+    return data.map((item) => {
+      const ordem = String(item.OrdemSAP || "").trim();
+
+      return {
+        id:
+          item.ID_Demanda_Controle ||
+          (ordem
+            ? `DEM-SAP-${ordem}`
+            : global.CCEData.stableDemandId({
+                ordem: "",
+                descricao: item.Descricao || "",
+                centroTrabalho: item.CentroTrabalho || "",
+                localInstalacao: item.LocalInstalacao || "",
+                competencia: item.Competencia || "",
+                vencimento: item.Vencimento || "",
+                origem: "SAP BO",
+              })),
+
+        ordem,
+        tipoOM: item.TipoOM || "",
+        descricao: item.Descricao || "",
+        gerencia: item.Gerencia || "",
+        supervisao: item.Supervisao || "",
+        centroTrabalho: item.CentroTrabalho || "",
+        localInstalacao: item.LocalInstalacao || "",
+        statusSistema: item.StatusSistema || "",
+        statusUsuario: item.StatusUsuario || "",
+        competencia: item.Competencia || "",
+        dataRealizada: item.DataRealizada || "",
+        vencimento: item.Vencimento || "",
+        prioridade: item.Prioridade || "",
+        toleranciaMin: item.ToleranciaMin || "",
+        toleranciaMax: item.ToleranciaMax || "",
+
+        dataPlanejada: "",
+        dataReplanejadaAtual: "",
+        perda: false,
+        motivoPerda: "",
+        justificativaPerda: "",
+        comentario: "",
+        usuarioResponsavel: "",
+        dataUltimaAtualizacao: "",
+        origem: item.Origem || "SAP BO",
+        quantidadeReplanejamentos: 0,
+        frequencia: "",
+        observacao: "",
+        vinculadaEm: "",
+      };
+    });
   }
-
-  const data = await response.json();
-
-  if (!Array.isArray(data)) {
-    throw new Error("base_ordens.json precisa ser um array JSON.");
-  }
-
-  return data.map((item) => {
-    const ordem = String(item.OrdemSAP || "").trim();
-
-    return {
-      id:
-        item.ID_Demanda_Controle ||
-        (ordem
-          ? `DEM-SAP-${ordem}`
-          : global.CCEData.stableDemandId({
-              ordem: "",
-              descricao: item.Descricao || "",
-              centroTrabalho: item.CentroTrabalho || "",
-              localInstalacao: item.LocalInstalacao || "",
-              competencia: item.Competencia || "",
-              vencimento: item.Vencimento || "",
-              origem: "SAP BO"
-            })),
-
-      ordem,
-      tipoOM: item.TipoOM || "",
-      descricao: item.Descricao || "",
-      gerencia: item.Gerencia || "",
-      supervisao: item.Supervisao || "",
-      centroTrabalho: item.CentroTrabalho || "",
-      localInstalacao: item.LocalInstalacao || "",
-      statusSistema: item.StatusSistema || "",
-      statusUsuario: item.StatusUsuario || "",
-      competencia: item.Competencia || "",
-      dataRealizada: item.DataRealizada || "",
-      vencimento: item.Vencimento || "",
-      prioridade: item.Prioridade || "",
-      toleranciaMin: item.ToleranciaMin || "",
-      toleranciaMax: item.ToleranciaMax || "",
-
-      dataPlanejada: "",
-      dataReplanejadaAtual: "",
-      perda: false,
-      motivoPerda: "",
-      justificativaPerda: "",
-      comentario: "",
-      usuarioResponsavel: "",
-      dataUltimaAtualizacao: "",
-      origem: item.Origem || "SAP BO",
-      quantidadeReplanejamentos: 0,
-      frequencia: "",
-      observacao: "",
-      vinculadaEm: ""
-    };
-  });
-}
   async function loadDatabase() {
     const base = await loadBaseFromJson();
 

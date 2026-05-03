@@ -345,133 +345,76 @@
   }
 
   async function loadBaseFromJson() {
-    const directSharePointUrl =
-      "https://globalvale.sharepoint.com/sites/ControlePCMEletrovia/Shared%20Documents/controle-planejamento/base-json/base_ordens.json";
+  const baseUrl = "./base/base_ordens.json";
 
-    const restSharePointUrl =
-      "https://globalvale.sharepoint.com/sites/ControlePCMEletrovia/_api/web/GetFileByServerRelativeUrl('/sites/ControlePCMEletrovia/Shared Documents/controle-planejamento/base-json/base_ordens.json')/$value";
-
-    async function tryLoad(url, label) {
-      const response = await fetch(
-        `${url}${url.includes("?") ? "&" : "?"}v=${Date.now()}`,
-        {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-          headers: {
-            Accept: "application/json",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`${label}: erro HTTP ${response.status}`);
-      }
-
-      const contentType = response.headers.get("content-type") || "";
-
-      if (
-        !contentType.includes("json") &&
-        !contentType.includes("text/plain")
-      ) {
-        const text = await response.text();
-        console.error(`${label}: resposta não parece JSON`, text.slice(0, 500));
-        throw new Error(`${label}: resposta não parece JSON`);
-      }
-
-      return response.json();
+  const response = await fetch(`${baseUrl}?v=${Date.now()}`, {
+    method: "GET",
+    cache: "no-store",
+    headers: {
+      Accept: "application/json"
     }
+  });
 
-    let data = [];
-
-    try {
-      data = await tryLoad(directSharePointUrl, "Link direto SharePoint");
-      console.log(
-        "Base carregada pelo link direto do SharePoint:",
-        data.length,
-      );
-    } catch (directError) {
-      console.warn(
-        "Falha no link direto. Tentando SharePoint REST.",
-        directError,
-      );
-
-      try {
-        data = await tryLoad(restSharePointUrl, "SharePoint REST");
-        console.log("Base carregada pelo SharePoint REST:", data.length);
-      } catch (restError) {
-        console.error(
-          "Não foi possível carregar o JSON do SharePoint.",
-          restError,
-        );
-
-        showToast(
-          "Não foi possível carregar a base JSON do SharePoint. Verifique login, permissão ou bloqueio CORS.",
-          "error",
-        );
-
-        data = [];
-      }
-    }
-
-    if (!Array.isArray(data)) {
-      console.error("O arquivo JSON não está no formato de array:", data);
-      throw new Error("base_ordens.json precisa ser um array JSON.");
-    }
-
-    return data.map((item) => {
-      const ordem = String(item.OrdemSAP || "").trim();
-
-      const record = {
-        id:
-          item.ID_Demanda_Controle ||
-          (ordem
-            ? `DEM-SAP-${ordem}`
-            : global.CCEData.stableDemandId({
-                ordem: "",
-                descricao: item.Descricao || "",
-                centroTrabalho: item.CentroTrabalho || "",
-                localInstalacao: item.LocalInstalacao || "",
-                competencia: item.Competencia || "",
-                vencimento: item.Vencimento || "",
-                origem: "SAP BO",
-              })),
-
-        ordem,
-        tipoOM: item.TipoOM || "",
-        descricao: item.Descricao || "",
-        gerencia: item.Gerencia || "",
-        supervisao: item.Supervisao || "",
-        centroTrabalho: item.CentroTrabalho || "",
-        localInstalacao: item.LocalInstalacao || "",
-        statusSistema: item.StatusSistema || "",
-        statusUsuario: item.StatusUsuario || "",
-        competencia: item.Competencia || "",
-        dataRealizada: item.DataRealizada || "",
-        vencimento: item.Vencimento || "",
-
-        prioridade: item.Prioridade || "",
-        toleranciaMin: item.ToleranciaMin || "",
-        toleranciaMax: item.ToleranciaMax || "",
-
-        dataPlanejada: "",
-        dataReplanejadaAtual: "",
-        perda: false,
-        motivoPerda: "",
-        justificativaPerda: "",
-        comentario: "",
-        usuarioResponsavel: "",
-        dataUltimaAtualizacao: "",
-        origem: "SAP BO",
-        quantidadeReplanejamentos: 0,
-        frequencia: "",
-        observacao: "",
-        vinculadaEm: "",
-      };
-
-      return record;
-    });
+  if (!response.ok) {
+    throw new Error(`Erro ao carregar base_ordens.json do GitHub: ${response.status}`);
   }
+
+  const data = await response.json();
+
+  if (!Array.isArray(data)) {
+    throw new Error("base_ordens.json precisa ser um array JSON.");
+  }
+
+  return data.map((item) => {
+    const ordem = String(item.OrdemSAP || "").trim();
+
+    return {
+      id:
+        item.ID_Demanda_Controle ||
+        (ordem
+          ? `DEM-SAP-${ordem}`
+          : global.CCEData.stableDemandId({
+              ordem: "",
+              descricao: item.Descricao || "",
+              centroTrabalho: item.CentroTrabalho || "",
+              localInstalacao: item.LocalInstalacao || "",
+              competencia: item.Competencia || "",
+              vencimento: item.Vencimento || "",
+              origem: "SAP BO"
+            })),
+
+      ordem,
+      tipoOM: item.TipoOM || "",
+      descricao: item.Descricao || "",
+      gerencia: item.Gerencia || "",
+      supervisao: item.Supervisao || "",
+      centroTrabalho: item.CentroTrabalho || "",
+      localInstalacao: item.LocalInstalacao || "",
+      statusSistema: item.StatusSistema || "",
+      statusUsuario: item.StatusUsuario || "",
+      competencia: item.Competencia || "",
+      dataRealizada: item.DataRealizada || "",
+      vencimento: item.Vencimento || "",
+      prioridade: item.Prioridade || "",
+      toleranciaMin: item.ToleranciaMin || "",
+      toleranciaMax: item.ToleranciaMax || "",
+
+      dataPlanejada: "",
+      dataReplanejadaAtual: "",
+      perda: false,
+      motivoPerda: "",
+      justificativaPerda: "",
+      comentario: "",
+      usuarioResponsavel: "",
+      dataUltimaAtualizacao: "",
+      origem: item.Origem || "SAP BO",
+      quantidadeReplanejamentos: 0,
+      frequencia: "",
+      observacao: "",
+      vinculadaEm: ""
+    };
+  });
+}
   async function loadDatabase() {
     const base = await loadBaseFromJson();
 

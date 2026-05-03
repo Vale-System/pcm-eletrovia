@@ -143,6 +143,11 @@
       typeFilter: "",
       search: "",
       selectedIssueId: "",
+      selectedPrimarySequence: "",
+      issuesCache: [],
+      filteredCache: [],
+      page: 1,
+      pageSize: 150,
     },
     actionContext: null,
   };
@@ -950,6 +955,12 @@
       logs: supabaseData.logs || [],
     };
 
+    state.quality.issuesCache = [];
+    state.quality.filteredCache = [];
+    state.quality.selectedIssueId = "";
+    state.quality.selectedPrimarySequence = "";
+    state.quality.page = 1;
+
     setCurrentUserFromEmail(previousUserEmail);
     state.lastDataUpdateAt = latestDataUpdateAt();
     state.selectedDemandId = demandas.some(
@@ -1593,23 +1604,25 @@
   }
 
   function renderQualityCards(issues) {
-    $("#qualityCards").innerHTML = QUALITY_TYPE_DEFINITIONS.map((definition) => {
-      const stats = qualityIssueStats(issues, definition.key);
-      const note =
-        definition.key === "sem-chave"
-          ? "sem OM e sem ID"
-          : definition.key === "centro-sem-cadastro"
-            ? `${stats.records} demandas`
-            : `${stats.records} registros envolvidos`;
-      const active = state.quality.typeFilter === definition.key;
-      return `
+    $("#qualityCards").innerHTML = QUALITY_TYPE_DEFINITIONS.map(
+      (definition) => {
+        const stats = qualityIssueStats(issues, definition.key);
+        const note =
+          definition.key === "sem-chave"
+            ? "sem OM e sem ID"
+            : definition.key === "centro-sem-cadastro"
+              ? `${stats.records} demandas`
+              : `${stats.records} registros envolvidos`;
+        const active = state.quality.typeFilter === definition.key;
+        return `
         <button class="quality-card ${active ? "is-active" : ""}" data-quality-card="${definition.key}" type="button">
           <span>${escapeHtml(definition.cardLabel)}</span>
           <strong>${stats.groups}</strong>
           <small>${escapeHtml(note)}</small>
         </button>
       `;
-    }).join("");
+      },
+    ).join("");
   }
 
   function recordCompletenessScore(record) {
@@ -1653,131 +1666,559 @@
       : null;
   }
 
+  function selectedQualityIssue() {
+    return (state.quality.filteredCache || getQualityIssuesCached()).find(
+      (issue) => issue.id === state.quality.selectedIssueId,
+    );
+  }
+
+  function mergeQualityRecords(issue, primarySequence) {
+    if (!issue?.records?.length) return null;
+
+    const primary =
+      issue.records.find(
+        (record) => record.qualidadeSequencia === primarySequence,
+      ) ||
+      recommendedQualityPrimary(issue.records)?.record ||
+      issue.records[0];
+
+    const merged = { ...primary };
+
+    const fieldsToMerge = [
+      "id",
+      "ordem",
+      "tipoDemanda",
+      "tipoOM",
+      "descricao",
+      "gerencia",
+      "supervisao",
+      "centroTrabalho",
+      "localInstalacao",
+      "statusSistema",
+      "statusUsuario",
+      "competencia",
+      "vencimento",
+      "prioridade",
+      "toleranciaMin",
+      "toleranciaMax",
+      "dataPlanejada",
+      "dataReplanejadaAtual",
+      "dataRealizada",
+      "perda",
+      "motivoPerda",
+      "justificativaPerda",
+      "comentario",
+      "usuarioResponsavel",
+      "quantidadeReplanejamentos",
+      "frequencia",
+      "observacao",
+      "vinculadaEm",
+    ];
+
+    issue.records.forEach((record) => {
+      fieldsToMerge.forEach((field) => {
+        const current = merged[field];
+        const candidate = record[field];
+
+        const currentEmpty =
+          current === null ||
+          current === undefined ||
+          String(current).trim() === "" ||
+          current === "-";
+
+        const candidateFilled =
+          candidate !== null &&
+          candidate !== undefined &&
+          String(candidate).trim() !== "" &&
+          String(candidate).trim() !== "-";
+
+        if (currentEmpty && candidateFilled) {
+          merged[field] = candidate;
+        }
+      });
+    });
+
+    merged.id = primary.id || qualityExplicitId(primary) || issue.key;
+    merged.ordem = primary.ordem || merged.ordem || "";
+    merged.origem = "Qualidade da Base - Mesclado";
+    merged.comentario = [
+      merged.comentario,
+      `Ajuste de qualidade: ${issue.typeLabel} | Chave ${issue.key} | ${issue.quantidade} registros analisados.`,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+
+    return prepareDemandForSave(merged);
+  }
+
+  function showQualityMergePreview() {
+    const issue = selectedQualityIssue();
+
+    if (!issue) {
+      showToast("Selecione um problema para mesclar.", "error");
+      return;
+    }
+
+    const merged = mergeQualityRecords(
+      issue,
+      state.quality.selectedPrimarySequence,
+    );
+
+    if (!merged) {
+      showToast("Não foi possível montar a prévia da mesclagem.", "error");
+      return;
+    }
+
+    const preview = $("#qualityMergePreview");
+
+    if (!preview) return;
+
+    preview.classList.remove("hidden");
+
+    preview.innerHTML = `
+    <strong>Prévia da mesclagem</strong>
+    <span>O sistema manterá o registro principal e preencherá campos vazios com dados dos registros duplicados.</span>
+
+    <div class="detail-grid">
+      <div class="detail-item">
+        <span>ID final</span>
+        <strong>${escapeHtml(merged.id || "-")}</strong>
+      </div>
+      <div class="detail-item">
+        <span>OM final</span>
+        <strong>${escapeHtml(merged.ordem || "-")}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Descrição</span>
+        <strong>${escapeHtml(merged.descricao || "-")}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Centro</span>
+        <strong>${escapeHtml(merged.centroTrabalho || "-")}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Gerência</span>
+        <strong>${escapeHtml(merged.gerencia || "-")}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Supervisão</span>
+        <strong>${escapeHtml(merged.supervisao || "-")}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Competência</span>
+        <strong>${escapeHtml(merged.competencia || "-")}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Vencimento</span>
+        <strong>${formatDate(merged.vencimento)}</strong>
+      </div>
+    </div>
+  `;
+  }
+
+  async function saveQualityMerge() {
+    const issue = selectedQualityIssue();
+
+    if (!issue) {
+      showToast("Selecione um problema para salvar.", "error");
+      return;
+    }
+
+    if (!canEdit() && !canAdmin()) {
+      showToast(
+        "Perfil sem permissão para salvar ajuste de qualidade.",
+        "error",
+      );
+      return;
+    }
+
+    const merged = mergeQualityRecords(
+      issue,
+      state.quality.selectedPrimarySequence,
+    );
+
+    if (!merged) {
+      showToast("Não foi possível montar o registro mesclado.", "error");
+      return;
+    }
+
+    try {
+      await state.repo.upsertDemanda(merged);
+
+      await state.repo.addLog?.({
+        usuario: state.currentUser?.email || "",
+        acao: "Qualidade da Base - Mesclagem",
+        lista: "controle_demandas_eletrovia",
+        referencia: merged.id,
+        detalhe: `${issue.typeLabel} | Chave ${issue.key} | ${issue.quantidade} registros analisados.`,
+        modulo: "QUALIDADE_BASE",
+        status: "SUCESSO",
+      });
+
+      showToast("Ajuste salvo no controle de demandas.", "success");
+
+      await refreshAll();
+      switchView("qualidade");
+    } catch (error) {
+      console.error(error);
+      showToast(`Erro ao salvar ajuste: ${error.message}`, "error");
+    }
+  }
+
   function renderQualityDetail(issue) {
     const panel = $("#qualityDetailPanel");
+
     if (!issue) {
       panel.innerHTML = `
-        <div class="empty-detail">
-          <strong>Selecione um problema</strong>
-          <span>Os registros envolvidos aparecem aqui.</span>
-        </div>
-      `;
+      <div class="empty-detail">
+        <strong>Selecione um problema</strong>
+        <span>Os registros envolvidos aparecem aqui.</span>
+      </div>
+    `;
       return;
     }
 
     const recommendation = recommendedQualityPrimary(issue.records);
-    const recommendedSequence = recommendation?.record?.qualidadeSequencia;
+    const recommendedSequence =
+      recommendation?.record?.qualidadeSequencia || "";
+
+    if (!state.quality.selectedPrimarySequence) {
+      state.quality.selectedPrimarySequence = recommendedSequence;
+    }
+
+    const selectedPrimarySequence =
+      state.quality.selectedPrimarySequence || recommendedSequence;
+
+    const primaryRecord =
+      issue.records.find(
+        (record) => record.qualidadeSequencia === selectedPrimarySequence,
+      ) ||
+      recommendation?.record ||
+      issue.records[0];
+
     const hiddenRecords = Math.max(0, issue.records.length - 40);
 
     panel.innerHTML = `
-      <div class="detail-title">
-        <span>${escapeHtml(issue.typeLabel)}</span>
-        <h3>${escapeHtml(issue.key)}</h3>
+    <div class="detail-title">
+      <span>${escapeHtml(issue.typeLabel)}</span>
+      <h3>${escapeHtml(issue.key)}</h3>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-item">
+        <span>Quantidade</span>
+        <strong>${issue.quantidade}</strong>
       </div>
-      <div class="detail-grid">
-        <div class="detail-item"><span>Quantidade</span><strong>${issue.quantidade}</strong></div>
-        <div class="detail-item"><span>Origem</span><strong>${escapeHtml(issue.origem)}</strong></div>
-        <div class="detail-item"><span>Centro</span><strong>${escapeHtml(issue.centroTrabalho)}</strong></div>
-        <div class="detail-item"><span>Competencia</span><strong>${escapeHtml(issue.competencia)}</strong></div>
+      <div class="detail-item">
+        <span>Origem</span>
+        <strong>${escapeHtml(issue.origem)}</strong>
       </div>
+      <div class="detail-item">
+        <span>Centro</span>
+        <strong>${escapeHtml(issue.centroTrabalho)}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Competência</span>
+        <strong>${escapeHtml(issue.competencia)}</strong>
+      </div>
+    </div>
+
+    ${
+      recommendation
+        ? `
+          <div class="quality-recommendation">
+            <strong>Principal sugerido</strong>
+            <span>
+              ${escapeHtml(recommendation.record.id || qualityExplicitId(recommendation.record) || recommendation.record.ordem || "-")}
+              | ${escapeHtml(recommendation.reason)}
+            </span>
+          </div>
+        `
+        : ""
+    }
+
+    <div class="quality-selected-primary">
+      <span>Registro principal selecionado</span>
+      <strong>
+        ${escapeHtml(primaryRecord?.id || qualityExplicitId(primaryRecord) || primaryRecord?.ordem || "-")}
+      </strong>
+      <small>
+        ${escapeHtml(qualitySourceLabel(primaryRecord || {}))}
+      </small>
+    </div>
+
+    <div class="quality-actions">
+      <button
+        class="button secondary"
+        type="button"
+        data-quality-action="set-primary"
+      >
+        Definir principal
+      </button>
+
+      <button
+        class="button secondary"
+        type="button"
+        data-quality-action="merge-preview"
+      >
+        Mesclar
+      </button>
+
+      <button
+        class="button"
+        type="button"
+        data-quality-action="save-merge"
+      >
+        Salvar ajuste
+      </button>
+    </div>
+
+    <div id="qualityMergePreview" class="quality-merge-preview hidden"></div>
+
+    <div class="quality-record-list">
+      ${issue.records
+        .slice(0, 40)
+        .map((record, index) => {
+          const isRecommended =
+            recommendedSequence &&
+            recommendedSequence === record.qualidadeSequencia;
+
+          const isSelected =
+            selectedPrimarySequence &&
+            selectedPrimarySequence === record.qualidadeSequencia;
+
+          return `
+            <article class="quality-record ${isRecommended ? "is-recommended" : ""} ${isSelected ? "is-primary-selected" : ""}">
+              <header>
+                <label class="quality-primary-option">
+                  <input
+                    type="radio"
+                    name="qualityPrimaryRecord"
+                    value="${escapeHtml(record.qualidadeSequencia)}"
+                    ${isSelected ? "checked" : ""}
+                  />
+                  <strong>Registro ${index + 1}</strong>
+                </label>
+
+                <div class="quality-record-badges">
+                  ${isRecommended ? statusChip("Principal sugerido") : ""}
+                  ${isSelected ? statusChip("Principal selecionado") : ""}
+                </div>
+              </header>
+
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span>ID</span>
+                  <strong>${escapeHtml(record.id || "-")}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>ID informado</span>
+                  <strong>${escapeHtml(qualityExplicitId(record) || "-")}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>OM</span>
+                  <strong>${escapeHtml(record.ordem || "-")}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Origem</span>
+                  <strong>${escapeHtml(qualitySourceLabel(record))}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Descrição</span>
+                  <strong>${escapeHtml(record.descricao || "-")}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Centro</span>
+                  <strong>${escapeHtml(record.centroTrabalho || "-")}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Gerência</span>
+                  <strong>${escapeHtml(record.gerencia || "-")}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Supervisão</span>
+                  <strong>${escapeHtml(record.supervisao || "-")}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Competência</span>
+                  <strong>${escapeHtml(record.competencia || "-")}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Vencimento</span>
+                  <strong>${formatDate(record.vencimento)}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Status</span>
+                  <strong>${statusChip(primaryStatusOf(record))}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Responsável</span>
+                  <strong>${escapeHtml(record.usuarioResponsavel || "-")}</strong>
+                </div>
+              </div>
+
+              ${
+                record.comentario || record.observacao
+                  ? `
+                    <div class="quality-note">
+                      ${escapeHtml([record.comentario, record.observacao].filter(Boolean).join(" | "))}
+                    </div>
+                  `
+                  : ""
+              }
+            </article>
+          `;
+        })
+        .join("")}
+
       ${
-        recommendation
-          ? `<div class="quality-recommendation"><strong>Principal sugerido</strong><span>${escapeHtml(recommendation.record.id || qualityExplicitId(recommendation.record) || recommendation.record.ordem || "-")} | ${escapeHtml(recommendation.reason)}</span></div>`
+        hiddenRecords
+          ? `<span class="muted">Mais ${hiddenRecords} registros neste grupo.</span>`
           : ""
       }
-      <div class="quality-actions">
-        <button class="button secondary" type="button" disabled>Definir principal</button>
-        <button class="button secondary" type="button" disabled>Mesclar</button>
-        <button class="button secondary" type="button" disabled>Salvar ajuste</button>
-      </div>
-      <div class="quality-record-list">
-        ${issue.records
-          .slice(0, 40)
-          .map((record, index) => {
-            const isRecommended =
-              recommendedSequence &&
-              recommendedSequence === record.qualidadeSequencia;
-            return `
-              <article class="quality-record ${isRecommended ? "is-recommended" : ""}">
-                <header>
-                  <strong>Registro ${index + 1}</strong>
-                  ${isRecommended ? statusChip("Principal sugerido") : ""}
-                </header>
-                <div class="detail-grid">
-                  <div class="detail-item"><span>ID</span><strong>${escapeHtml(record.id || "-")}</strong></div>
-                  <div class="detail-item"><span>ID informado</span><strong>${escapeHtml(qualityExplicitId(record) || "-")}</strong></div>
-                  <div class="detail-item"><span>OM</span><strong>${escapeHtml(record.ordem || "-")}</strong></div>
-                  <div class="detail-item"><span>Origem</span><strong>${escapeHtml(qualitySourceLabel(record))}</strong></div>
-                  <div class="detail-item"><span>Descricao</span><strong>${escapeHtml(record.descricao || "-")}</strong></div>
-                  <div class="detail-item"><span>Centro</span><strong>${escapeHtml(record.centroTrabalho || "-")}</strong></div>
-                  <div class="detail-item"><span>Gerencia</span><strong>${escapeHtml(record.gerencia || "-")}</strong></div>
-                  <div class="detail-item"><span>Supervisao</span><strong>${escapeHtml(record.supervisao || "-")}</strong></div>
-                  <div class="detail-item"><span>Competencia</span><strong>${escapeHtml(record.competencia || "-")}</strong></div>
-                  <div class="detail-item"><span>Vencimento</span><strong>${formatDate(record.vencimento)}</strong></div>
-                  <div class="detail-item"><span>Status</span><strong>${statusChip(primaryStatusOf(record))}</strong></div>
-                  <div class="detail-item"><span>Responsavel</span><strong>${escapeHtml(record.usuarioResponsavel || "-")}</strong></div>
-                </div>
-                ${
-                  record.comentario || record.observacao
-                    ? `<div class="quality-note">${escapeHtml([record.comentario, record.observacao].filter(Boolean).join(" | "))}</div>`
-                    : ""
-                }
-              </article>
-            `;
-          })
-          .join("")}
-        ${
-          hiddenRecords
-            ? `<span class="muted">Mais ${hiddenRecords} registros neste grupo.</span>`
-            : ""
-        }
-      </div>
-    `;
+    </div>
+  `;
+  }
+
+  function getQualityIssuesCached() {
+    if (!state.quality.issuesCache.length) {
+      state.quality.issuesCache = buildQualityIssues();
+    }
+
+    return state.quality.issuesCache;
   }
 
   function renderQuality() {
-    const allIssues = buildQualityIssues();
+    const allIssues = getQualityIssuesCached();
     const filtered = filteredQualityIssues(allIssues);
+
+    state.quality.filteredCache = filtered;
+
+    const totalPages = Math.max(
+      1,
+      Math.ceil(filtered.length / state.quality.pageSize),
+    );
+
+    if (state.quality.page > totalPages) {
+      state.quality.page = totalPages;
+    }
+
     const selectedInFilter = filtered.some(
       (issue) => issue.id === state.quality.selectedIssueId,
     );
 
     if (!selectedInFilter) {
       state.quality.selectedIssueId = filtered[0]?.id || "";
+      state.quality.selectedPrimarySequence = "";
     }
+
+    const start = (state.quality.page - 1) * state.quality.pageSize;
+    const pageRows = filtered.slice(start, start + state.quality.pageSize);
 
     $("#qualityTypeFilter").value = state.quality.typeFilter;
     $("#qualitySearch").value = state.quality.search;
-    $("#qualityCount").textContent = `${filtered.length} problemas encontrados`;
+
+    $("#qualityCount").textContent =
+      `${filtered.length} problemas encontrados • Página ${state.quality.page} de ${totalPages}`;
+
     renderQualityCards(allIssues);
 
     const tbody = $("#qualityIssueTableBody");
-    tbody.innerHTML = filtered.length
-      ? filtered
+
+    tbody.innerHTML = pageRows.length
+      ? pageRows
           .map((issue) => {
             const selected =
               issue.id === state.quality.selectedIssueId ? "is-selected" : "";
+
             return `
-              <tr class="${selected}" data-quality-issue-id="${escapeHtml(issue.id)}">
-                <td>${statusChip(issue.typeLabel)}</td>
-                <td><strong>${escapeHtml(issue.key)}</strong></td>
-                <td>${issue.quantidade}</td>
-                <td>${escapeHtml(issue.origem)}</td>
-                <td class="description-cell">${escapeHtml(issue.descricao)}</td>
-                <td>${escapeHtml(issue.centroTrabalho)}</td>
-                <td>${escapeHtml(issue.gerencia)}</td>
-                <td>${escapeHtml(issue.supervisao)}</td>
-                <td>${escapeHtml(issue.competencia)}</td>
-                <td><button class="button secondary compact-button" data-quality-issue-id="${escapeHtml(issue.id)}" type="button">Ver detalhes</button></td>
-              </tr>
-            `;
+            <tr class="${selected}" data-quality-issue-id="${escapeHtml(issue.id)}">
+              <td>${statusChip(issue.typeLabel)}</td>
+              <td><strong>${escapeHtml(issue.key)}</strong></td>
+              <td>${issue.quantidade}</td>
+              <td>${escapeHtml(issue.origem)}</td>
+              <td class="description-cell">${escapeHtml(issue.descricao)}</td>
+              <td>${escapeHtml(issue.centroTrabalho)}</td>
+              <td>${escapeHtml(issue.gerencia)}</td>
+              <td>${escapeHtml(issue.supervisao)}</td>
+              <td>${escapeHtml(issue.competencia)}</td>
+              <td>
+                <button
+                  class="button secondary compact-button"
+                  data-quality-detail="${escapeHtml(issue.id)}"
+                  type="button"
+                >
+                  Ver detalhes
+                </button>
+              </td>
+            </tr>
+          `;
           })
           .join("")
-      : '<tr><td colspan="10"><div class="empty-detail"><strong>Nenhum problema no recorte</strong><span>Ajuste os filtros para consultar outros grupos.</span></div></td></tr>';
+      : `
+      <tr>
+        <td colspan="10">
+          <div class="empty-detail">
+            <strong>Nenhum problema no recorte</strong>
+            <span>Ajuste os filtros para consultar outros grupos.</span>
+          </div>
+        </td>
+      </tr>
+    `;
 
-    renderQualityDetail(
-      filtered.find((issue) => issue.id === state.quality.selectedIssueId),
+    const selectedIssue = filtered.find(
+      (issue) => issue.id === state.quality.selectedIssueId,
     );
+
+    renderQualityDetail(selectedIssue);
+
+    renderQualityPager(totalPages);
+  }
+
+  function renderQualityPager(totalPages) {
+    const panel = $("#qualityCount")?.closest(".panel-toolbar");
+    if (!panel) return;
+
+    let pager = $("#qualityPager");
+
+    if (!pager) {
+      pager = document.createElement("div");
+      pager.id = "qualityPager";
+      pager.className = "quality-pager";
+      panel.appendChild(pager);
+    }
+
+    pager.innerHTML = `
+    <button
+      class="button secondary compact-button"
+      id="qualityPrevPage"
+      type="button"
+      ${state.quality.page <= 1 ? "disabled" : ""}
+    >
+      Anterior
+    </button>
+
+    <span>Página <strong>${state.quality.page}</strong> de ${totalPages}</span>
+
+    <button
+      class="button secondary compact-button"
+      id="qualityNextPage"
+      type="button"
+      ${state.quality.page >= totalPages ? "disabled" : ""}
+    >
+      Próxima
+    </button>
+  `;
+
+    $("#qualityPrevPage")?.addEventListener("click", () => {
+      state.quality.page = Math.max(1, state.quality.page - 1);
+      renderQuality();
+    });
+
+    $("#qualityNextPage")?.addEventListener("click", () => {
+      state.quality.page += 1;
+      renderQuality();
+    });
   }
 
   function alertItems() {
@@ -4059,16 +4500,25 @@
     $("#qualityTypeFilter").addEventListener("change", (event) => {
       state.quality.typeFilter = event.target.value;
       state.quality.selectedIssueId = "";
+      state.quality.selectedPrimarySequence = "";
+      state.quality.page = 1;
       renderQuality();
     });
+
     $("#qualitySearch").addEventListener("input", (event) => {
-      state.quality.search = event.target.value.trim();
+      state.quality.search = event.target.value;
+      state.quality.selectedIssueId = "";
+      state.quality.selectedPrimarySequence = "";
+      state.quality.page = 1;
       renderQuality();
     });
+
     $("#qualityClearFilters").addEventListener("click", () => {
       state.quality.typeFilter = "";
       state.quality.search = "";
       state.quality.selectedIssueId = "";
+      state.quality.selectedPrimarySequence = "";
+      state.quality.page = 1;
       renderQuality();
     });
     $("#qualityCards").addEventListener("click", (event) => {
@@ -4082,10 +4532,60 @@
       renderQuality();
     });
     $("#qualityIssueTableBody").addEventListener("click", (event) => {
-      const target = event.target.closest("[data-quality-issue-id]");
+      const target =
+        event.target.closest("[data-quality-detail]") ||
+        event.target.closest("[data-quality-issue-id]");
+
       if (!target) return;
-      state.quality.selectedIssueId = target.dataset.qualityIssueId;
+
+      state.quality.selectedIssueId =
+        target.dataset.qualityDetail || target.dataset.qualityIssueId;
+
+      state.quality.selectedPrimarySequence = "";
+
       renderQuality();
+
+      $("#qualityDetailPanel")?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+    $("#qualityDetailPanel").addEventListener("change", (event) => {
+      if (!event.target.matches('input[name="qualityPrimaryRecord"]')) return;
+
+      state.quality.selectedPrimarySequence = event.target.value;
+      renderQualityDetail(selectedQualityIssue());
+    });
+
+    $("#qualityDetailPanel").addEventListener("click", async (event) => {
+      const action = event.target.closest("[data-quality-action]")?.dataset
+        .qualityAction;
+
+      if (!action) return;
+
+      if (action === "set-primary") {
+        const checked = $(
+          'input[name="qualityPrimaryRecord"]:checked',
+          $("#qualityDetailPanel"),
+        );
+
+        if (!checked) {
+          showToast("Selecione um registro principal.", "error");
+          return;
+        }
+
+        state.quality.selectedPrimarySequence = checked.value;
+        renderQualityDetail(selectedQualityIssue());
+        showToast("Registro principal definido.", "success");
+      }
+
+      if (action === "merge-preview") {
+        showQualityMergePreview();
+      }
+
+      if (action === "save-merge") {
+        await saveQualityMerge();
+      }
     });
     $("#adminTabs").addEventListener("click", (event) => {
       const button = event.target.closest("[data-admin-tab]");

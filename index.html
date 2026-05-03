@@ -4,15 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Central de Controle Eletrovia</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-13" />
+    <link rel="stylesheet" href="styles.css?v=20260503-14" />
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
     ></script>
-    <script defer src="data/sample-data.js?v=20260503-13"></script>
-    <script defer src="sharepoint-adapter.js?v=20260503-13"></script>
-    <script defer src="supabase-adapter.js?v=20260503-13"></script>
-    <script defer src="app.js?v=20260503-13"></script>
+    <script defer src="data/sample-data.js?v=20260503-14"></script>
+    <script defer src="sharepoint-adapter.js?v=20260503-14"></script>
+    <script defer src="supabase-adapter.js?v=20260503-14"></script>
+    <script defer src="app.js?v=20260503-14"></script>
   </head>
   <body>
     <section
@@ -431,10 +431,10 @@
                 <input id="batchFile" type="file" accept=".csv,.xlsx,.xls" />
                 <strong>Selecionar arquivo Excel ou CSV</strong>
                 <span
-                  >Colunas aceitas: ID_Demanda_Controle, ordem, descrição, centro trabalho, local
-                  instalação, competência, data planejada, motivo,
-                  justificativa, perda, motivo perda, justificativa perda e
-                  comentário.</span
+                  >Colunas aceitas: ID_Demanda_Controle, ordem, descrição,
+                  centro trabalho, local instalação, competência, data
+                  planejada, motivo, justificativa, perda, motivo perda,
+                  justificativa perda e comentário.</span
                 >
               </label>
               <div class="batch-actions">
@@ -570,11 +570,7 @@
           </div>
         </section>
 
-        <section
-          class="view"
-          id="view-qualidade"
-          data-view-panel="qualidade"
-        >
+        <section class="view" id="view-qualidade" data-view-panel="qualidade">
           <div class="page-heading">
             <div>
               <h2>Qualidade da Base</h2>
@@ -602,7 +598,11 @@
                 placeholder="Chave, descrição, origem ou centro"
               />
             </label>
-            <button class="button secondary" id="qualityClearFilters" type="button">
+            <button
+              class="button secondary"
+              id="qualityClearFilters"
+              type="button"
+            >
               Limpar
             </button>
           </div>

@@ -2382,49 +2382,63 @@
     const pageRows = futures.slice(start, start + state.futurePageSize);
 
     $("#futureCount").textContent =
-      `${futures.length} demandas | Página ${state.futurePage} de ${totalPages}`;
+      `${futures.length} demandas encontradas • Página ${state.futurePage} de ${totalPages}`;
 
     const toolbarHtml = `
-    <div class="future-toolbar" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
-      <label style="min-width:280px; flex:1;">
-        Buscar demanda futura
-        <input
-          id="futureSearch"
-          type="search"
-          placeholder="Digite ID, OM, descrição, centro, local, gerência ou supervisão"
-          value="${escapeHtml(state.futureSearch)}"
-        />
-      </label>
+      <div class="future-toolbar-pro">
+        <div class="future-toolbar-main">
+          <label class="future-search-box">
+            <span>Buscar demanda futura</span>
+            <div class="future-search-input-wrap">
+              ${iconSvg("filter")}
+              <input
+                id="futureSearch"
+                type="search"
+                placeholder="Digite ID, OM, descrição, centro, local, gerência ou supervisão"
+                value="${escapeHtml(state.futureSearch)}"
+              />
+            </div>
+          </label>
 
-      <label>
-        Linhas por página
-        <select id="futurePageSize">
-          <option value="25" ${state.futurePageSize === 25 ? "selected" : ""}>25</option>
-          <option value="50" ${state.futurePageSize === 50 ? "selected" : ""}>50</option>
-          <option value="100" ${state.futurePageSize === 100 ? "selected" : ""}>100</option>
-          <option value="200" ${state.futurePageSize === 200 ? "selected" : ""}>200</option>
-        </select>
-      </label>
+          <label class="future-page-size">
+            <span>Linhas por página</span>
+            <select id="futurePageSize">
+              <option value="25" ${state.futurePageSize === 25 ? "selected" : ""}>25</option>
+              <option value="50" ${state.futurePageSize === 50 ? "selected" : ""}>50</option>
+              <option value="100" ${state.futurePageSize === 100 ? "selected" : ""}>100</option>
+              <option value="200" ${state.futurePageSize === 200 ? "selected" : ""}>200</option>
+            </select>
+          </label>
+        </div>
 
-      <button
-        class="button secondary"
-        id="futurePrevPage"
-        type="button"
-        ${state.futurePage <= 1 ? "disabled" : ""}
-      >
-        Anterior
-      </button>
+        <div class="future-pagination-pro">
+          <button
+            class="future-page-button"
+            id="futurePrevPage"
+            type="button"
+            ${state.futurePage <= 1 ? "disabled" : ""}
+          >
+            ${iconSvg("chevron-left")}
+            <span>Anterior</span>
+          </button>
 
-      <button
-        class="button secondary"
-        id="futureNextPage"
-        type="button"
-        ${state.futurePage >= totalPages ? "disabled" : ""}
-      >
-        Próxima
-      </button>
-    </div>
-  `;
+          <div class="future-page-indicator">
+            <strong>${state.futurePage}</strong>
+            <span>de ${totalPages}</span>
+          </div>
+
+          <button
+            class="future-page-button"
+            id="futureNextPage"
+            type="button"
+            ${state.futurePage >= totalPages ? "disabled" : ""}
+          >
+            <span>Próxima</span>
+            ${iconSvg("chevron-down")}
+          </button>
+        </div>
+      </div>
+    `;
 
     const listHtml =
       pageRows
@@ -2650,8 +2664,13 @@
     }
     const form = new FormData(event.currentTarget);
     const record = Object.fromEntries(form.entries());
+
     record.ordem = "";
-    record.id = global.CCEData.stableDemandId(record);
+
+    const idManual = String(record.id || "").trim();
+
+    record.id = idManual || global.CCEData.stableDemandId(record);
+
     record.tipoOM = record.tipoDemanda;
     const centro = (state.db.centrosTrabalho || []).find(
       (item) =>

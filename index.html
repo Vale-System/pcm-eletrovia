@@ -4,15 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Central de Controle Eletrovia</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-6" />
+    <link rel="stylesheet" href="styles.css?v=20260503-12" />
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
     ></script>
-    <script defer src="data/sample-data.js?v=20260503-6"></script>
-    <script defer src="sharepoint-adapter.js?v=20260503-6"></script>
-    <script defer src="supabase-adapter.js?v=20260503-11"></script>
-    <script defer src="app.js?v=20260503-11"></script>
+    <script defer src="data/sample-data.js?v=20260503-12"></script>
+    <script defer src="sharepoint-adapter.js?v=20260503-12"></script>
+    <script defer src="supabase-adapter.js?v=20260503-12"></script>
+    <script defer src="app.js?v=20260503-12"></script>
   </head>
   <body>
     <section
@@ -483,6 +483,13 @@
 
           <div class="future-layout">
             <form class="future-form" id="futureDemandForm">
+              <label class="span-2">
+                ID da Demanda
+                <input
+                  name="id"
+                  placeholder="Ex.: DF-2026-001 ou ID_Demanda_Controle"
+                />
+              </label>
               <label>
                 Descrição
                 <input

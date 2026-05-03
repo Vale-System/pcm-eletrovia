@@ -15,6 +15,36 @@
     <script defer src="app.js"></script>
   </head>
   <body>
+    <section class="login-screen" id="loginScreen" aria-live="polite">
+      <form class="login-card" id="loginForm">
+        <div>
+          <p class="section-label">Central de Controle PCM</p>
+          <h1>Entrar na Central Eletrovia</h1>
+        </div>
+        <label>
+          E-mail Vale
+          <input
+            name="email"
+            type="email"
+            autocomplete="username"
+            placeholder="nome.sobrenome@vale.com"
+            required
+          />
+        </label>
+        <label>
+          Matrícula
+          <input
+            name="matricula"
+            type="password"
+            autocomplete="current-password"
+            inputmode="numeric"
+            required
+          />
+        </label>
+        <button class="button" type="submit">Entrar</button>
+        <span class="login-error" id="loginError"></span>
+      </form>
+    </section>
     <div class="app-shell">
       <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
         <div class="brand">
@@ -103,6 +133,9 @@
               </div>
               <span data-icon="chevron-down" aria-hidden="true"></span>
             </div>
+            <button class="button secondary topbar-logout" id="logoutButton" type="button">
+              Sair
+            </button>
             <label class="user-select dev-user-select hidden">
               <span>Usuário de teste</span>
               <select id="userSelect"></select>
@@ -117,60 +150,30 @@
           data-view-panel="carteira"
         >
           <div class="filter-panel" aria-label="Filtros da carteira">
-            <label>
-              Gerência
-              <select id="filterGerencia" data-filter="gerencia"></select>
-            </label>
-            <label>
-              Centro Trabalho
-              <select id="filterCentro" data-filter="centroTrabalho"></select>
-            </label>
-            <label>
-              Tipo OM
-              <select id="filterTipo" data-filter="tipoOM"></select>
-            </label>
-            <label>
-              Competência
-              <select id="filterCompetencia" data-filter="competencia"></select>
-            </label>
-            <label>
-              Status Operacional
-              <select
-                id="filterStatusOperacional"
-                data-filter="statusOperacional"
-              ></select>
-            </label>
+            <div data-multi-filter="gerencia"></div>
+            <div data-multi-filter="supervisao"></div>
+            <div data-multi-filter="centroTrabalho"></div>
+            <div data-multi-filter="tipoOM"></div>
+            <div data-multi-filter="competencia"></div>
+            <div data-multi-filter="statusOperacional"></div>
             <label class="search-field">
               Busca rápida
               <input
                 id="quickSearch"
                 type="search"
-                placeholder="Ordem, ID ou descrição"
+                placeholder="Ordem, ID, descrição ou responsável"
               />
             </label>
-            <label class="advanced-filter hidden">
-              Local Instalação
-              <select id="filterLocal" data-filter="localInstalacao"></select>
-            </label>
-            <label class="advanced-filter hidden">
-              Prioridade
-              <select id="filterPrioridade" data-filter="prioridade"></select>
-            </label>
-            <label class="advanced-filter hidden">
-              Status Sistema
-              <select
-                id="filterStatusSistema"
-                data-filter="statusSistema"
-              ></select>
-            </label>
-            <label class="advanced-filter hidden">
-              Ano Vencimento
-              <select id="filterAno" data-filter="anoVencimento"></select>
-            </label>
-            <label class="advanced-filter hidden">
-              Mês Vencimento
-              <select id="filterMes" data-filter="mesVencimento"></select>
-            </label>
+            <div class="advanced-filter hidden" data-multi-filter="tipoDemanda"></div>
+            <div class="advanced-filter hidden" data-multi-filter="origem"></div>
+            <div class="advanced-filter hidden" data-multi-filter="prioridade"></div>
+            <div class="advanced-filter hidden" data-multi-filter="planejadorOM"></div>
+            <div class="advanced-filter hidden" data-multi-filter="programador"></div>
+            <div class="advanced-filter hidden" data-multi-filter="centroStatus"></div>
+            <div class="advanced-filter hidden" data-multi-filter="localInstalacao"></div>
+            <div class="advanced-filter hidden" data-multi-filter="statusSistema"></div>
+            <div class="advanced-filter hidden" data-multi-filter="anoVencimento"></div>
+            <div class="advanced-filter hidden" data-multi-filter="mesVencimento"></div>
             <label class="advanced-filter hidden">
               Perda
               <select id="filterPerda" data-filter="perda">
@@ -252,10 +255,16 @@
                       <th>Descrição</th>
                       <th>Status</th>
                       <th>Substatus</th>
+                      <th>Origem</th>
+                      <th>Gerência</th>
+                      <th>Supervisão</th>
                       <th>Vencimento</th>
                       <th>Competência</th>
                       <th>Tipo OM</th>
                       <th>Centro Trabalho</th>
+                      <th>Cadastro Centro</th>
+                      <th>Planejador OM</th>
+                      <th>Programador</th>
                       <th>Local Instalação</th>
                       <th>Prioridade</th>
                       <th>Planejada</th>
@@ -263,6 +272,7 @@
                       <th>Realizada</th>
                       <th>Perda</th>
                       <th>Motivo</th>
+                      <th>Última Atualização</th>
                       <th>Ações</th>
                     </tr>
                   </thead>
@@ -316,7 +326,7 @@
                 >
               </label>
               <div class="batch-actions">
-                <button class="button" id="validateBatch" type="button">
+                <button class="button batch-only" id="validateBatch" type="button">
                   Validar Arquivo
                 </button>
                 <button class="button secondary" id="clearBatch" type="button">
@@ -333,11 +343,11 @@
                   <input id="confirmWarnings" type="checkbox" />
                   Confirmar registros com alerta
                 </label>
-                <button class="button" id="saveValidBatch" type="button">
+                <button class="button batch-only" id="saveValidBatch" type="button">
                   Salvar Válidos
                 </button>
                 <button
-                  class="button danger"
+                  class="button danger batch-only"
                   id="saveConfirmedBatch"
                   type="button"
                 >
@@ -416,7 +426,7 @@
                 Observação
                 <textarea name="comentario" rows="3"></textarea>
               </label>
-              <button class="button editor-only" type="submit">
+              <button class="button planner-only" type="submit">
                 Criar Demanda Futura
               </button>
             </form>
@@ -424,7 +434,7 @@
             <section class="future-list">
               <div class="panel-toolbar">
                 <div>
-                  <h2>Sem Ordem Vinculada</h2>
+                  <h2>Demandas da Base Futura</h2>
                   <span id="futureCount">0 demandas</span>
                 </div>
               </div>
@@ -446,15 +456,15 @@
           <div class="indicator-grid" id="indicatorGrid"></div>
           <div class="charts-grid">
             <section class="chart-panel">
-              <h3>Perdas por Centro de Trabalho</h3>
+              <h3>Demandas por Gerência</h3>
               <div id="lossByCenter"></div>
             </section>
             <section class="chart-panel">
-              <h3>Motivos Mais Frequentes</h3>
+              <h3>Demandas por Supervisão</h3>
               <div id="lossReasons"></div>
             </section>
             <section class="chart-panel">
-              <h3>Ranking de Replanejamento</h3>
+              <h3>Demandas por Centro</h3>
               <div id="replanRanking"></div>
             </section>
             <section class="chart-panel">

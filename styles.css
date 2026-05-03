@@ -45,6 +45,45 @@ body {
   line-height: 1.4;
 }
 
+.login-screen {
+  align-items: center;
+  background: rgba(244, 247, 245, 0.96);
+  display: grid;
+  inset: 0;
+  justify-items: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 50;
+}
+
+.login-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 14px;
+  max-width: 420px;
+  padding: 22px;
+  width: min(420px, 100%);
+}
+
+.login-card .section-label {
+  color: var(--green-700);
+}
+
+.login-error {
+  color: var(--red-700);
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 18px;
+}
+
+.topbar-logout {
+  min-height: 32px;
+  padding: 6px 10px;
+}
+
 button,
 input,
 select,
@@ -484,6 +523,114 @@ h3 {
   padding: 10px 12px;
 }
 
+.multi-label {
+  color: var(--gray-700);
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.multi-select {
+  position: relative;
+}
+
+.multi-select summary {
+  align-items: center;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  color: var(--gray-950);
+  cursor: pointer;
+  display: flex;
+  min-height: 34px;
+  overflow: hidden;
+  padding: 7px 28px 7px 9px;
+  position: relative;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-select summary::marker,
+.multi-select summary::-webkit-details-marker {
+  display: none;
+}
+
+.multi-select summary::after {
+  color: var(--gray-600);
+  content: "⌄";
+  font-size: 14px;
+  position: absolute;
+  right: 10px;
+  top: 7px;
+}
+
+.multi-select[open] summary {
+  border-color: var(--green-700);
+}
+
+.multi-menu {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 8px;
+  left: 0;
+  min-width: min(320px, 82vw);
+  padding: 10px;
+  position: absolute;
+  top: calc(100% + 5px);
+  z-index: 15;
+}
+
+.multi-menu input {
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  min-height: 32px;
+  padding: 7px 9px;
+  width: 100%;
+}
+
+.multi-options {
+  display: grid;
+  gap: 4px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.multi-option {
+  align-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--gray-800);
+  display: grid;
+  font-size: 12px;
+  font-weight: 650;
+  gap: 8px;
+  grid-template-columns: 16px minmax(0, 1fr);
+  min-height: 28px;
+  padding: 5px 6px;
+}
+
+.multi-option:hover {
+  background: var(--gray-100);
+}
+
+.multi-option input {
+  height: 15px;
+  width: 15px;
+}
+
+.multi-option span {
+  overflow-wrap: anywhere;
+}
+
+.multi-empty {
+  font-size: 12px;
+  padding: 6px;
+}
+
 label {
   color: var(--gray-700);
   display: grid;
@@ -649,6 +796,7 @@ label {
 }
 
 .table-scroll {
+  max-height: min(62vh, 680px);
   overflow: auto;
   width: 100%;
 }
@@ -1086,6 +1234,9 @@ label {
 .future-demand-list {
   display: grid;
   gap: 10px;
+  max-height: calc(100vh - 240px);
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .future-card {
@@ -1186,17 +1337,28 @@ label {
 
 .admin-content {
   padding: 14px;
+  max-height: calc(100vh - 164px);
+  overflow: hidden;
 }
 
 .admin-grid {
   display: grid;
   gap: 12px;
   grid-template-columns: 320px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.admin-grid-wide {
+  grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
 }
 
 .admin-form {
   display: grid;
   gap: 10px;
+  align-content: start;
+  max-height: calc(100vh - 202px);
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .admin-form-stack {
@@ -1207,6 +1369,14 @@ label {
 .admin-list {
   display: grid;
   gap: 8px;
+  align-content: start;
+  min-width: 0;
+}
+
+.admin-list-scroll {
+  max-height: calc(100vh - 202px);
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .admin-list-item {
@@ -1217,6 +1387,71 @@ label {
   gap: 10px;
   grid-template-columns: minmax(0, 1fr) auto;
   padding: 9px;
+}
+
+.admin-table {
+  min-width: 880px;
+}
+
+.permission-grid {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  padding: 10px;
+}
+
+.permission-grid legend {
+  color: var(--gray-700);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 0 4px;
+}
+
+.permission-grid label {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  font-size: 12px;
+  gap: 7px;
+}
+
+.permission-grid input {
+  min-height: 0;
+  width: 16px;
+}
+
+.missing-centers {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.missing-centers strong {
+  color: #9a3412;
+  font-size: 12px;
+}
+
+.missing-center-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 118px;
+  overflow: auto;
+}
+
+.missing-center-list .button {
+  min-height: 28px;
+  padding: 5px 8px;
+}
+
+.admin-parameter-form {
+  max-width: 680px;
 }
 
 .modal {
@@ -1458,18 +1693,25 @@ label {
   .portfolio-table td:nth-child(3)::before { content: "Descrição"; }
   .portfolio-table td:nth-child(4)::before { content: "Status"; }
   .portfolio-table td:nth-child(5)::before { content: "Substatus"; }
-  .portfolio-table td:nth-child(6)::before { content: "Vencimento"; }
-  .portfolio-table td:nth-child(7)::before { content: "Competência"; }
-  .portfolio-table td:nth-child(8)::before { content: "Tipo"; }
-  .portfolio-table td:nth-child(9)::before { content: "Centro"; }
-  .portfolio-table td:nth-child(10)::before { content: "Local"; }
-  .portfolio-table td:nth-child(11)::before { content: "Prioridade"; }
-  .portfolio-table td:nth-child(12)::before { content: "Planejada"; }
-  .portfolio-table td:nth-child(13)::before { content: "Replanejada"; }
-  .portfolio-table td:nth-child(14)::before { content: "Realizada"; }
-  .portfolio-table td:nth-child(15)::before { content: "Perda"; }
-  .portfolio-table td:nth-child(16)::before { content: "Motivo"; }
-  .portfolio-table td:nth-child(17)::before { content: "Ações"; }
+  .portfolio-table td:nth-child(6)::before { content: "Origem"; }
+  .portfolio-table td:nth-child(7)::before { content: "Gerencia"; }
+  .portfolio-table td:nth-child(8)::before { content: "Supervisao"; }
+  .portfolio-table td:nth-child(9)::before { content: "Vencimento"; }
+  .portfolio-table td:nth-child(10)::before { content: "Competencia"; }
+  .portfolio-table td:nth-child(11)::before { content: "Tipo"; }
+  .portfolio-table td:nth-child(12)::before { content: "Centro"; }
+  .portfolio-table td:nth-child(13)::before { content: "Cad. centro"; }
+  .portfolio-table td:nth-child(14)::before { content: "Planejador"; }
+  .portfolio-table td:nth-child(15)::before { content: "Programador"; }
+  .portfolio-table td:nth-child(16)::before { content: "Local"; }
+  .portfolio-table td:nth-child(17)::before { content: "Prioridade"; }
+  .portfolio-table td:nth-child(18)::before { content: "Planejada"; }
+  .portfolio-table td:nth-child(19)::before { content: "Replanejada"; }
+  .portfolio-table td:nth-child(20)::before { content: "Realizada"; }
+  .portfolio-table td:nth-child(21)::before { content: "Perda"; }
+  .portfolio-table td:nth-child(22)::before { content: "Motivo"; }
+  .portfolio-table td:nth-child(23)::before { content: "Atualizacao"; }
+  .portfolio-table td:nth-child(24)::before { content: "Acoes"; }
 
   .portfolio-table th:last-child,
   .portfolio-table td:last-child {

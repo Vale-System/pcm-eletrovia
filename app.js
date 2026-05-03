@@ -11,11 +11,71 @@
   ];
 
   const PROFILE_RULES = {
-    Visualizador: { edit: false, admin: false, approve: false, export: true },
-    Editor: { edit: true, admin: false, approve: false, export: true },
-    Administrador: { edit: true, admin: true, approve: true, export: true },
-    Gestor: { edit: false, admin: false, approve: true, export: true },
+    Administrador: {
+      planejar: true,
+      replanejar: true,
+      realizar: true,
+      configurar: true,
+      exportar: true,
+      cargaLote: true,
+      indicadores: true,
+    },
+    Editor: {
+      planejar: true,
+      replanejar: true,
+      realizar: true,
+      configurar: false,
+      exportar: true,
+      cargaLote: true,
+      indicadores: true,
+    },
+    Planejador: {
+      planejar: true,
+      replanejar: true,
+      realizar: false,
+      configurar: false,
+      exportar: true,
+      cargaLote: true,
+      indicadores: true,
+    },
+    Gestor: {
+      planejar: false,
+      replanejar: false,
+      realizar: false,
+      configurar: false,
+      exportar: true,
+      cargaLote: false,
+      indicadores: true,
+    },
+    Visualizador: {
+      planejar: false,
+      replanejar: false,
+      realizar: false,
+      configurar: false,
+      exportar: true,
+      cargaLote: false,
+      indicadores: false,
+    },
   };
+
+  const FILTER_DEFINITIONS = [
+    { key: "gerencia", label: "Gerencia", field: "gerencia" },
+    { key: "supervisao", label: "Supervisao", field: "supervisao" },
+    { key: "centroTrabalho", label: "Centro Trabalho", field: "centroTrabalho" },
+    { key: "tipoDemanda", label: "Tipo Demanda", field: "tipoDemanda" },
+    { key: "origem", label: "Origem", field: "origem" },
+    { key: "tipoOM", label: "Tipo OM", field: "tipoOM" },
+    { key: "competencia", label: "Competencia", field: "competencia" },
+    { key: "statusOperacional", label: "Status Operacional", special: "status" },
+    { key: "prioridade", label: "Prioridade", field: "prioridade" },
+    { key: "planejadorOM", label: "Planejador OM", field: "planejadorOM" },
+    { key: "programador", label: "Programador", field: "programador" },
+    { key: "centroStatus", label: "Cadastro Centro", special: "centroStatus" },
+    { key: "localInstalacao", label: "Local Instalacao", field: "localInstalacao" },
+    { key: "statusSistema", label: "Status Sistema", field: "statusSistema" },
+    { key: "anoVencimento", label: "Ano Vencimento", special: "anoVencimento" },
+    { key: "mesVencimento", label: "Mes Vencimento", special: "mesVencimento" },
+  ];
 
   const state = {
     repo: null,
@@ -30,11 +90,14 @@
     identity: null,
     realizedAutoSynced: false,
     filters: {},
+    lastDataUpdateAt: "",
+    loginReady: false,
     batch: {
       rows: [],
       valid: [],
       warnings: [],
       errors: [],
+      fileName: "",
     },
     actionContext: null,
   };
@@ -93,11 +156,28 @@
     if (!value) return null;
     if (value instanceof Date)
       return Number.isNaN(value.getTime()) ? null : value;
+    if (typeof value === "number" && Number.isFinite(value)) {
+      const date = excelSerialToDate(value);
+      return date && !Number.isNaN(date.getTime()) ? date : null;
+    }
     const text = String(value).trim();
     if (!text) return null;
-    const normalized = text.includes("/")
-      ? text.split("/").reverse().join("-")
-      : text;
+
+    if (/^\d{5}$/.test(text)) {
+      const date = excelSerialToDate(Number(text));
+      return date && !Number.isNaN(date.getTime()) ? date : null;
+    }
+
+    let normalized = text;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
+      const [day, month, year] = text.split("/");
+      normalized = `${year}-${month}-${day}`;
+    } else if (/^\d{4}-\d{2}$/.test(text)) {
+      normalized = `${text}-01`;
+    } else if (/^\d{6}$/.test(text) && text.startsWith("20")) {
+      normalized = `${text.slice(0, 4)}-${text.slice(4, 6)}-01`;
+    }
+
     const date = new Date(`${normalized.slice(0, 10)}T12:00:00`);
     return Number.isNaN(date.getTime()) ? null : date;
   }
@@ -140,10 +220,112 @@
     return names[Number(month) - 1] || month;
   }
 
+  function excelSerialToDate(value) {
+    const serial = Number(value);
+    if (!Number.isFinite(serial) || serial < 20000 || serial > 80000)
+      return null;
+    const epoch = Date.UTC(1899, 11, 30);
+    return new Date(epoch + serial * 86400000);
+  }
+
+  function normalizeCompetencia(value) {
+    if (value === null || value === undefined || value === "") return "";
+    if (typeof value === "number" && Number.isFinite(value)) {
+      const date = excelSerialToDate(value);
+      return date ? date.toISOString().slice(0, 7) : "";
+    }
+
+    const text = String(value).trim();
+    if (!text) return "";
+
+    if (/^\d{4}-\d{2}$/.test(text)) return text;
+    if (/^\d{6}$/.test(text) && text.startsWith("20")) {
+      return `${text.slice(0, 4)}-${text.slice(4, 6)}`;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text.slice(0, 7);
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
+      const [, month, year] = text.split("/");
+      return `${year}-${month}`;
+    }
+    if (/^\d{5}$/.test(text)) {
+      const date = excelSerialToDate(Number(text));
+      return date ? date.toISOString().slice(0, 7) : "";
+    }
+
+    const monthAliases = {
+      JAN: "01",
+      JANEIRO: "01",
+      FEB: "02",
+      FEV: "02",
+      FEVEREIRO: "02",
+      MAR: "03",
+      MARCO: "03",
+      MARÇO: "03",
+      APR: "04",
+      ABR: "04",
+      ABRIL: "04",
+      MAY: "05",
+      MAI: "05",
+      MAIO: "05",
+      JUN: "06",
+      JUNHO: "06",
+      JUL: "07",
+      JULHO: "07",
+      AUG: "08",
+      AGO: "08",
+      AGOSTO: "08",
+      SEP: "09",
+      SET: "09",
+      SETEMBRO: "09",
+      OCT: "10",
+      OUT: "10",
+      OUTUBRO: "10",
+      NOV: "11",
+      NOVEMBRO: "11",
+      DEC: "12",
+      DEZ: "12",
+      DEZEMBRO: "12",
+    };
+    const normalized = normalizeText(text).replace(/[^A-Z0-9]+/g, " ");
+    const parts = normalized.split(" ").filter(Boolean);
+    const year = parts.find((part) => /^20\d{2}$/.test(part));
+    const month = parts.map((part) => monthAliases[part]).find(Boolean);
+    return year && month ? `${year}-${month}` : text;
+  }
+
+  function normalizePrioridade(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return "Nao informado";
+    const normalized = normalizeText(text);
+    if (/^1($|[^0-9])/.test(normalized) || normalized.includes("ALTO"))
+      return "Alto";
+    if (
+      /^2($|[^0-9])/.test(normalized) ||
+      normalized.includes("MEDIO") ||
+      normalized.includes("MEDIA")
+    )
+      return "Medio";
+    if (/^3($|[^0-9])/.test(normalized) || normalized.includes("BAIXO"))
+      return "Baixo";
+    return text;
+  }
+
+  function profileDefaults(profile) {
+    return PROFILE_RULES[profile] || PROFILE_RULES.Visualizador;
+  }
+
   function getRules() {
-    return (
-      PROFILE_RULES[state.currentUser?.perfil] || PROFILE_RULES.Visualizador
-    );
+    const defaults = profileDefaults(state.currentUser?.perfil);
+    const user = state.currentUser || {};
+    return {
+      ...defaults,
+      planejar: user.permissaoPlanejar ?? defaults.planejar,
+      replanejar: user.permissaoReplanejar ?? defaults.replanejar,
+      realizar: user.permissaoRealizar ?? defaults.realizar,
+      configurar: user.permissaoConfigurar ?? defaults.configurar,
+      exportar: user.permissaoExportar ?? defaults.exportar,
+      cargaLote: user.permissaoCargaLote ?? defaults.cargaLote,
+    };
   }
 
   function configItems(group) {
@@ -161,6 +343,13 @@
     return configItems(group).map((item) => item.nome);
   }
 
+  function configKeyByName(group, name) {
+    const item = configItems(group).find(
+      (config) => config.nome === name || config.id === name,
+    );
+    return item?.id || global.CCEData.slugify(name || "").toUpperCase();
+  }
+
   function childConfigNames(group, parentKey, parentIdOrName) {
     const parent = configItems(parentKey).find(
       (item) => item.id === parentIdOrName || item.nome === parentIdOrName,
@@ -175,15 +364,32 @@
   }
 
   function canEdit() {
-    return getRules().edit;
+    const rules = getRules();
+    return rules.planejar || rules.replanejar || rules.realizar;
   }
 
   function canAdmin() {
-    return getRules().admin;
+    return getRules().configurar;
   }
 
   function canExport() {
-    return getRules().export;
+    return getRules().exportar;
+  }
+
+  function canBatch() {
+    return getRules().cargaLote;
+  }
+
+  function canPlan() {
+    return getRules().planejar;
+  }
+
+  function canReplan() {
+    return getRules().replanejar;
+  }
+
+  function canRealizar() {
+    return getRules().realizar;
   }
 
   function replanHistoryIssues(demand) {
@@ -248,12 +454,28 @@
     return primaryStatusOf(demand);
   }
 
+  function prepareDemandForSave(demand, extra = {}) {
+    const prepared = normalizeDemandRecord({
+      ...demand,
+      ...extra,
+      dataUltimaAtualizacao: new Date().toISOString(),
+    });
+    prepared.statusOperacional = primaryStatusOf(prepared);
+    prepared.substatusOperacional = substatusListOf(prepared).join(" | ");
+    prepared.usuarioResponsavel =
+      prepared.usuarioResponsavel || state.currentUser?.email || "";
+    return prepared;
+  }
+
   function statusClass(status) {
     if (status === "A Planejar") return "status-planejar";
     if (status === "Planejado") return "status-planejado";
     if (status === "Replanejado") return "status-replanejado";
     if (status === "Realizado" || status === "No Prazo")
       return "status-realizado";
+    if (status === "Cadastrado") return "status-realizado";
+    if (status === "Nao cadastrado" || status === "Sem centro")
+      return "status-perda";
     if (status === "Fora do Prazo") return "status-fora-prazo";
     if (status === "Perda" || status === "Pendente") return "status-perda";
     return "status-planejado";
@@ -408,11 +630,11 @@
       statusSistema: item.StatusSistema || item.status_sistema || "",
       statusUsuario: item.StatusUsuario || item.status_usuario || "",
 
-      competencia: item.Competencia || item.competencia || "",
+      competencia: normalizeCompetencia(item.Competencia || item.competencia),
       dataRealizada: item.DataRealizada || item.data_realizada || "",
       vencimento: item.Vencimento || item.vencimento || "",
 
-      prioridade: item.Prioridade || item.prioridade || "",
+      prioridade: normalizePrioridade(item.Prioridade || item.prioridade),
       toleranciaMin: item.ToleranciaMin || item.tolerancia_min || "",
       toleranciaMax: item.ToleranciaMax || item.tolerancia_max || "",
 
@@ -527,9 +749,11 @@
       supervisao: baseDemand.supervisao || delta.supervisao,
       centroTrabalho: baseDemand.centroTrabalho || delta.centroTrabalho,
       localInstalacao: baseDemand.localInstalacao || delta.localInstalacao,
-      competencia: baseDemand.competencia || delta.competencia,
+      competencia: normalizeCompetencia(
+        baseDemand.competencia || delta.competencia,
+      ),
       tipoOM: baseDemand.tipoOM || delta.tipoOM,
-      prioridade: baseDemand.prioridade || delta.prioridade,
+      prioridade: normalizePrioridade(baseDemand.prioridade || delta.prioridade),
       vencimento: baseDemand.vencimento || delta.vencimento,
 
       dataPlanejada: delta.dataPlanejada || baseDemand.dataPlanejada || "",
@@ -551,6 +775,8 @@
         0,
 
       origem: delta.origem || baseDemand.origem || "SAP BO",
+      dataUltimaAtualizacao:
+        delta.dataUltimaAtualizacao || baseDemand.dataUltimaAtualizacao || "",
     };
   }
   function normalizeCentroTrabalho(value) {
@@ -566,7 +792,12 @@
     const cadastro = mapaCentros.get(chaveCentro);
 
     if (!cadastro) {
-      return demanda;
+      return {
+        ...demanda,
+        centroTrabalhoChave: chaveCentro,
+        centroTrabalhoCadastrado: !chaveCentro ? null : false,
+        centroTrabalhoStatus: !chaveCentro ? "Sem centro" : "Nao cadastrado",
+      };
     }
 
     return {
@@ -585,18 +816,24 @@
       programadorEmail: cadastro.programadorEmail || "",
       programadorMatricula: cadastro.programadorMatricula || "",
 
+      centroTrabalhoChave: cadastro.centroTrabalhoChave || chaveCentro,
       centroTrabalhoCadastrado: true,
+      centroTrabalhoStatus: "Cadastrado",
     };
   }
 
   async function loadDatabase() {
+    const previousSelection = state.selectedDemandId;
+    const previousUserEmail = state.currentUser?.email || getStoredSessionEmail();
     const base = await loadBaseFromJson();
     const supabaseData = await state.repo.getAll();
     const mapaCentrosTrabalho = new Map(
-      (supabaseData.centrosTrabalho || []).map((item) => [
-        normalizeCentroTrabalho(item.centroTrabalho),
-        item,
-      ]),
+      (supabaseData.centrosTrabalho || [])
+        .filter((item) => item.ativo !== false)
+        .map((item) => [
+          item.centroTrabalhoChave || normalizeCentroTrabalho(item.centroTrabalho),
+          item,
+        ]),
     );
 
     const baseEnriquecida = base.map((demanda) =>
@@ -610,40 +847,85 @@
     const baseIds = new Set(baseEnriquecida.map((item) => item.id));
 
     const mergedBase = baseEnriquecida.map((item) =>
-      mergeDemandWithSupabase(item, deltasById.get(item.id)),
+      enrichDemandWithCentroTrabalho(
+        mergeDemandWithSupabase(item, deltasById.get(item.id)),
+        mapaCentrosTrabalho,
+      ),
     );
 
-    const demandasSomenteSupabase = (supabaseData.demandas || []).filter(
-      (item) => !baseIds.has(item.id),
+    const demandasSomenteSupabase = (supabaseData.demandas || [])
+      .filter((item) => !baseIds.has(item.id))
+      .map((item) => enrichDemandWithCentroTrabalho(item, mapaCentrosTrabalho));
+
+    const demandas = [...demandasSomenteSupabase, ...mergedBase].map(
+      normalizeDemandRecord,
     );
 
     state.db = {
-      demandas: [...demandasSomenteSupabase, ...mergedBase],
+      demandas,
       usuarios: supabaseData.usuarios || [],
       centrosTrabalho: supabaseData.centrosTrabalho || [],
       configuracoes: supabaseData.configuracoes || {},
       parametros: supabaseData.parametros || {},
+      parametrosDisponiveis: supabaseData.parametrosDisponiveis === true,
       historicoPlanejamento: supabaseData.historicoPlanejamento || [],
       historicoReplanejamento: supabaseData.historicoReplanejamento || [],
       historicoRealizadoPerdas: supabaseData.historicoRealizadoPerdas || [],
       logs: supabaseData.logs || [],
     };
 
-    const params = new URLSearchParams(global.location.search);
-    const emailParam = params.get("user") || "weslley.santos@vale.com";
+    setCurrentUserFromEmail(previousUserEmail);
+    state.lastDataUpdateAt = latestDataUpdateAt();
+    state.selectedDemandId =
+      demandas.some((item) => item.id === previousSelection)
+        ? previousSelection
+        : demandas[0]?.id || "";
+  }
 
-    state.currentUser = state.db.usuarios.find(
-      (user) => normalizeText(user.email) === normalizeText(emailParam),
-    ) ||
-      state.db.usuarios.find((user) => user.perfil === "Administrador") ||
-      state.db.usuarios.find((user) => user.ativo) || {
-        nome: "Weslley",
-        email: "weslley.santos@vale.com",
-        perfil: "Administrador",
-        ativo: true,
-      };
+  function normalizeDemandRecord(demanda) {
+    return {
+      ...demanda,
+      competencia: normalizeCompetencia(demanda.competencia),
+      prioridade: normalizePrioridade(demanda.prioridade),
+      centroTrabalhoChave:
+        demanda.centroTrabalhoChave ||
+        normalizeCentroTrabalho(demanda.centroTrabalho),
+    };
+  }
 
-    state.selectedDemandId = state.db.demandas[0]?.id || "";
+  function getStoredSessionEmail() {
+    try {
+      const session = JSON.parse(
+        global.localStorage.getItem("cce.session") || "null",
+      );
+      return session?.email || "";
+    } catch (error) {
+      return "";
+    }
+  }
+
+  function setCurrentUserFromEmail(email) {
+    if (!email) {
+      state.currentUser = null;
+      return;
+    }
+    state.currentUser =
+      state.db.usuarios.find(
+        (user) =>
+          user.ativo &&
+          normalizeText(user.email) === normalizeText(email),
+      ) || null;
+  }
+
+  function latestDataUpdateAt() {
+    const dates = [
+      ...state.db.demandas.map((item) => item.dataUltimaAtualizacao),
+      ...state.db.logs.map((item) => item.dataHora),
+    ]
+      .map((value) => (value ? new Date(value) : null))
+      .filter((date) => date && !Number.isNaN(date.getTime()))
+      .sort((a, b) => b - a);
+    return dates[0]?.toISOString() || "";
   }
   function demandById(id) {
     return state.db.demandas.find((item) => item.id === id);
@@ -700,116 +982,233 @@
         new URLSearchParams(global.location.search).get("debugUsers") === "1"
       ),
     );
-    $("#lastUpdateSide").textContent =
-      todayText().split("-").reverse().join("/") + " agora";
+    $("#lastUpdateSide").textContent = state.lastDataUpdateAt
+      ? formatDateTime(state.lastDataUpdateAt)
+      : "-";
     renderRole();
+    collectFilters();
     buildFilterOptions();
     renderAlerts();
   }
 
   function renderRole() {
     $("#userName").textContent =
-      state.currentUser?.nome || state.identity?.nome || "Usuário";
+      state.currentUser?.nome || state.identity?.nome || "Aguardando login";
     $("#roleChip").textContent = state.currentUser?.perfil || "Visualizador";
+    $("#logoutButton")?.classList.toggle("hidden", !state.currentUser);
     applyPermissions();
+  }
+
+  function renderLoginState() {
+    const loginScreen = $("#loginScreen");
+    if (!loginScreen) return;
+    loginScreen.classList.toggle("hidden", Boolean(state.currentUser));
+    document.body.classList.toggle("is-login-required", !state.currentUser);
+    $("#loginError").textContent = "";
+  }
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("email") || "").trim().toLowerCase();
+    const matricula = String(form.get("matricula") || "").trim();
+    const user = state.db.usuarios.find(
+      (item) => normalizeText(item.email) === normalizeText(email),
+    );
+    const errorElement = $("#loginError");
+
+    if (!user || user.ativo === false) {
+      errorElement.textContent = "Usuario nao encontrado ou inativo.";
+      await state.repo.addLog?.({
+        usuario: email,
+        acao: "Login",
+        lista: "usuarios_central_eletrovia",
+        referencia: email,
+        detalhe: "Tentativa de login com usuario inexistente ou inativo.",
+        nivel: "AVISO",
+        modulo: "LOGIN",
+        status: "ERRO",
+      });
+      return;
+    }
+
+    if (String(user.matricula || "").trim() !== matricula) {
+      errorElement.textContent = "Matricula invalida para o e-mail informado.";
+      await state.repo.addLog?.({
+        usuario: email,
+        acao: "Login",
+        lista: "usuarios_central_eletrovia",
+        referencia: email,
+        detalhe: "Tentativa de login com matricula invalida.",
+        nivel: "AVISO",
+        modulo: "LOGIN",
+        status: "ERRO",
+      });
+      return;
+    }
+
+    state.currentUser = user;
+    global.localStorage.setItem(
+      "cce.session",
+      JSON.stringify({ email: user.email, createdAt: new Date().toISOString() }),
+    );
+    event.currentTarget.reset();
+    renderLoginState();
+    renderRole();
+    renderCurrentView();
+    await state.repo.addLog?.({
+      usuario: user.email,
+      acao: "Login",
+      lista: "usuarios_central_eletrovia",
+      referencia: user.email,
+      detalhe: "Login realizado com e-mail e matricula.",
+      modulo: "LOGIN",
+      status: "SUCESSO",
+    });
+  }
+
+  async function logout() {
+    const email = state.currentUser?.email || "";
+    global.localStorage.removeItem("cce.session");
+    state.currentUser = null;
+    renderRole();
+    renderLoginState();
+    if (email) {
+      await state.repo.addLog?.({
+        usuario: email,
+        acao: "Logout",
+        lista: "usuarios_central_eletrovia",
+        referencia: email,
+        detalhe: "Sessao local encerrada.",
+        modulo: "LOGIN",
+        status: "SUCESSO",
+      });
+    }
   }
 
   function applyPermissions() {
     const rules = getRules();
     $$(".admin-only").forEach((element) => {
-      element.classList.toggle("hidden", !rules.admin);
-      element.disabled = !rules.admin;
+      element.classList.toggle("hidden", !rules.configurar);
+      element.disabled = !rules.configurar;
     });
     $$(".editor-only").forEach((element) => {
-      element.disabled = !rules.edit;
+      element.disabled = !canEdit();
+    });
+    $$(".batch-only").forEach((element) => {
+      element.disabled = !canBatch();
+    });
+    $$(".planner-only").forEach((element) => {
+      element.disabled = !canPlan();
+    });
+    $$(".realizer-only").forEach((element) => {
+      element.disabled = !canRealizar();
     });
     $$('[data-view="administracao"]').forEach((element) => {
-      element.disabled = !rules.admin;
-      element.title = rules.admin ? "" : "Disponível para Administrador";
+      element.disabled = !rules.configurar;
+      element.title = rules.configurar ? "" : "Disponivel para Administrador";
+    });
+    $$('[data-view="lote"]').forEach((element) => {
+      element.disabled = !rules.cargaLote;
+      element.title = rules.cargaLote ? "" : "Sem permissao para carga em lote";
     });
     $("#exportCsv").disabled = !canExport();
   }
 
   function buildFilterOptions() {
-    const demands = state.db.demandas;
-    populateSelect(
-      $("#filterGerencia"),
-      uniqueOptions(demands.map((item) => item.gerencia)),
-    );
-    populateSelect(
-      $("#filterCentro"),
-      uniqueOptions(demands.map((item) => item.centroTrabalho)),
-    );
-    populateSelect(
-      $("#filterTipo"),
-      uniqueOptions(demands.map((item) => item.tipoOM)),
-    );
-    populateSelect(
-      $("#filterCompetencia"),
-      uniqueOptions(demands.map((item) => item.competencia)),
-    );
-    populateSelect(
-      $("#filterLocal"),
-      uniqueOptions(demands.map((item) => item.localInstalacao)),
-    );
-    populateSelect(
-      $("#filterPrioridade"),
-      uniqueOptions(demands.map((item) => item.prioridade)),
-    );
-    populateSelect(
-      $("#filterStatusSistema"),
-      uniqueOptions(demands.map((item) => item.statusSistema)),
-    );
-    populateSelect($("#filterStatusOperacional"), STATUS_OPTIONS);
-    populateSelect(
-      $("#filterAno"),
-      uniqueOptions(demands.map((item) => item.vencimento?.slice(0, 4))),
-    );
-    populateSelect(
-      $("#filterMes"),
-      uniqueOptions(demands.map((item) => item.vencimento?.slice(5, 7))).map(
-        (month) => `${month} - ${monthName(month)}`,
-      ),
-    );
+    const filters = state.filters || {};
+    FILTER_DEFINITIONS.forEach((definition) => {
+      const host = $(`[data-multi-filter="${definition.key}"]`);
+      if (!host) return;
+      const scopedRows = state.db.demandas.filter((item) =>
+        demandMatchesFilters(item, filters, definition.key),
+      );
+      const selected = filters[definition.key] || [];
+      const options = uniqueOptions([
+        ...scopedRows.map((item) => filterValueFor(item, definition)),
+        ...selected,
+      ]);
+      renderMultiFilter(host, definition, options, selected);
+    });
   }
 
   function collectFilters() {
     const filters = {};
+    $$("[data-multi-filter]").forEach((field) => {
+      filters[field.dataset.multiFilter] = $$(
+        "[data-multi-option]:checked",
+        field,
+      ).map((input) => input.value);
+    });
     $$("[data-filter]").forEach((field) => {
       filters[field.dataset.filter] = field.value;
     });
     filters.quickSearch = $("#quickSearch").value.trim();
     state.filters = filters;
+    return filters;
   }
 
-  function filteredDemandas() {
-    collectFilters();
-    const filters = state.filters;
+  function filterValueFor(item, definition) {
+    if (definition.special === "status") return primaryStatusOf(item);
+    if (definition.special === "centroStatus")
+      return item.centroTrabalhoStatus || "Nao cadastrado";
+    if (definition.special === "anoVencimento")
+      return item.vencimento?.slice(0, 4) || "";
+    if (definition.special === "mesVencimento") {
+      const month = item.vencimento?.slice(5, 7) || "";
+      return month ? `${month} - ${monthName(month)}` : "";
+    }
+    return item[definition.field] || "";
+  }
+
+  function renderMultiFilter(host, definition, options, selected) {
+    const selectedSet = new Set(selected || []);
+    const checkedCount = selectedSet.size;
+    const summary =
+      checkedCount === 0
+        ? "Todos"
+        : checkedCount === 1
+          ? selected[0]
+          : `${checkedCount} selecionados`;
+    host.innerHTML = `
+      <label class="multi-label">${escapeHtml(definition.label)}</label>
+      <details class="multi-select" data-filter-details>
+        <summary title="${escapeHtml(summary)}">${escapeHtml(summary)}</summary>
+        <div class="multi-menu">
+          <input data-multi-search type="search" placeholder="Pesquisar..." aria-label="Pesquisar ${escapeHtml(definition.label)}" />
+          <div class="multi-options">
+            ${
+              options.length
+                ? options
+                    .map(
+                      (option) => `
+                <label class="multi-option">
+                  <input data-multi-option type="checkbox" value="${escapeHtml(option)}" ${selectedSet.has(option) ? "checked" : ""} />
+                  <span>${escapeHtml(option)}</span>
+                </label>
+              `,
+                    )
+                    .join("")
+                : '<span class="muted multi-empty">Sem opcoes no recorte</span>'
+            }
+          </div>
+        </div>
+      </details>
+    `;
+  }
+
+  function demandMatchesFilters(item, filters, ignoredKey = "") {
     const search = normalizeText(filters.quickSearch);
 
-    return state.db.demandas.filter((item) => {
-      const fields = {
-        gerencia: item.gerencia,
-        centroTrabalho: item.centroTrabalho,
-        tipoOM: item.tipoOM,
-        competencia: item.competencia,
-        localInstalacao: item.localInstalacao,
-        prioridade: item.prioridade,
-        statusSistema: item.statusSistema,
-        anoVencimento: item.vencimento?.slice(0, 4),
-        mesVencimento: item.vencimento
-          ? `${item.vencimento.slice(5, 7)} - ${monthName(item.vencimento.slice(5, 7))}`
-          : "",
-      };
-
-      for (const [key, value] of Object.entries(fields)) {
-        if (filters[key] && String(value) !== filters[key]) return false;
-      }
+    for (const definition of FILTER_DEFINITIONS) {
+      if (definition.key === ignoredKey) continue;
+      const selected = filters[definition.key] || [];
       if (
-        filters.statusOperacional &&
-        primaryStatusOf(item) !== filters.statusOperacional
+        selected.length &&
+        !selected.includes(String(filterValueFor(item, definition)))
       )
         return false;
+    }
 
       if (filters.perda === "sim" && !item.perda) return false;
       if (filters.perda === "nao" && item.perda) return false;
@@ -841,7 +1240,11 @@
       }
 
       return true;
-    });
+  }
+
+  function filteredDemandas() {
+    const filters = collectFilters();
+    return state.db.demandas.filter((item) => demandMatchesFilters(item, filters));
   }
 
   function dashboardStats(demands) {
@@ -959,18 +1362,26 @@
         const allowed = allowedActionsFor(item);
         const selected =
           item.id === state.selectedDemandId ? "is-selected" : "";
-        const editDisabled = !canEdit();
+        const planDisabled = !canPlan();
+        const replanDisabled = !canReplan();
+        const realizedDisabled = !canRealizar();
         return `
           <tr class="${selected}" data-demand-id="${escapeHtml(item.id)}">
             <td><strong>${escapeHtml(item.id)}</strong></td>
             <td>${escapeHtml(compact(item.ordem))}</td>
-            <td class="description-cell">${escapeHtml(item.descricao)}<div class="muted">${escapeHtml(item.origem || "")}</div></td>
+            <td class="description-cell">${escapeHtml(item.descricao)}<div class="muted">${escapeHtml(item.usuarioResponsavel || "")}</div></td>
             <td>${statusChip(status)}</td>
             <td>${statusChipGroup(substatuses)}</td>
+            <td>${escapeHtml(item.origem || "-")}</td>
+            <td>${escapeHtml(item.gerencia || "-")}</td>
+            <td>${escapeHtml(item.supervisao || "-")}</td>
             <td>${formatDate(item.vencimento)}</td>
             <td>${escapeHtml(item.competencia || "-")}</td>
             <td>${escapeHtml(item.tipoOM || "-")}</td>
             <td>${escapeHtml(item.centroTrabalho || "-")}</td>
+            <td>${statusChip(item.centroTrabalhoStatus || "Nao cadastrado")}</td>
+            <td>${escapeHtml(item.planejadorOM || "-")}</td>
+            <td>${escapeHtml(item.programador || "-")}</td>
             <td>${escapeHtml(item.localInstalacao || "-")}</td>
             <td>${escapeHtml(item.prioridade || "-")}</td>
             <td>${formatDate(item.dataPlanejada)}</td>
@@ -978,11 +1389,12 @@
             <td>${formatDate(item.dataRealizada)}</td>
             <td>${item.perda ? "Sim" : "Não"}</td>
             <td>${escapeHtml(compact(item.motivoPerda))}</td>
+            <td>${formatDateTime(item.dataUltimaAtualizacao)}</td>
             <td>
               <div class="row-actions">
-                ${actionButton("planejar", item.id, editDisabled || !allowed.planejar)}
-                ${actionButton("replanejar", item.id, editDisabled || !allowed.replanejar)}
-                ${actionButton("realizado", item.id, editDisabled || !allowed.realizado)}
+                ${actionButton("planejar", item.id, planDisabled || !allowed.planejar)}
+                ${actionButton("replanejar", item.id, replanDisabled || !allowed.replanejar)}
+                ${actionButton("realizado", item.id, realizedDisabled || !allowed.realizado)}
                 ${actionButton("historico", item.id)}
               </div>
             </td>
@@ -1015,7 +1427,6 @@
     const pending = pendingIssuesOf(demand);
     const allowed = allowedActionsFor(demand);
     const timeline = historiesFor(demand.id).slice(0, 5);
-    const editDisabled = !canEdit();
     panel.innerHTML = `
       <div class="detail-title">
         <span>${escapeHtml(demand.id)} ${demand.ordem ? `| Ordem ${escapeHtml(demand.ordem)}` : "| Sem ordem SAP"}</span>
@@ -1024,8 +1435,15 @@
       <div class="detail-grid">
         <div class="detail-item"><span>Status</span><strong>${statusChip(status)}</strong></div>
         <div class="detail-item"><span>Substatus</span><strong>${statusChipGroup(substatuses)}</strong></div>
+        <div class="detail-item"><span>Origem</span><strong>${escapeHtml(demand.origem || "-")}</strong></div>
+        <div class="detail-item"><span>Ultima atualizacao</span><strong>${formatDateTime(demand.dataUltimaAtualizacao)}</strong></div>
+        <div class="detail-item"><span>Gerencia</span><strong>${escapeHtml(demand.gerencia || "-")}</strong></div>
+        <div class="detail-item"><span>Supervisao</span><strong>${escapeHtml(demand.supervisao || "-")}</strong></div>
         <div class="detail-item"><span>Vencimento</span><strong>${formatDate(demand.vencimento)}</strong></div>
         <div class="detail-item"><span>Centro</span><strong>${escapeHtml(demand.centroTrabalho || "-")}</strong></div>
+        <div class="detail-item"><span>Cadastro centro</span><strong>${statusChip(demand.centroTrabalhoStatus || "Nao cadastrado")}</strong></div>
+        <div class="detail-item"><span>Planejador OM</span><strong>${escapeHtml(demand.planejadorOM || "-")}</strong></div>
+        <div class="detail-item"><span>Programador</span><strong>${escapeHtml(demand.programador || "-")}</strong></div>
         <div class="detail-item"><span>Local</span><strong>${escapeHtml(demand.localInstalacao || "-")}</strong></div>
         <div class="detail-item"><span>Tolerância Mín.</span><strong>${formatDate(demand.toleranciaMin)}</strong></div>
         <div class="detail-item"><span>Tolerância Máx.</span><strong>${formatDate(demand.toleranciaMax)}</strong></div>
@@ -1038,9 +1456,9 @@
           : ""
       }
       <div class="detail-actions">
-        ${actionButton("planejar", demand.id, editDisabled || !allowed.planejar, true)}
-        ${actionButton("replanejar", demand.id, editDisabled || !allowed.replanejar, true)}
-        ${actionButton("realizado", demand.id, editDisabled || !allowed.realizado, true)}
+        ${actionButton("planejar", demand.id, !canPlan() || !allowed.planejar, true)}
+        ${actionButton("replanejar", demand.id, !canReplan() || !allowed.replanejar, true)}
+        ${actionButton("realizado", demand.id, !canRealizar() || !allowed.realizado, true)}
         ${actionButton("historico", demand.id, false, true)}
       </div>
       <div class="timeline">
@@ -1103,7 +1521,13 @@
   function openAction(action, demandId) {
     const demand = demandById(demandId);
     if (!demand) return;
-    if (action !== "historico" && !canEdit()) {
+    const permissionByAction = {
+      planejar: canPlan(),
+      replanejar: canReplan(),
+      realizado: canRealizar(),
+      historico: true,
+    };
+    if (action !== "historico" && !permissionByAction[action]) {
       showToast("Perfil sem permissão para alterar registros.", "error");
       return;
     }
@@ -1208,9 +1632,11 @@
       demand.dataPlanejada = nextDate;
       demand.usuarioResponsavel = form.get("responsavel") || userEmail;
       demand.comentario = form.get("comentario") || "";
+      Object.assign(demand, prepareDemandForSave(demand));
       await state.repo.upsertDemanda(demand);
       await state.repo.addHistory("planejamento", {
         demandaId: demand.id,
+        ordem: demand.ordem,
         dataAnterior: previous,
         novaData: nextDate,
         usuario: userEmail,
@@ -1243,15 +1669,23 @@
         Number(demand.quantidadeReplanejamentos || 0) + 1;
       demand.comentario = form.get("comentario") || "";
       demand.usuarioResponsavel = userEmail;
+      Object.assign(demand, prepareDemandForSave(demand));
       await state.repo.upsertDemanda(demand);
       await state.repo.addHistory("replanejamento", {
         demandaId: demand.id,
+        ordem: demand.ordem,
         motivo: form.get("motivo"),
+        motivoChave: configKeyByName("motivos", form.get("motivo")),
         justificativa: form.get("justificativa"),
+        justificativaChave: configKeyByName(
+          "justificativas",
+          form.get("justificativa"),
+        ),
         dataAnterior: previous,
         novaData: nextDate,
         usuario: userEmail,
         quantidadeReplanejamentos: demand.quantidadeReplanejamentos,
+        comentario: demand.comentario,
       });
       await state.repo.addLog({
         usuario: userEmail,
@@ -1279,13 +1713,23 @@
       demand.justificativaPerda = form.get("justificativaPerda") || "";
       demand.comentario = form.get("comentario") || "";
       demand.usuarioResponsavel = userEmail;
+      Object.assign(demand, prepareDemandForSave(demand));
       await state.repo.upsertDemanda(demand);
       await state.repo.addHistory("realizadoPerda", {
         demandaId: demand.id,
+        ordem: demand.ordem,
         dataRealizada: demand.dataRealizada,
         perda: demand.perda,
         motivoPerda: demand.motivoPerda,
+        motivoPerdaChave: configKeyByName(
+          "perfisPerda",
+          demand.motivoPerda,
+        ),
         justificativaPerda: demand.justificativaPerda,
+        justificativaPerdaChave: configKeyByName(
+          "justificativasPerda",
+          demand.justificativaPerda,
+        ),
         comentario: demand.comentario,
         evidencia: form.get("evidencia") || "",
         usuario: userEmail,
@@ -1326,8 +1770,9 @@
       minute: "2-digit",
     });
     $("#lastSync").textContent = `Sincronizado ${time}`;
-    $("#lastUpdateSide").textContent =
-      todayText().split("-").reverse().join("/") + ` ${time}`;
+    $("#lastUpdateSide").textContent = state.lastDataUpdateAt
+      ? formatDateTime(state.lastDataUpdateAt)
+      : "-";
   }
 
   function switchView(view) {
@@ -1336,6 +1781,10 @@
         "Administração disponível somente para Administrador.",
         "error",
       );
+      return;
+    }
+    if (view === "lote" && !canBatch()) {
+      showToast("Perfil sem permissao para carga em lote.", "error");
       return;
     }
     state.currentView = view;
@@ -1449,6 +1898,8 @@
     const map = {
       ORDEM: "ordem",
       ORDEMSAP: "ordem",
+      ID: "id",
+      IDDEMANDACONTROLE: "id",
       DESCRICAO: "descricao",
       DESCRIO: "descricao",
       CENTROTRABALHO: "centroTrabalho",
@@ -1473,6 +1924,7 @@
       COMENTARIO: "comentario",
       TIPOOM: "tipoOM",
       PRIORIDADE: "prioridade",
+      RESPONSAVEL: "usuarioResponsavel",
     };
     return map[text] || header;
   }
@@ -1502,15 +1954,18 @@
       if (normalized[key])
         normalized[key] = normalizeDateInput(normalized[key]);
     });
+    if (normalized.competencia)
+      normalized.competencia = normalizeCompetencia(normalized.competencia);
+    if (normalized.prioridade)
+      normalized.prioridade = normalizePrioridade(normalized.prioridade);
     if (normalized.perda) {
       normalized.perda = ["SIM", "S", "TRUE", "1"].includes(
         normalizeText(normalized.perda),
       );
     }
-    normalized.origem = normalized.ordem
-      ? "Carga em Lote"
-      : "Demanda Antecipada";
-    normalized.id = normalized.id || global.CCEData.stableDemandId(normalized);
+    normalized.origem = "Carga em Lote";
+    if (normalized.ordem) normalized.ordem = String(normalized.ordem).trim();
+    if (normalized.id) normalized.id = String(normalized.id).trim();
     return normalized;
   }
 
@@ -1523,18 +1978,13 @@
       const record = normalizeBatchRecord(row);
       const messages = [];
       const alerts = [];
-      if (
-        !record.ordem &&
-        !(
-          record.descricao &&
-          record.centroTrabalho &&
-          record.localInstalacao &&
-          record.competencia &&
-          record.vencimento
-        )
-      ) {
+      const existing = findDemandForBatch(record);
+      if (!record.ordem && !record.id) {
+        messages.push("Informe Ordem SAP ou ID_Demanda_Controle.");
+      }
+      if ((record.ordem || record.id) && !existing) {
         messages.push(
-          "Sem ordem SAP e sem campos mínimos para criar ID interno de demanda futura.",
+          "Demanda nao encontrada na carteira JSON/Supabase atual. Linha nao sera gravada.",
         );
       }
       if (record.dataPlanejada && !toDate(record.dataPlanejada))
@@ -1544,17 +1994,9 @@
       if (record.perda && (!record.motivoPerda || !record.justificativaPerda)) {
         messages.push("Perda exige motivo e justificativa.");
       }
-      if (
-        record.ordem &&
-        !state.db.demandas.some((item) => item.ordem === String(record.ordem))
-      ) {
+      if (!record.ordem && record.id)
         alerts.push(
-          "Ordem não encontrada na carteira atual; será criada na camada de controle.",
-        );
-      }
-      if (!record.ordem)
-        alerts.push(
-          "Demanda sem ordem SAP será salva com ID_Demanda_Controle.",
+          "Demanda sem ordem SAP sera atualizada pelo ID_Demanda_Controle.",
         );
 
       const item = {
@@ -1568,7 +2010,20 @@
       else valid.push(item);
     });
 
-    state.batch = { rows, valid, warnings, errors };
+    state.batch = { ...state.batch, rows, valid, warnings, errors };
+  }
+
+  function findDemandForBatch(record) {
+    if (record.id) {
+      const byId = state.db.demandas.find((item) => item.id === record.id);
+      if (byId) return byId;
+    }
+    if (record.ordem) {
+      return state.db.demandas.find(
+        (item) => String(item.ordem) === String(record.ordem),
+      );
+    }
+    return null;
   }
 
   async function readBatchFile(file) {
@@ -1601,6 +2056,7 @@
     }
     try {
       const rows = await readBatchFile(file);
+      state.batch.fileName = file.name;
       validateBatchRows(rows);
       renderBatch();
       showToast("Arquivo validado.", "success");
@@ -1610,7 +2066,7 @@
   }
 
   async function saveBatch(includeWarnings) {
-    if (!canEdit()) {
+    if (!canBatch()) {
       showToast("Perfil sem permissão para salvar carga em lote.", "error");
       return;
     }
@@ -1631,33 +2087,46 @@
     }
 
     const records = candidates.map((item) => {
-      const existing = item.record.ordem
-        ? state.db.demandas.find(
-            (demand) => demand.ordem === String(item.record.ordem),
-          )
-        : null;
-      return {
-        ...(existing || {}),
+      const existing = findDemandForBatch(item.record);
+      return prepareDemandForSave({
+        ...existing,
         ...item.record,
-        ordem: item.record.ordem ? String(item.record.ordem) : "",
-        id: existing?.id || item.record.id,
-        usuarioResponsavel: state.currentUser.email,
-        dataUltimaAtualizacao: new Date().toISOString(),
-      };
+        ordem: existing?.ordem || item.record.ordem || "",
+        id: existing.id,
+        usuarioResponsavel:
+          item.record.usuarioResponsavel || state.currentUser.email,
+      });
     });
 
     await state.repo.bulkUpsertDemandas(records);
+    const batchRun = await state.repo.createBatchRun?.({
+      nomeArquivo: state.batch.fileName || "arquivo_sem_nome",
+      usuario: state.currentUser.email,
+      totalLinhas: state.batch.rows.length,
+      linhasValidas: candidates.length,
+      linhasComErro: state.batch.errors.length,
+      status: state.batch.errors.length ? "PROCESSADO_COM_ERRO" : "PROCESSADO",
+    });
+    if (batchRun?.id) {
+      const auditItems = [
+        ...state.batch.valid.map((item) => ({ ...item, status: "VALIDO" })),
+        ...state.batch.warnings.map((item) => ({ ...item, status: "ALERTA" })),
+        ...state.batch.errors.map((item) => ({ ...item, status: "ERRO" })),
+      ];
+      await state.repo.addBatchItems?.(batchRun.id, auditItems);
+    }
     await state.repo.addLog({
       usuario: state.currentUser.email,
       acao: "Carga em Lote",
-      lista: "Controle_Demandas_Eletrovia",
+      lista: "cargas_lote",
       referencia: `${records.length} registros`,
       detalhe: includeWarnings
         ? "Válidos e alertas confirmados"
         : "Somente válidos",
+      modulo: "CARGA_LOTE",
     });
     await refreshAll();
-    state.batch = { rows: [], valid: [], warnings: [], errors: [] };
+    state.batch = { rows: [], valid: [], warnings: [], errors: [], fileName: "" };
     renderBatch();
     showToast(`${records.length} registros salvos.`, "success");
   }
@@ -1690,6 +2159,7 @@
         demand.comentario ||
         "Realizado sincronizado pela base SAP BO.";
       demand.usuarioResponsavel = state.currentUser.email;
+      Object.assign(demand, prepareDemandForSave(demand));
       updates.push({ demand, before });
     }
     if (!updates.length) return { updates: 0, unmatched: unmatched.length };
@@ -1773,10 +2243,10 @@
   function renderFutureDemandas() {
     const futures = state.db.demandas.filter(
       (item) =>
-        !item.ordem &&
-        ["Demanda Antecipada", "Futura"].includes(
-          item.origem || item.tipoDemanda,
-        ),
+        !item.ordem ||
+        normalizeText(item.origem).includes("DEMANDAS FUTURAS") ||
+        normalizeText(item.tipoDemanda).includes("FUTURA") ||
+        normalizeText(item.origem).includes("DEMANDA ANTECIPADA"),
     );
     $("#futureCount").textContent = `${futures.length} demandas`;
     $("#futureDemandList").innerHTML =
@@ -1788,13 +2258,15 @@
               <header>
                 <div>
                   <h3>${escapeHtml(item.descricao)}</h3>
-                  <span class="muted">${escapeHtml(item.id)} | ${escapeHtml(item.centroTrabalho)} | ${escapeHtml(item.localInstalacao)} | ${escapeHtml(item.competencia)}</span>
+                  <span class="muted">${escapeHtml(item.id)} | ${escapeHtml(item.ordem ? `OM ${item.ordem}` : "Sem OM SAP")} | ${escapeHtml(item.centroTrabalho)} | ${escapeHtml(item.localInstalacao)} | ${escapeHtml(item.competencia)}</span>
                 </div>
                 ${statusChipGroup(statusListOf(item))}
               </header>
               <div class="detail-grid" style="margin-top: 10px;">
                 <div class="detail-item"><span>Vencimento</span><strong>${formatDate(item.vencimento)}</strong></div>
                 <div class="detail-item"><span>Frequência</span><strong>${escapeHtml(item.frequencia || "-")}</strong></div>
+                <div class="detail-item"><span>Gerencia</span><strong>${escapeHtml(item.gerencia || "-")}</strong></div>
+                <div class="detail-item"><span>Supervisao</span><strong>${escapeHtml(item.supervisao || "-")}</strong></div>
               </div>
               <div class="suggestion-list">
                 ${
@@ -1807,7 +2279,7 @@
                             <strong>${escapeHtml(suggestion.target.ordem)} | ${escapeHtml(suggestion.target.descricao)}</strong>
                             <div class="muted">${suggestion.score}% de similaridade</div>
                           </div>
-                          <button class="button editor-only" data-link-future="${escapeHtml(item.id)}" data-link-target="${escapeHtml(suggestion.target.id)}" type="button">Vincular</button>
+                          <button class="button planner-only" data-link-future="${escapeHtml(item.id)}" data-link-target="${escapeHtml(suggestion.target.id)}" type="button">Vincular</button>
                         </div>
                       `,
                         )
@@ -1819,7 +2291,7 @@
           `;
         })
         .join("") ||
-      '<div class="empty-detail"><strong>Nenhuma demanda futura pendente</strong><span>Todas as demandas futuras estão vinculadas ou realizadas.</span></div>';
+      '<div class="empty-detail"><strong>Nenhuma demanda futura encontrada</strong><span>Verifique a base_futuras.json ou os registros criados no sistema.</span></div>';
     applyPermissions();
   }
 
@@ -1860,7 +2332,7 @@
   }
 
   async function linkFutureDemand(futureId, targetId) {
-    if (!canEdit()) return;
+    if (!canPlan()) return;
     const future = demandById(futureId);
     const target = demandById(targetId);
     if (!future || !target) return;
@@ -1871,7 +2343,7 @@
     future.prioridade = target.prioridade;
     future.toleranciaMin = target.toleranciaMin;
     future.toleranciaMax = target.toleranciaMax;
-    await state.repo.upsertDemanda(future);
+    await state.repo.upsertDemanda(prepareDemandForSave(future));
     await state.repo.addLog({
       usuario: state.currentUser.email,
       acao: "Vínculo Demanda/Ordem",
@@ -1885,7 +2357,7 @@
 
   async function createFutureDemand(event) {
     event.preventDefault();
-    if (!canEdit()) {
+    if (!canPlan()) {
       showToast("Perfil sem permissão para criar demanda futura.", "error");
       return;
     }
@@ -1894,8 +2366,16 @@
     record.ordem = "";
     record.id = global.CCEData.stableDemandId(record);
     record.tipoOM = record.tipoDemanda;
-    record.gerencia = "GME Corredor";
-    record.prioridade = "Média";
+    const centro = (state.db.centrosTrabalho || []).find(
+      (item) =>
+        normalizeCentroTrabalho(item.centroTrabalho) ===
+        normalizeCentroTrabalho(record.centroTrabalho),
+    );
+    record.gerencia = centro?.gerencia || "";
+    record.supervisao = centro?.supervisao || "";
+    record.planejadorOM = centro?.planejadorOM || "";
+    record.programador = centro?.programador || "";
+    record.prioridade = "Nao informado";
     record.statusSistema = "PREV";
     record.toleranciaMin = record.vencimento;
     record.toleranciaMax = record.vencimento;
@@ -1903,9 +2383,10 @@
     record.dataReplanejadaAtual = "";
     record.dataRealizada = "";
     record.perda = false;
-    record.origem = "Demanda Antecipada";
+    record.competencia = normalizeCompetencia(record.competencia);
+    record.origem = "Sistema - Demanda Futura";
     record.usuarioResponsavel = state.currentUser.email;
-    await state.repo.upsertDemanda(record);
+    await state.repo.upsertDemanda(prepareDemandForSave(record));
     await state.repo.addLog({
       usuario: state.currentUser.email,
       acao: "Criação Demanda Futura",
@@ -1946,7 +2427,7 @@
   }
 
   function renderIndicators() {
-    const demands = state.db.demandas;
+    const demands = filteredDemandas();
     const stats = dashboardStats(demands);
     const dueSoon = demands
       .filter((item) => {
@@ -1962,8 +2443,20 @@
         toDate(item.vencimento) < toDate(todayText()) && !item.dataRealizada,
     ).length;
     const futureNoOrder = demands.filter((item) => !item.ordem).length;
+    const sapDemands = demands.filter((item) => item.ordem).length;
+    const futureDemands = demands.filter(
+      (item) =>
+        !item.ordem ||
+        normalizeText(item.origem).includes("DEMANDAS FUTURAS") ||
+        normalizeText(item.tipoDemanda).includes("FUTURA"),
+    ).length;
+    const missingCenters = demands.filter(
+      (item) => item.centroTrabalhoCadastrado === false,
+    ).length;
     const cards = [
-      ["Total de Ordens", stats.total, "carteira tratada"],
+      ["Total de Demandas", stats.total, "recorte filtrado"],
+      ["Demandas SAP", sapDemands, "com ordem"],
+      ["Demandas Futuras", futureDemands, "JSON ou sistema"],
       ["Total a Planejar", stats.aPlanejar, "sem data"],
       ["Planejadas", stats.planejadas, "ativas"],
       ["Replanejadas", stats.replanejadas, "com histórico"],
@@ -1973,6 +2466,7 @@
       ["Ordens Vencidas", overdue, "sem realização"],
       ["Próximas do Vencimento", dueSoon.length, "20 dias"],
       ["Futuras sem Ordem", futureNoOrder, "aguardando vínculo"],
+      ["Centros sem Cadastro", missingCenters, "alerta mestre"],
     ];
     $("#indicatorGrid").innerHTML = cards
       .map(
@@ -1982,26 +2476,15 @@
       .join("");
     renderBars(
       $("#lossByCenter"),
-      countBy(
-        demands.filter((item) => item.perda),
-        (item) => item.centroTrabalho,
-      ),
+      countBy(demands, (item) => item.gerencia),
     );
     renderBars(
       $("#lossReasons"),
-      countBy(
-        demands.filter((item) => item.perda),
-        (item) => item.motivoPerda,
-      ),
+      countBy(demands, (item) => item.supervisao),
     );
     renderBars(
       $("#replanRanking"),
-      countBy(
-        demands.filter(
-          (item) => Number(item.quantidadeReplanejamentos || 0) > 0,
-        ),
-        (item) => item.centroTrabalho,
-      ),
+      countBy(demands, (item) => item.centroTrabalho),
     );
     $("#dueSoonList").innerHTML =
       dueSoon
@@ -2047,33 +2530,76 @@
 
   function renderUserAdmin() {
     $("#adminContent").innerHTML = `
-      <div class="admin-grid">
+      <div class="admin-grid admin-grid-wide">
         <form class="admin-form" id="addUserForm">
           <label>Nome<input name="nome" required /></label>
           <label>E-mail<input name="email" type="email" required /></label>
-          <label>Matrícula<input name="matricula" /></label>
+          <label>Matrícula<input name="matricula" required /></label>
           <label>Área<input name="area" /></label>
           <label>Perfil<select name="perfil">${optionsMarkup(Object.keys(PROFILE_RULES), "Visualizador")}</select></label>
-          <button class="button" type="submit">Adicionar Usuário</button>
+          <label>Status<select name="ativo"><option value="true">Ativo</option><option value="false">Inativo</option></select></label>
+          <fieldset class="permission-grid">
+            <legend>Permissões</legend>
+            <label><input name="permissaoPlanejar" type="checkbox" /> Planejar</label>
+            <label><input name="permissaoReplanejar" type="checkbox" /> Replanejar</label>
+            <label><input name="permissaoRealizar" type="checkbox" /> Realizar/perda</label>
+            <label><input name="permissaoConfigurar" type="checkbox" /> Configurar</label>
+            <label><input name="permissaoExportar" type="checkbox" checked /> Exportar</label>
+            <label><input name="permissaoCargaLote" type="checkbox" /> Carga em lote</label>
+          </fieldset>
+          <button class="button" type="submit">Salvar Usuario</button>
         </form>
-        <div class="admin-list">
-          ${state.db.usuarios
-            .map(
-              (user) => `
-              <div class="admin-list-item">
-                <div><strong>${escapeHtml(user.nome)}</strong><div class="muted">${escapeHtml(user.email)} | ${escapeHtml(user.perfil)} | ${user.ativo ? "Ativo" : "Inativo"}</div></div>
-              </div>
-            `,
-            )
-            .join("")}
+        <div class="admin-list table-scroll admin-list-scroll">
+          <table class="data-table admin-table">
+            <thead>
+              <tr><th>Nome</th><th>E-mail</th><th>Matrícula</th><th>Área</th><th>Perfil</th><th>Status</th><th>Permissões</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+              ${state.db.usuarios
+                .map(
+                  (user) => `
+                <tr>
+                  <td>${escapeHtml(user.nome)}</td>
+                  <td>${escapeHtml(user.email)}</td>
+                  <td>${escapeHtml(user.matricula || "-")}</td>
+                  <td>${escapeHtml(user.area || "-")}</td>
+                  <td>${escapeHtml(user.perfil)}</td>
+                  <td>${user.ativo ? "Ativo" : "Inativo"}</td>
+                  <td>${[
+                    user.permissaoPlanejar && "planejar",
+                    user.permissaoReplanejar && "replanejar",
+                    user.permissaoRealizar && "realizar",
+                    user.permissaoConfigurar && "configurar",
+                    user.permissaoExportar && "exportar",
+                    user.permissaoCargaLote && "lote",
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}</td>
+                  <td><button class="button secondary" type="button" data-edit-user="${escapeHtml(user.email)}">Editar</button></td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
         </div>
       </div>
     `;
+    $("#addUserForm").perfil.addEventListener("change", (event) => {
+      applyProfilePermissionDefaults(event.currentTarget.form);
+    });
+    applyProfilePermissionDefaults($("#addUserForm"));
     $("#addUserForm").addEventListener("submit", async (event) => {
       event.preventDefault();
-      await state.repo.addUser(
-        Object.fromEntries(new FormData(event.currentTarget).entries()),
-      );
+      const form = event.currentTarget;
+      const payload = Object.fromEntries(new FormData(form).entries());
+      payload.permissaoPlanejar = form.permissaoPlanejar.checked;
+      payload.permissaoReplanejar = form.permissaoReplanejar.checked;
+      payload.permissaoRealizar = form.permissaoRealizar.checked;
+      payload.permissaoConfigurar = form.permissaoConfigurar.checked;
+      payload.permissaoExportar = form.permissaoExportar.checked;
+      payload.permissaoCargaLote = form.permissaoCargaLote.checked;
+      await state.repo.addUser(payload);
       await state.repo.addLog({
         usuario: state.currentUser.email,
         acao: "Cadastro Usuário",
@@ -2084,6 +2610,37 @@
       await refreshAll();
       showToast("Usuário cadastrado.", "success");
     });
+    $("#adminContent").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-edit-user]");
+      if (!button) return;
+      const user = state.db.usuarios.find(
+        (item) => item.email === button.dataset.editUser,
+      );
+      if (!user) return;
+      const form = $("#addUserForm");
+      form.nome.value = user.nome || "";
+      form.email.value = user.email || "";
+      form.matricula.value = user.matricula || "";
+      form.area.value = user.area || "";
+      form.perfil.value = user.perfil || "Visualizador";
+      form.ativo.value = user.ativo ? "true" : "false";
+      form.permissaoPlanejar.checked = user.permissaoPlanejar;
+      form.permissaoReplanejar.checked = user.permissaoReplanejar;
+      form.permissaoRealizar.checked = user.permissaoRealizar;
+      form.permissaoConfigurar.checked = user.permissaoConfigurar;
+      form.permissaoExportar.checked = user.permissaoExportar;
+      form.permissaoCargaLote.checked = user.permissaoCargaLote;
+    });
+  }
+
+  function applyProfilePermissionDefaults(form) {
+    const defaults = profileDefaults(form.perfil.value);
+    form.permissaoPlanejar.checked = defaults.planejar;
+    form.permissaoReplanejar.checked = defaults.replanejar;
+    form.permissaoRealizar.checked = defaults.realizar;
+    form.permissaoConfigurar.checked = defaults.configurar;
+    form.permissaoExportar.checked = defaults.exportar;
+    form.permissaoCargaLote.checked = defaults.cargaLote;
   }
 
   function renderConfigAdmin(group) {
@@ -2109,7 +2666,7 @@
     const parents = configItems(config.parentGroup);
     const children = configItems(config.childGroup);
     $("#adminContent").innerHTML = `
-      <div class="admin-grid">
+      <div class="admin-grid admin-grid-wide">
         <div class="admin-form-stack">
           <form class="admin-form" id="addConfigForm">
             <label>Novo ${config.parent}<input name="value" required /></label>
@@ -2121,7 +2678,7 @@
             <button class="button secondary" type="submit">Adicionar ${config.child}</button>
           </form>
         </div>
-        <div class="admin-list">
+        <div class="admin-list admin-list-scroll">
           ${parents
             .map((parent) => {
               const childList = children.filter(
@@ -2178,9 +2735,10 @@
 
   function renderCentrosTrabalhoAdmin() {
     const centros = state.db.centrosTrabalho || [];
+    const centrosNaoCadastrados = missingCentrosTrabalho();
 
     $("#adminContent").innerHTML = `
-    <div class="admin-grid">
+    <div class="admin-grid admin-grid-wide">
       <form class="admin-form" id="centroTrabalhoForm">
         <label>
           Centro de Trabalho
@@ -2250,7 +2808,28 @@
         </button>
       </form>
 
-      <div class="admin-list">
+      <div class="admin-list admin-list-scroll">
+        ${
+          centrosNaoCadastrados.length
+            ? `
+              <section class="missing-centers">
+                <strong>Centros encontrados no JSON sem cadastro mestre</strong>
+                <div class="missing-center-list">
+                  ${centrosNaoCadastrados
+                    .slice(0, 60)
+                    .map(
+                      (item) => `
+                        <button class="button secondary" type="button" data-new-centro="${escapeHtml(item.centro)}">
+                          ${escapeHtml(item.centro)} (${item.total})
+                        </button>
+                      `,
+                    )
+                    .join("")}
+                </div>
+              </section>
+            `
+            : ""
+        }
         ${
           centros.length
             ? centros
@@ -2276,7 +2855,7 @@
                       <button
                         class="button secondary"
                         type="button"
-                        data-edit-centro="${escapeHtml(item.centroTrabalho || "")}"
+                        data-edit-centro="${escapeHtml(item.centroTrabalhoChave || normalizeCentroTrabalho(item.centroTrabalho))}"
                       >
                         Editar
                       </button>
@@ -2316,10 +2895,22 @@
 
     $("#adminContent").addEventListener("click", (event) => {
       const button = event.target.closest("[data-edit-centro]");
-      if (!button) return;
+      const newButton = event.target.closest("[data-new-centro]");
+      if (!button && !newButton) return;
+
+      if (newButton) {
+        const form = $("#centroTrabalhoForm");
+        form.reset();
+        form.centroTrabalho.value = newButton.dataset.newCentro || "";
+        form.ativo.value = "true";
+        form.gerencia.focus();
+        return;
+      }
 
       const centro = centros.find(
-        (item) => item.centroTrabalho === button.dataset.editCentro,
+        (item) =>
+          (item.centroTrabalhoChave || normalizeCentroTrabalho(item.centroTrabalho)) ===
+          button.dataset.editCentro,
       );
 
       if (!centro) return;
@@ -2341,10 +2932,32 @@
     });
   }
 
+  function missingCentrosTrabalho() {
+    const counts = new Map();
+    (state.db.demandas || []).forEach((item) => {
+      if (item.centroTrabalhoCadastrado !== false) return;
+      const centro = item.centroTrabalho || "";
+      if (!centro) return;
+      counts.set(centro, (counts.get(centro) || 0) + 1);
+    });
+    return Array.from(counts, ([centro, total]) => ({ centro, total })).sort(
+      (a, b) => b.total - a.total || a.centro.localeCompare(b.centro),
+    );
+  }
+
   function renderParameterAdmin() {
     const params = state.db.parametros || {};
+    if (!state.db.parametrosDisponiveis) {
+      $("#adminContent").innerHTML = `
+        <div class="empty-detail">
+          <strong>Parametros ainda nao migrados</strong>
+          <span>A tabela parametros_sistema nao existe no Supabase atual. A aba fica somente informativa para evitar gravacao falsa.</span>
+        </div>
+      `;
+      return;
+    }
     $("#adminContent").innerHTML = `
-      <form class="admin-form" id="parameterForm" style="max-width: 680px;">
+      <form class="admin-form admin-parameter-form" id="parameterForm">
         <label>Competência atual<input name="currentCompetencia" value="${escapeHtml(params.currentCompetencia || "")}" /></label>
         <label>Tolerância padrão antes (dias)<input name="defaultToleranceBeforeDays" type="number" value="${escapeHtml(params.defaultToleranceBeforeDays || 3)}" /></label>
         <label>Tolerância padrão depois (dias)<input name="defaultToleranceAfterDays" type="number" value="${escapeHtml(params.defaultToleranceAfterDays || 5)}" /></label>
@@ -2395,10 +3008,16 @@
       "ID_Demanda_Controle",
       "Ordem SAP",
       "Descrição",
+      "Origem",
+      "Gerencia",
+      "Supervisao",
       "Vencimento",
       "Competência",
       "Tipo OM",
       "Centro Trabalho",
+      "Cadastro Centro",
+      "Planejador OM",
+      "Programador",
       "Local Instalação",
       "Prioridade",
       "Status Operacional",
@@ -2408,15 +3027,22 @@
       "Data Realizada",
       "Perda",
       "Motivo Perda",
+      "Ultima Atualizacao",
     ];
     const body = rows.map((item) => [
       item.id,
       item.ordem,
       item.descricao,
+      item.origem,
+      item.gerencia,
+      item.supervisao,
       item.vencimento,
       item.competencia,
       item.tipoOM,
       item.centroTrabalho,
+      item.centroTrabalhoStatus,
+      item.planejadorOM,
+      item.programador,
       item.localInstalacao,
       item.prioridade,
       primaryStatusOf(item),
@@ -2426,6 +3052,7 @@
       item.dataRealizada,
       item.perda ? "Sim" : "Não",
       item.motivoPerda,
+      item.dataUltimaAtualizacao,
     ]);
     downloadFile(
       `carteira-eletrovia-${todayText()}.csv`,
@@ -2488,6 +3115,9 @@
   }
 
   function bindEvents() {
+    $("#loginForm").addEventListener("submit", handleLogin);
+    $("#logoutButton").addEventListener("click", logout);
+
     $("#collapseSidebar").addEventListener("click", () => {
       document.body.classList.toggle("sidebar-collapsed");
     });
@@ -2525,22 +3155,46 @@
       });
     });
 
-    $$("[data-filter]").forEach((field) => {
-      field.addEventListener("change", () => {
+    $(".filter-panel").addEventListener("change", (event) => {
+      if (
+        !event.target.matches("[data-filter]") &&
+        !event.target.matches("[data-multi-option]")
+      )
+        return;
+      state.page = 1;
+      collectFilters();
+      buildFilterOptions();
+      renderCarteira();
+    });
+    $(".filter-panel").addEventListener("input", (event) => {
+      if (event.target.matches("[data-multi-search]")) {
+        const query = normalizeText(event.target.value);
+        $$(".multi-option", event.target.closest(".multi-menu")).forEach(
+          (option) => {
+            option.classList.toggle(
+              "hidden",
+              query && !normalizeText(option.textContent).includes(query),
+            );
+          },
+        );
+        return;
+      }
+      if (event.target.id === "quickSearch") {
         state.page = 1;
         renderCarteira();
-      });
-    });
-    $("#quickSearch").addEventListener("input", () => {
-      state.page = 1;
-      renderCarteira();
+      }
     });
     $("#clearFilters").addEventListener("click", () => {
       $$("[data-filter]").forEach((field) => {
         field.value = "";
       });
+      $$("[data-multi-option]").forEach((field) => {
+        field.checked = false;
+      });
       $("#quickSearch").value = "";
       state.page = 1;
+      collectFilters();
+      buildFilterOptions();
       renderCarteira();
     });
     $("#toggleAdvancedFilters").addEventListener("click", () => {
@@ -2586,11 +3240,11 @@
     $("#refreshData").addEventListener("click", async () => {
       await state.repo.reset();
       await refreshAll();
-      showToast("Dados de demonstração recarregados.", "success");
+      showToast("Dados atualizados do Supabase e JSON.", "success");
     });
     $("#validateBatch").addEventListener("click", validateBatchFile);
     $("#clearBatch").addEventListener("click", () => {
-      state.batch = { rows: [], valid: [], warnings: [], errors: [] };
+      state.batch = { rows: [], valid: [], warnings: [], errors: [], fileName: "" };
       $("#batchFile").value = "";
       renderBatch();
     });
@@ -2638,6 +3292,7 @@
     state.pageSize = Number(state.db.parametros?.pageSizeDefault || 12);
     hydrateStaticUi();
     bindEvents();
+    renderLoginState();
     renderCurrentView();
   }
 

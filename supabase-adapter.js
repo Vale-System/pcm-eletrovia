@@ -23,6 +23,7 @@
     cargasLoteItens: "cargas_lote_itens",
     evidencias: "evidencias",
     centrosTrabalho: "cadastro_centros_trabalho",
+    parametros: "parametros_sistema",
   };
 
   function normalizeText(value) {
@@ -48,6 +49,54 @@
   function cleanDateTime(value) {
     if (!value) return null;
     return new Date(value).toISOString();
+  }
+
+  function excelSerialToDate(value) {
+    const serial = Number(value);
+    if (!Number.isFinite(serial) || serial < 20000 || serial > 80000)
+      return null;
+    return new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+  }
+
+  function normalizeCompetencia(value) {
+    if (value === null || value === undefined || value === "") return "";
+    if (typeof value === "number" && Number.isFinite(value)) {
+      const date = excelSerialToDate(value);
+      return date ? date.toISOString().slice(0, 7) : "";
+    }
+    const text = String(value).trim();
+    if (!text) return "";
+    if (/^\d{4}-\d{2}$/.test(text)) return text;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text.slice(0, 7);
+    if (/^\d{6}$/.test(text) && text.startsWith("20")) {
+      return `${text.slice(0, 4)}-${text.slice(4, 6)}`;
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
+      const [, month, year] = text.split("/");
+      return `${year}-${month}`;
+    }
+    if (/^\d{5}$/.test(text)) {
+      const date = excelSerialToDate(Number(text));
+      return date ? date.toISOString().slice(0, 7) : "";
+    }
+    return text;
+  }
+
+  function normalizePrioridade(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return "Nao informado";
+    const normalized = normalizeText(text);
+    if (/^1($|[^0-9])/.test(normalized) || normalized.includes("ALTO"))
+      return "Alto";
+    if (
+      /^2($|[^0-9])/.test(normalized) ||
+      normalized.includes("MEDIO") ||
+      normalized.includes("MEDIA")
+    )
+      return "Medio";
+    if (/^3($|[^0-9])/.test(normalized) || normalized.includes("BAIXO"))
+      return "Baixo";
+    return text;
   }
 
   function stableDemandId(record) {
@@ -138,7 +187,28 @@
     return rows;
   }
 
+  async function selectAllOptional(table, query = "select=*") {
+    try {
+      return await selectAll(table, query);
+    } catch (error) {
+      if (String(error.message || "").includes("PGRST205")) return [];
+      throw error;
+    }
+  }
+
   async function insert(table, payload) {
+    return request(table, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async function insertMany(table, payload) {
+    if (!payload.length) return [];
     return request(table, {
       method: "POST",
       headers: {
@@ -170,9 +240,9 @@
       centroTrabalho: row.centro_trabalho || "",
       localInstalacao: row.local_instalacao || "",
       vencimento: cleanDate(row.vencimento) || "",
-      competencia: row.competencia || "",
+      competencia: normalizeCompetencia(row.competencia),
       tipoOM: row.tipo_om || "",
-      prioridade: row.prioridade || "",
+      prioridade: normalizePrioridade(row.prioridade),
       statusSistema: row.status_sistema || "",
       statusUsuario: row.status_usuario || "",
       toleranciaMin: cleanDate(row.tolerancia_min) || "",
@@ -210,9 +280,9 @@
       centro_trabalho: record.centroTrabalho || "",
       local_instalacao: record.localInstalacao || "",
       vencimento: cleanDate(record.vencimento),
-      competencia: record.competencia || "",
+      competencia: normalizeCompetencia(record.competencia),
       tipo_om: record.tipoOM || "",
-      prioridade: record.prioridade || "",
+      prioridade: normalizePrioridade(record.prioridade),
       status_sistema: record.statusSistema || "",
       status_usuario: record.statusUsuario || "",
       tolerancia_min: cleanDate(record.toleranciaMin),
@@ -367,6 +437,7 @@
         historicoRealizadoPerdas,
         logs,
         centrosTrabalho,
+        parametros,
       ] = await Promise.all([
         selectAll(TABLES.controle, "select=*&ativo=eq.true"),
         selectAll(TABLES.usuarios, "select=*&ativo=eq.true"),
@@ -401,9 +472,15 @@
         selectAll(TABLES.logs, "select=*&order=data_hora.desc"),
         selectAll(
           TABLES.centrosTrabalho,
-          "select=*&ativo=eq.true&order=centro_trabalho.asc",
+          "select=*&order=centro_trabalho.asc",
         ),
+        selectAllOptional(TABLES.parametros, "select=*&ativo=eq.true"),
       ]);
+
+      const parametrosMap = parametros.reduce((acc, item) => {
+        acc[item.chave] = item.valor ?? item.valor_texto ?? "";
+        return acc;
+      }, {});
 
       return {
         demandas: demandas.map(mapControleToDemand),
@@ -433,7 +510,8 @@
             ativo: item.ativo !== false,
           })),
         },
-        parametros: {},
+        parametros: parametrosMap,
+        parametrosDisponiveis: parametros.length > 0,
         historicoPlanejamento: historicoPlanejamento.map(
           mapHistoricoPlanejamento,
         ),
@@ -631,6 +709,54 @@
 
     async addUser(user) {
       const perfil = user.perfil || user.perfil_acesso || "Visualizador";
+      const defaults = {
+        Administrador: {
+          planejar: true,
+          replanejar: true,
+          realizar: true,
+          configurar: true,
+          exportar: true,
+          cargaLote: true,
+        },
+        Editor: {
+          planejar: true,
+          replanejar: true,
+          realizar: true,
+          configurar: false,
+          exportar: true,
+          cargaLote: true,
+        },
+        Planejador: {
+          planejar: true,
+          replanejar: true,
+          realizar: false,
+          configurar: false,
+          exportar: true,
+          cargaLote: true,
+        },
+        Gestor: {
+          planejar: false,
+          replanejar: false,
+          realizar: false,
+          configurar: false,
+          exportar: true,
+          cargaLote: false,
+        },
+        Visualizador: {
+          planejar: false,
+          replanejar: false,
+          realizar: false,
+          configurar: false,
+          exportar: true,
+          cargaLote: false,
+        },
+      }[perfil] || {};
+      const boolValue = (value, fallback) =>
+        value === true || value === "on" || value === "true"
+          ? true
+          : value === false || value === "false"
+            ? false
+            : fallback;
 
       const payload = {
         nome: user.nome || "",
@@ -638,25 +764,19 @@
         matricula: user.matricula || "",
         area: user.area || "",
         perfil_acesso: perfil,
-        ativo: true,
-        permissao_planejar: ["Administrador", "Editor", "Planejador"].includes(
-          perfil,
+        ativo: user.ativo === false || user.ativo === "false" ? false : true,
+        permissao_planejar: boolValue(user.permissaoPlanejar, defaults.planejar),
+        permissao_replanejar: boolValue(
+          user.permissaoReplanejar,
+          defaults.replanejar,
         ),
-        permissao_replanejar: [
-          "Administrador",
-          "Editor",
-          "Planejador",
-        ].includes(perfil),
-        permissao_realizar: ["Administrador", "Editor", "Planejador"].includes(
-          perfil,
+        permissao_realizar: boolValue(user.permissaoRealizar, defaults.realizar),
+        permissao_configurar: boolValue(
+          user.permissaoConfigurar,
+          defaults.configurar,
         ),
-        permissao_configurar: perfil === "Administrador",
-        permissao_exportar: true,
-        permissao_carga_lote: [
-          "Administrador",
-          "Editor",
-          "Planejador",
-        ].includes(perfil),
+        permissao_exportar: boolValue(user.permissaoExportar, defaults.exportar),
+        permissao_carga_lote: boolValue(user.permissaoCargaLote, defaults.cargaLote),
       };
 
       const saved = await upsert(TABLES.usuarios, payload, "email");
@@ -664,17 +784,41 @@
     }
 
     async updateParameters(parameters) {
-      await this.addLog({
-        acao: "PARAMETROS_NAO_MIGRADOS",
-        usuario: "",
-        lista: "PARAMETROS",
-        referencia: "updateParameters",
-        detalhe: JSON.stringify(parameters),
-        modulo: "CONFIGURACOES",
-        nivel: "AVISO",
-      });
+      const payload = Object.entries(parameters).map(([chave, valor]) => ({
+        chave,
+        valor: String(valor ?? ""),
+        ativo: true,
+        updated_at: new Date().toISOString(),
+      }));
+      const saved = await upsert(TABLES.parametros, payload, "chave");
+      return Array.isArray(saved) ? saved : parameters;
+    }
 
-      return parameters;
+    async createBatchRun(summary) {
+      const payload = {
+        nome_arquivo: summary.nomeArquivo || "",
+        usuario: summary.usuario || "",
+        usuario_email: summary.usuario || "",
+        total_linhas: Number(summary.totalLinhas || 0),
+        linhas_validas: Number(summary.linhasValidas || 0),
+        linhas_com_erro: Number(summary.linhasComErro || 0),
+        status: summary.status || "PROCESSADO",
+        updated_at: new Date().toISOString(),
+      };
+      const saved = await insert(TABLES.cargasLote, payload);
+      return Array.isArray(saved) ? saved[0] : saved;
+    }
+
+    async addBatchItems(batchId, items) {
+      const payload = items.map((item) => ({
+        lote_id: batchId,
+        linha: Number(item.line || item.linha || 0),
+        status: item.status || "",
+        mensagem_validacao: item.message || item.mensagem || "",
+        id_demanda_controle: item.record?.id || item.idDemandaControle || "",
+        ordem_sap: item.record?.ordem ? String(item.record.ordem) : "",
+      }));
+      return insertMany(TABLES.cargasLoteItens, payload);
     }
 
     async getCurrentUserIdentity() {
@@ -711,6 +855,7 @@
         observacao: record.observacao || "",
         ativo: record.ativo !== false,
 
+        created_by: record.usuario || "",
         updated_by: record.usuario || "",
       };
 
@@ -731,6 +876,8 @@
     slugify: previous.slugify || slugify,
     stableDemandId: previous.stableDemandId || stableDemandId,
     normalizeText: previous.normalizeText || normalizeText,
+    normalizeCompetencia: previous.normalizeCompetencia || normalizeCompetencia,
+    normalizePrioridade: previous.normalizePrioridade || normalizePrioridade,
     createRepository() {
       return new SupabaseRepository();
     },

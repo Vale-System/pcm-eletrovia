@@ -22,6 +22,7 @@
     cargasLote: "cargas_lote",
     cargasLoteItens: "cargas_lote_itens",
     evidencias: "evidencias",
+    centrosTrabalho: "cadastro_centros_trabalho",
   };
 
   function normalizeText(value) {
@@ -302,6 +303,33 @@
     };
   }
 
+  function normalizeCentroTrabalho(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .trim();
+  }
+
+  function mapCentroTrabalho(row) {
+    return {
+      id: row.id,
+      centroTrabalho: row.centro_trabalho || "",
+      centroTrabalhoChave: row.centro_trabalho_chave || "",
+      gerencia: row.gerencia || "",
+      supervisao: row.supervisao || "",
+      planejadorOM: row.planejador_om || "",
+      planejadorOMEmail: row.planejador_om_email || "",
+      planejadorOMMatricula: row.planejador_om_matricula || "",
+      programador: row.programador || "",
+      programadorEmail: row.programador_email || "",
+      programadorMatricula: row.programador_matricula || "",
+      area: row.area || "",
+      observacao: row.observacao || "",
+      ativo: row.ativo !== false,
+    };
+  }
+
   function mapLog(row) {
     return {
       id: row.id,
@@ -338,6 +366,7 @@
         historicoReplanejamento,
         historicoRealizadoPerdas,
         logs,
+        centrosTrabalho,
       ] = await Promise.all([
         selectAll(TABLES.controle, "select=*&ativo=eq.true"),
         selectAll(TABLES.usuarios, "select=*&ativo=eq.true"),
@@ -370,11 +399,16 @@
           "select=*&order=data_hora_registro.desc",
         ),
         selectAll(TABLES.logs, "select=*&order=data_hora.desc"),
+        selectAll(
+          TABLES.centrosTrabalho,
+          "select=*&ativo=eq.true&order=centro_trabalho.asc",
+        ),
       ]);
 
       return {
         demandas: demandas.map(mapControleToDemand),
         usuarios: usuarios.map(mapUser),
+        centrosTrabalho: centrosTrabalho.map(mapCentroTrabalho),
         configuracoes: {
           motivos: motivos.map((item) => ({
             id: item.chave,
@@ -651,6 +685,42 @@
         email,
         nome: email || "Usuário",
       };
+    }
+    async upsertCentroTrabalho(record) {
+      const centroTrabalho = String(record.centroTrabalho || "").trim();
+
+      if (!centroTrabalho) {
+        throw new Error("Centro de trabalho é obrigatório.");
+      }
+
+      const payload = {
+        centro_trabalho: centroTrabalho,
+        centro_trabalho_chave: normalizeCentroTrabalho(centroTrabalho),
+        gerencia: record.gerencia || "",
+        supervisao: record.supervisao || "",
+
+        planejador_om: record.planejadorOM || "",
+        planejador_om_email: record.planejadorOMEmail || "",
+        planejador_om_matricula: record.planejadorOMMatricula || "",
+
+        programador: record.programador || "",
+        programador_email: record.programadorEmail || "",
+        programador_matricula: record.programadorMatricula || "",
+
+        area: record.area || "",
+        observacao: record.observacao || "",
+        ativo: record.ativo !== false,
+
+        updated_by: record.usuario || "",
+      };
+
+      const saved = await upsert(
+        TABLES.centrosTrabalho,
+        payload,
+        "centro_trabalho_chave",
+      );
+
+      return saved?.[0] ? mapCentroTrabalho(saved[0]) : record;
     }
   }
 

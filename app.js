@@ -553,18 +553,63 @@
       origem: delta.origem || baseDemand.origem || "SAP BO",
     };
   }
+  function normalizeCentroTrabalho(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .trim();
+  }
+
+  function enrichDemandWithCentroTrabalho(demanda, mapaCentros) {
+    const chaveCentro = normalizeCentroTrabalho(demanda.centroTrabalho);
+    const cadastro = mapaCentros.get(chaveCentro);
+
+    if (!cadastro) {
+      return demanda;
+    }
+
+    return {
+      ...demanda,
+
+      // Se a base SAP já vier com gerência/supervisão, você pode escolher manter ou sobrescrever.
+      // Aqui estou sobrescrevendo pelo Supabase, porque ele vira a fonte oficial.
+      gerencia: cadastro.gerencia || demanda.gerencia || "",
+      supervisao: cadastro.supervisao || demanda.supervisao || "",
+
+      planejadorOM: cadastro.planejadorOM || "",
+      planejadorOMEmail: cadastro.planejadorOMEmail || "",
+      planejadorOMMatricula: cadastro.planejadorOMMatricula || "",
+
+      programador: cadastro.programador || "",
+      programadorEmail: cadastro.programadorEmail || "",
+      programadorMatricula: cadastro.programadorMatricula || "",
+
+      centroTrabalhoCadastrado: true,
+    };
+  }
 
   async function loadDatabase() {
     const base = await loadBaseFromJson();
     const supabaseData = await state.repo.getAll();
+    const mapaCentrosTrabalho = new Map(
+      (supabaseData.centrosTrabalho || []).map((item) => [
+        normalizeCentroTrabalho(item.centroTrabalho),
+        item,
+      ]),
+    );
+
+    const baseEnriquecida = base.map((demanda) =>
+      enrichDemandWithCentroTrabalho(demanda, mapaCentrosTrabalho),
+    );
 
     const deltasById = new Map(
       (supabaseData.demandas || []).map((item) => [item.id, item]),
     );
 
-    const baseIds = new Set(base.map((item) => item.id));
+    const baseIds = new Set(baseEnriquecida.map((item) => item.id));
 
-    const mergedBase = base.map((item) =>
+    const mergedBase = baseEnriquecida.map((item) =>
       mergeDemandWithSupabase(item, deltasById.get(item.id)),
     );
 
@@ -575,6 +620,7 @@
     state.db = {
       demandas: [...demandasSomenteSupabase, ...mergedBase],
       usuarios: supabaseData.usuarios || [],
+      centrosTrabalho: supabaseData.centrosTrabalho || [],
       configuracoes: supabaseData.configuracoes || {},
       parametros: supabaseData.parametros || {},
       historicoPlanejamento: supabaseData.historicoPlanejamento || [],
@@ -1994,6 +2040,7 @@
       ),
     );
     if (state.adminTab === "usuarios") renderUserAdmin();
+    else if (state.adminTab === "centrosTrabalho") renderCentrosTrabalhoAdmin();
     else if (state.adminTab === "parametros") renderParameterAdmin();
     else renderConfigAdmin(state.adminTab);
   }
@@ -2126,6 +2173,171 @@
       });
       await refreshAll();
       showToast("Subgrupo cadastrado.", "success");
+    });
+  }
+
+  function renderCentrosTrabalhoAdmin() {
+    const centros = state.db.centrosTrabalho || [];
+
+    $("#adminContent").innerHTML = `
+    <div class="admin-grid">
+      <form class="admin-form" id="centroTrabalhoForm">
+        <label>
+          Centro de Trabalho
+          <input name="centroTrabalho" required placeholder="Ex.: EVT-PCM-01" />
+        </label>
+
+        <label>
+          Gerência
+          <input name="gerencia" required placeholder="Ex.: Gerência Eletrovia" />
+        </label>
+
+        <label>
+          Supervisão
+          <input name="supervisao" required placeholder="Ex.: Supervisão PCM Eletrovia" />
+        </label>
+
+        <label>
+          Planejador de OM
+          <input name="planejadorOM" placeholder="Nome do planejador de OM" />
+        </label>
+
+        <label>
+          E-mail Planejador OM
+          <input name="planejadorOMEmail" type="email" placeholder="planejador@vale.com" />
+        </label>
+
+        <label>
+          Matrícula Planejador OM
+          <input name="planejadorOMMatricula" placeholder="000000" />
+        </label>
+
+        <label>
+          Programador
+          <input name="programador" placeholder="Nome do programador" />
+        </label>
+
+        <label>
+          E-mail Programador
+          <input name="programadorEmail" type="email" placeholder="programador@vale.com" />
+        </label>
+
+        <label>
+          Matrícula Programador
+          <input name="programadorMatricula" placeholder="000000" />
+        </label>
+
+        <label>
+          Área
+          <input name="area" placeholder="Ex.: PCM Eletrovia" />
+        </label>
+
+        <label class="span-2">
+          Observação
+          <textarea name="observacao" rows="3"></textarea>
+        </label>
+
+        <label>
+          Ativo
+          <select name="ativo">
+            <option value="true" selected>Sim</option>
+            <option value="false">Não</option>
+          </select>
+        </label>
+
+        <button class="button" type="submit">
+          Salvar Centro de Trabalho
+        </button>
+      </form>
+
+      <div class="admin-list">
+        ${
+          centros.length
+            ? centros
+                .map(
+                  (item) => `
+                    <div class="admin-list-item">
+                      <div>
+                        <strong>${escapeHtml(item.centroTrabalho || "-")}</strong>
+                        <div class="muted">
+                          ${escapeHtml(item.gerencia || "-")}
+                          |
+                          ${escapeHtml(item.supervisao || "-")}
+                        </div>
+                        <div class="muted">
+                          Planejador OM: ${escapeHtml(item.planejadorOM || "-")}
+                          |
+                          Programador: ${escapeHtml(item.programador || "-")}
+                        </div>
+                        <div class="muted">
+                          ${item.ativo !== false ? "Ativo" : "Inativo"}
+                        </div>
+                      </div>
+                      <button
+                        class="button secondary"
+                        type="button"
+                        data-edit-centro="${escapeHtml(item.centroTrabalho || "")}"
+                      >
+                        Editar
+                      </button>
+                    </div>
+                  `,
+                )
+                .join("")
+            : '<div class="empty-detail"><strong>Nenhum centro de trabalho cadastrado</strong><span>Cadastre o primeiro centro para enriquecer a carteira.</span></div>'
+        }
+      </div>
+    </div>
+  `;
+
+    $("#centroTrabalhoForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const form = new FormData(event.currentTarget);
+      const record = Object.fromEntries(form.entries());
+
+      record.ativo = record.ativo === "true";
+      record.usuario = state.currentUser.email;
+
+      await state.repo.upsertCentroTrabalho(record);
+
+      await state.repo.addLog({
+        usuario: state.currentUser.email,
+        acao: "Cadastro Centro de Trabalho",
+        lista: "cadastro_centros_trabalho",
+        referencia: record.centroTrabalho,
+        detalhe: `${record.gerencia || "-"} | ${record.supervisao || "-"}`,
+        modulo: "CONFIGURACOES",
+      });
+
+      await refreshAll();
+      showToast("Centro de trabalho salvo com sucesso.", "success");
+    });
+
+    $("#adminContent").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-edit-centro]");
+      if (!button) return;
+
+      const centro = centros.find(
+        (item) => item.centroTrabalho === button.dataset.editCentro,
+      );
+
+      if (!centro) return;
+
+      const form = $("#centroTrabalhoForm");
+
+      form.centroTrabalho.value = centro.centroTrabalho || "";
+      form.gerencia.value = centro.gerencia || "";
+      form.supervisao.value = centro.supervisao || "";
+      form.planejadorOM.value = centro.planejadorOM || "";
+      form.planejadorOMEmail.value = centro.planejadorOMEmail || "";
+      form.planejadorOMMatricula.value = centro.planejadorOMMatricula || "";
+      form.programador.value = centro.programador || "";
+      form.programadorEmail.value = centro.programadorEmail || "";
+      form.programadorMatricula.value = centro.programadorMatricula || "";
+      form.area.value = centro.area || "";
+      form.observacao.value = centro.observacao || "";
+      form.ativo.value = centro.ativo !== false ? "true" : "false";
     });
   }
 

@@ -808,24 +808,38 @@
         summary.lote_id ||
         `LOTE-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
+      const now = new Date().toISOString();
+
       const payload = {
         lote_id: loteId,
-        nome_arquivo: summary.nomeArquivo || summary.nome_arquivo || "",
+        nome_arquivo:
+          summary.nomeArquivo || summary.nome_arquivo || "arquivo_sem_nome",
+        tipo_carga:
+          summary.tipoCarga || summary.tipo_carga || "ATUALIZACAO_DEMANDAS",
+
         usuario: summary.usuario || "",
-        usuario_email: summary.usuario || "",
+        usuario_email:
+          summary.usuarioEmail ||
+          summary.usuario_email ||
+          summary.usuario ||
+          "",
+
+        data_upload: now,
+        status: summary.status || "PROCESSADO",
+
         total_linhas: Number(summary.totalLinhas || summary.total_linhas || 0),
         linhas_validas: Number(
           summary.linhasValidas || summary.linhas_validas || 0,
         ),
-        linhas_alerta: Number(
-          summary.linhasAlerta || summary.linhas_alerta || 0,
-        ),
         linhas_com_erro: Number(
           summary.linhasComErro || summary.linhas_com_erro || 0,
         ),
-        status: summary.status || "PROCESSADO",
-        data_hora: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        linhas_processadas: Number(
+          summary.linhasProcessadas || summary.linhas_processadas || 0,
+        ),
+
+        detalhe_erro: summary.detalheErro || summary.detalhe_erro || "",
+        updated_at: now,
       };
 
       const saved = await insert(TABLES.cargasLote, payload);
@@ -835,15 +849,26 @@
     async addBatchItems(loteId, items) {
       if (!loteId || !items?.length) return [];
 
+      const now = new Date().toISOString();
+
       const payload = items.map((item) => ({
         lote_id: loteId,
         linha: Number(item.line || item.linha || 0),
+
+        id_demanda_controle:
+          item.record?.id ||
+          item.record?.id_demanda_controle ||
+          item.idDemandaControle ||
+          "",
+
+        ordem_sap: item.record?.ordem ? String(item.record.ordem) : "",
+
+        acao: item.acao || "VALIDACAO",
         status: item.status || "",
         mensagem_validacao: item.message || item.mensagem || "",
-        id_demanda_controle: item.record?.id || item.idDemandaControle || "",
-        ordem_sap: item.record?.ordem ? String(item.record.ordem) : "",
+
         payload_original: item.record || {},
-        created_at: new Date().toISOString(),
+        created_at: now,
       }));
 
       return insertMany(TABLES.cargasLoteItens, payload);

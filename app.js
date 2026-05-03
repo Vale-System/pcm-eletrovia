@@ -2039,6 +2039,24 @@
     state.batch = { ...state.batch, rows, valid, warnings, errors };
   }
 
+  function buildBatchPartialUpdate(record) {
+    const ignoredKeys = new Set(["id", "ordem", "origem"]);
+
+    const partial = {};
+
+    Object.entries(record || {}).forEach(([key, value]) => {
+      if (ignoredKeys.has(key)) return;
+
+      if (value === null || value === undefined) return;
+
+      if (typeof value === "string" && value.trim() === "") return;
+
+      partial[key] = value;
+    });
+
+    return partial;
+  }
+
   function findDemandForBatch(record) {
     if (record.id) {
       const byId = state.db.demandas.find((item) => item.id === record.id);
@@ -2112,34 +2130,66 @@
       return;
     }
 
-    const records = candidates.map((item) => {
-      const existing = findDemandForBatch(item.record);
-      return prepareDemandForSave({
-        ...existing,
-        ...item.record,
-        ordem: existing?.ordem || item.record.ordem || "",
-        id: existing.id,
-        usuarioResponsavel:
-          item.record.usuarioResponsavel || state.currentUser.email,
-      });
-    });
+    const records = candidates
+      .map((item) => {
+        const existing = findDemandForBatch(item.record);
+
+        if (!existing) return null;
+
+        const partial = buildBatchPartialUpdate(item.record);
+
+        return prepareDemandForSave({
+          ...existing,
+          ...partial,
+
+          id: existing.id,
+          ordem: existing.ordem || item.record.ordem || "",
+
+          origem: existing.origem || item.record.origem || "Carga em Lote",
+
+          usuarioResponsavel:
+            partial.usuarioResponsavel ||
+            existing.usuarioResponsavel ||
+            state.currentUser.email,
+        });
+      })
+      .filter(Boolean);
 
     await state.repo.bulkUpsertDemandas(records);
     const batchRun = await state.repo.createBatchRun?.({
       nomeArquivo: state.batch.fileName || "arquivo_sem_nome",
-      usuario: state.currentUser.email,
+      tipoCarga: "ATUALIZACAO_DEMANDAS",
+      usuario: state.currentUser?.nome || state.currentUser?.email || "",
+      usuarioEmail: state.currentUser?.email || "",
       totalLinhas: state.batch.rows.length,
-      linhasValidas: candidates.length,
+      linhasValidas: state.batch.valid.length,
+      linhasAlerta: state.batch.warnings.length,
       linhasComErro: state.batch.errors.length,
+      linhasProcessadas: records.length,
       status: state.batch.errors.length ? "PROCESSADO_COM_ERRO" : "PROCESSADO",
+      detalheErro: state.batch.errors.length
+        ? `${state.batch.errors.length} linhas com erro de validação.`
+        : "",
     });
     const loteId = batchRun?.lote_id || batchRun?.id;
 
     if (loteId) {
       const auditItems = [
-        ...state.batch.valid.map((item) => ({ ...item, status: "VALIDO" })),
-        ...state.batch.warnings.map((item) => ({ ...item, status: "ALERTA" })),
-        ...state.batch.errors.map((item) => ({ ...item, status: "ERRO" })),
+        ...state.batch.valid.map((item) => ({
+          ...item,
+          status: "VALIDO",
+          acao: "UPSERT_DEMANDA",
+        })),
+        ...state.batch.warnings.map((item) => ({
+          ...item,
+          status: "ALERTA",
+          acao: "UPSERT_DEMANDA_COM_ALERTA",
+        })),
+        ...state.batch.errors.map((item) => ({
+          ...item,
+          status: "ERRO",
+          acao: "VALIDACAO_ERRO",
+        })),
       ];
 
       await state.repo.addBatchItems?.(loteId, auditItems);

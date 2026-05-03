@@ -2272,12 +2272,12 @@
     const tipo = normalizeText(item.tipoDemanda);
 
     return (
-      !item.ordem ||
       origem.includes("DEMANDAS FUTURAS") ||
       origem.includes("DEMANDA ANTECIPADA") ||
       tipo.includes("FUTURA") ||
       tipo.includes("SISTEMATICA") ||
-      tipo.includes("SISTEMÁTICA")
+      tipo.includes("SISTEMÁTICA") ||
+      !item.ordem
     );
   }
 
@@ -2295,15 +2295,17 @@
     $("#futureDemandList").innerHTML =
       visibleFutures
         .map((item) => {
+          const possuiOM = Boolean(String(item.ordem || "").trim());
+
           return `
-          <article class="future-card">
+          <article class="future-card" data-future-card="${escapeHtml(item.id)}">
             <header>
               <div>
                 <h3>${escapeHtml(item.descricao || "-")}</h3>
                 <span class="muted">
                   ${escapeHtml(item.id)}
                   |
-                  ${escapeHtml(item.ordem ? `OM ${item.ordem}` : "Sem OM SAP")}
+                  ${possuiOM ? `OM ${escapeHtml(item.ordem)}` : "Sem OM SAP"}
                   |
                   ${escapeHtml(item.centroTrabalho || "-")}
                   |
@@ -2334,10 +2336,14 @@
               </div>
             </div>
 
-            <div class="suggestion-list">
-              <span class="muted">
-                Sugestões automáticas desativadas na abertura para evitar travamento.
-              </span>
+            <div class="suggestion-list" id="suggestions-${escapeHtml(item.id)}">
+              ${
+                possuiOM
+                  ? `<span class="muted">Esta demanda já possui OM SAP vinculada. Sugestão não necessária.</span>`
+                  : `<button class="button secondary editor-only" type="button" data-load-suggestions="${escapeHtml(item.id)}">
+                      Ver sugestões de vínculo
+                    </button>`
+              }
             </div>
           </article>
         `;
@@ -2347,6 +2353,64 @@
 
     applyPermissions();
   }
+
+  function renderFutureSuggestions(futureId) {
+    const future = demandById(futureId);
+    const container = $(`#suggestions-${CSS.escape(futureId)}`);
+
+    if (!future || !container) return;
+
+    if (future.ordem) {
+      container.innerHTML =
+        '<span class="muted">Esta demanda já possui OM SAP vinculada. Sugestão não necessária.</span>';
+      return;
+    }
+
+    container.innerHTML = '<span class="muted">Calculando sugestões...</span>';
+
+    setTimeout(() => {
+      const suggestions = linkSuggestions(future).slice(0, 5);
+
+      container.innerHTML = suggestions.length
+        ? suggestions
+            .map(
+              (suggestion) => `
+                <div class="suggestion-item">
+                  <div>
+                    <strong>
+                      ${escapeHtml(suggestion.target.ordem)}
+                      |
+                      ${escapeHtml(suggestion.target.descricao || "-")}
+                    </strong>
+                    <div class="muted">
+                      ${suggestion.score}% de similaridade
+                      |
+                      ${escapeHtml(suggestion.target.centroTrabalho || "-")}
+                      |
+                      ${escapeHtml(suggestion.target.localInstalacao || "-")}
+                      |
+                      ${escapeHtml(suggestion.target.competencia || "-")}
+                    </div>
+                  </div>
+
+                  <button
+                    class="button editor-only"
+                    data-link-future="${escapeHtml(future.id)}"
+                    data-link-target="${escapeHtml(suggestion.target.id)}"
+                    type="button"
+                  >
+                    Vincular
+                  </button>
+                </div>
+              `,
+            )
+            .join("")
+        : '<span class="muted">Nenhuma sugestão encontrada para esta demanda.</span>';
+
+      applyPermissions();
+    }, 50);
+  }
+
   function tokenOverlap(a, b) {
     const left = new Set(
       normalizeText(a)
@@ -2367,6 +2431,7 @@
   }
 
   function linkSuggestions(future) {
+    if (future.ordem) return [];
     return state.db.demandas
       .filter((item) => item.ordem && item.id !== future.id)
       .map((target) => {
@@ -3312,9 +3377,21 @@
     $("#downloadTemplate").addEventListener("click", downloadTemplate);
     $("#futureDemandForm").addEventListener("submit", createFutureDemand);
     $("#futureDemandList").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-link-future]");
-      if (button)
-        linkFutureDemand(button.dataset.linkFuture, button.dataset.linkTarget);
+      const suggestionButton = event.target.closest("[data-load-suggestions]");
+
+      if (suggestionButton) {
+        renderFutureSuggestions(suggestionButton.dataset.loadSuggestions);
+        return;
+      }
+
+      const linkButton = event.target.closest("[data-link-future]");
+
+      if (linkButton) {
+        linkFutureDemand(
+          linkButton.dataset.linkFuture,
+          linkButton.dataset.linkTarget,
+        );
+      }
     });
     $("#adminTabs").addEventListener("click", (event) => {
       const button = event.target.closest("[data-admin-tab]");

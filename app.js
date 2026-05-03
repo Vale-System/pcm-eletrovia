@@ -344,9 +344,7 @@
     return rows.map((row) => row.map(escapeCell).join(";")).join("\n");
   }
 
-  async function loadBaseFromJson() {
-    const baseUrl = "./base/base_ordens.json";
-
+  async function fetchJsonArray(baseUrl, label) {
     const response = await fetch(`${baseUrl}?v=${Date.now()}`, {
       method: "GET",
       cache: "no-store",
@@ -356,66 +354,163 @@
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Erro ao carregar base_ordens.json do GitHub: ${response.status}`,
-      );
+      throw new Error(`Erro ao carregar ${label}: ${response.status}`);
     }
 
     const data = await response.json();
 
     if (!Array.isArray(data)) {
-      throw new Error("base_ordens.json precisa ser um array JSON.");
+      throw new Error(`${label} precisa ser um array JSON.`);
     }
 
-    return data.map((item) => {
-      const ordem = String(item.OrdemSAP || "").trim();
+    return data;
+  }
 
-      return {
-        id:
-          item.ID_Demanda_Controle ||
-          (ordem
-            ? `DEM-SAP-${ordem}`
-            : global.CCEData.stableDemandId({
-                ordem: "",
-                descricao: item.Descricao || "",
-                centroTrabalho: item.CentroTrabalho || "",
-                localInstalacao: item.LocalInstalacao || "",
-                competencia: item.Competencia || "",
-                vencimento: item.Vencimento || "",
-                origem: "SAP BO",
-              })),
+  function mapBaseItemToDemand(item, origemPadrao) {
+    const ordem = String(
+      item.OrdemSAP || item.Ordem || item.ordem_sap || item.ordem || "",
+    ).trim();
 
-        ordem,
-        tipoOM: item.TipoOM || "",
-        descricao: item.Descricao || "",
-        gerencia: item.Gerencia || "",
-        supervisao: item.Supervisao || "",
-        centroTrabalho: item.CentroTrabalho || "",
-        localInstalacao: item.LocalInstalacao || "",
-        statusSistema: item.StatusSistema || "",
-        statusUsuario: item.StatusUsuario || "",
-        competencia: item.Competencia || "",
-        dataRealizada: item.DataRealizada || "",
-        vencimento: item.Vencimento || "",
-        prioridade: item.Prioridade || "",
-        toleranciaMin: item.ToleranciaMin || "",
-        toleranciaMax: item.ToleranciaMax || "",
+    const idDemanda =
+      item.ID_Demanda_Controle ||
+      item.id_demanda_controle ||
+      item.IdDemandaControle ||
+      item.id ||
+      (ordem
+        ? `DEM-SAP-${ordem}`
+        : global.CCEData.stableDemandId({
+            ordem: "",
+            descricao: item.Descricao || item.descricao || "",
+            centroTrabalho: item.CentroTrabalho || item.centro_trabalho || "",
+            localInstalacao:
+              item.LocalInstalacao || item.local_instalacao || "",
+            competencia: item.Competencia || item.competencia || "",
+            vencimento: item.Vencimento || item.vencimento || "",
+            origem: origemPadrao,
+          }));
 
-        dataPlanejada: "",
-        dataReplanejadaAtual: "",
-        perda: false,
-        motivoPerda: "",
-        justificativaPerda: "",
-        comentario: "",
-        usuarioResponsavel: "",
-        dataUltimaAtualizacao: "",
-        origem: item.Origem || "SAP BO",
-        quantidadeReplanejamentos: 0,
-        frequencia: "",
-        observacao: "",
-        vinculadaEm: "",
-      };
+    return {
+      id: String(idDemanda).trim(),
+
+      ordem,
+      tipoDemanda:
+        item.TipoDemanda ||
+        item.tipo_demanda ||
+        (origemPadrao.includes("Futuras") ? "Futura" : ""),
+
+      tipoOM: item.TipoOM || item.tipo_om || "",
+      descricao: item.Descricao || item.descricao || "",
+      gerencia: item.Gerencia || item.gerencia || "",
+      supervisao: item.Supervisao || item.supervisao || "",
+      centroTrabalho: item.CentroTrabalho || item.centro_trabalho || "",
+      localInstalacao: item.LocalInstalacao || item.local_instalacao || "",
+
+      statusSistema: item.StatusSistema || item.status_sistema || "",
+      statusUsuario: item.StatusUsuario || item.status_usuario || "",
+
+      competencia: item.Competencia || item.competencia || "",
+      dataRealizada: item.DataRealizada || item.data_realizada || "",
+      vencimento: item.Vencimento || item.vencimento || "",
+
+      prioridade: item.Prioridade || item.prioridade || "",
+      toleranciaMin: item.ToleranciaMin || item.tolerancia_min || "",
+      toleranciaMax: item.ToleranciaMax || item.tolerancia_max || "",
+
+      dataPlanejada: item.DataPlanejada || item.data_planejada || "",
+      dataReplanejadaAtual:
+        item.DataReplanejada ||
+        item.DataReplanejadaAtual ||
+        item.data_replanejada ||
+        "",
+
+      perda: item.Perda === true || item.Perda === "Sim" || item.perda === true,
+      motivoPerda: item.MotivoPerda || item.motivo_perda || "",
+      justificativaPerda:
+        item.JustificativaPerda || item.justificativa_perda || "",
+
+      comentario: item.Comentario || item.comentario || "",
+      usuarioResponsavel:
+        item.UsuarioResponsavel || item.usuario_responsavel || "",
+
+      dataUltimaAtualizacao:
+        item.DataUltimaAtualizacao || item.data_ultima_atualizacao || "",
+
+      origem: item.Origem || item.origem || origemPadrao,
+
+      quantidadeReplanejamentos:
+        Number(
+          item.QuantidadeReplanejamentos ||
+            item.quantidade_replanejamentos ||
+            0,
+        ) || 0,
+
+      frequencia: item.Frequencia || item.frequencia || "",
+      observacao: item.Observacao || item.observacao || "",
+      vinculadaEm: item.VinculadaEm || item.vinculada_em || "",
+    };
+  }
+
+  function mergeBaseOrdensEFuturas(baseOrdens, baseFuturas) {
+    const mapa = new Map();
+
+    // Primeiro entram as futuras.
+    // Depois as ordens entram por cima, caso tenham o mesmo ID.
+    baseFuturas.forEach((item) => {
+      if (!item.id) return;
+      mapa.set(item.id, item);
     });
+
+    baseOrdens.forEach((item) => {
+      if (!item.id) return;
+
+      const futura = mapa.get(item.id);
+
+      if (!futura) {
+        mapa.set(item.id, item);
+        return;
+      }
+
+      // Se existir nas duas, a ordem SAP/base ordens vence,
+      // mas preserva campos úteis da futura quando a ordem estiver vazia.
+      mapa.set(item.id, {
+        ...futura,
+        ...item,
+
+        id: item.id,
+        ordem: item.ordem || futura.ordem || "",
+
+        tipoDemanda: item.tipoDemanda || futura.tipoDemanda || "",
+        frequencia: item.frequencia || futura.frequencia || "",
+        observacao: item.observacao || futura.observacao || "",
+        vinculadaEm: item.vinculadaEm || futura.vinculadaEm || "",
+
+        origem: item.origem || "SAP BO - Ordens",
+      });
+    });
+
+    return Array.from(mapa.values());
+  }
+
+  async function loadBaseFromJson() {
+    const [baseOrdensRaw, baseFuturasRaw] = await Promise.all([
+      fetchJsonArray("./base/base_ordens.json", "base_ordens.json"),
+      fetchJsonArray("./base/base_futuras.json", "base_futuras.json").catch(
+        (error) => {
+          console.warn("base_futuras.json não carregada:", error);
+          return [];
+        },
+      ),
+    ]);
+
+    const baseOrdens = baseOrdensRaw.map((item) =>
+      mapBaseItemToDemand(item, "SAP BO - Ordens"),
+    );
+
+    const baseFuturas = baseFuturasRaw.map((item) =>
+      mapBaseItemToDemand(item, "SAP BO - Demandas Futuras"),
+    );
+
+    return mergeBaseOrdensEFuturas(baseOrdens, baseFuturas);
   }
   function mergeDemandWithSupabase(baseDemand, delta) {
     if (!delta) return baseDemand;

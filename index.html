@@ -4,15 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Central de Controle Eletrovia</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-12" />
+    <link rel="stylesheet" href="styles.css?v=20260503-13" />
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
     ></script>
-    <script defer src="data/sample-data.js?v=20260503-12"></script>
-    <script defer src="sharepoint-adapter.js?v=20260503-12"></script>
-    <script defer src="supabase-adapter.js?v=20260503-12"></script>
-    <script defer src="app.js?v=20260503-12"></script>
+    <script defer src="data/sample-data.js?v=20260503-13"></script>
+    <script defer src="sharepoint-adapter.js?v=20260503-13"></script>
+    <script defer src="supabase-adapter.js?v=20260503-13"></script>
+    <script defer src="app.js?v=20260503-13"></script>
   </head>
   <body>
     <section
@@ -145,6 +145,10 @@
               aria-hidden="true"
             ></span>
             <span class="nav-text">Demandas Futuras</span>
+          </button>
+          <button class="nav-item" data-view="qualidade" type="button">
+            <span class="nav-icon" data-icon="shield" aria-hidden="true"></span>
+            <span class="nav-text">Qualidade da Base</span>
           </button>
           <button class="nav-item" data-view="indicadores" type="button">
             <span class="nav-icon" data-icon="chart" aria-hidden="true"></span>
@@ -427,7 +431,7 @@
                 <input id="batchFile" type="file" accept=".csv,.xlsx,.xls" />
                 <strong>Selecionar arquivo Excel ou CSV</strong>
                 <span
-                  >Colunas aceitas: ordem, descrição, centro trabalho, local
+                  >Colunas aceitas: ID_Demanda_Controle, ordem, descrição, centro trabalho, local
                   instalação, competência, data planejada, motivo,
                   justificativa, perda, motivo perda, justificativa perda e
                   comentário.</span
@@ -564,6 +568,85 @@
               <div id="futureDemandList" class="future-demand-list"></div>
             </section>
           </div>
+        </section>
+
+        <section
+          class="view"
+          id="view-qualidade"
+          data-view-panel="qualidade"
+        >
+          <div class="page-heading">
+            <div>
+              <h2>Qualidade da Base</h2>
+            </div>
+          </div>
+
+          <div class="quality-cards" id="qualityCards"></div>
+
+          <div class="quality-filters">
+            <label>
+              Tipo de problema
+              <select id="qualityTypeFilter">
+                <option value="">Todos</option>
+                <option value="om-duplicada">OM duplicada</option>
+                <option value="id-duplicado-sem-om">ID duplicado sem OM</option>
+                <option value="sem-chave">Demanda sem chave</option>
+                <option value="centro-sem-cadastro">Centro sem cadastro</option>
+              </select>
+            </label>
+            <label class="search-field">
+              Busca
+              <input
+                id="qualitySearch"
+                type="search"
+                placeholder="Chave, descrição, origem ou centro"
+              />
+            </label>
+            <button class="button secondary" id="qualityClearFilters" type="button">
+              Limpar
+            </button>
+          </div>
+
+          <section class="quality-layout">
+            <div class="table-panel">
+              <div class="panel-toolbar">
+                <div>
+                  <h2>Problemas encontrados</h2>
+                  <span id="qualityCount">0 problemas encontrados</span>
+                </div>
+              </div>
+              <div class="table-scroll quality-table-scroll">
+                <table class="data-table quality-table">
+                  <thead>
+                    <tr>
+                      <th>Tipo de problema</th>
+                      <th>Chave</th>
+                      <th>Quantidade</th>
+                      <th>Origem</th>
+                      <th>Descrição principal</th>
+                      <th>Centro de trabalho</th>
+                      <th>Gerência</th>
+                      <th>Supervisão</th>
+                      <th>Competência</th>
+                      <th>Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="qualityIssueTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <aside
+              class="detail-panel quality-detail-panel"
+              id="qualityDetailPanel"
+              aria-live="polite"
+            >
+              <div class="empty-detail">
+                <strong>Selecione um problema</strong>
+                <span>Os registros envolvidos aparecem aqui.</span>
+              </div>
+            </aside>
+          </section>
         </section>
 
         <section

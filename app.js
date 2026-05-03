@@ -89,6 +89,29 @@
     { key: "mesVencimento", label: "Mes Vencimento", special: "mesVencimento" },
   ];
 
+  const QUALITY_TYPE_DEFINITIONS = [
+    {
+      key: "om-duplicada",
+      label: "OM duplicada",
+      cardLabel: "OMs duplicadas",
+    },
+    {
+      key: "id-duplicado-sem-om",
+      label: "ID duplicado sem OM",
+      cardLabel: "IDs duplicados sem OM",
+    },
+    {
+      key: "sem-chave",
+      label: "Demanda sem chave",
+      cardLabel: "Demandas sem chave",
+    },
+    {
+      key: "centro-sem-cadastro",
+      label: "Centro sem cadastro",
+      cardLabel: "Centros sem cadastro",
+    },
+  ];
+
   const state = {
     repo: null,
     db: null,
@@ -116,6 +139,11 @@
       errors: [],
       fileName: "",
     },
+    quality: {
+      typeFilter: "",
+      search: "",
+      selectedIssueId: "",
+    },
     actionContext: null,
   };
 
@@ -133,6 +161,8 @@
         '<circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle>',
       calendar:
         '<path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path>',
+      shield:
+        '<path d="M12 2 5 5v6c0 5 3.3 9.4 7 11 3.7-1.6 7-6 7-11V5Z"></path><path d="m9 12 2 2 4-5"></path>',
       chart:
         '<path d="M4 19V5"></path><path d="M4 19h17"></path><path d="m8 16 3-5 4 3 4-8"></path>',
       settings:
@@ -611,11 +641,16 @@
       item.OrdemSAP || item.Ordem || item.ordem_sap || item.ordem || "",
     ).trim();
 
-    const idDemanda =
+    const idDemandaInformado = String(
       item.ID_Demanda_Controle ||
-      item.id_demanda_controle ||
-      item.IdDemandaControle ||
-      item.id ||
+        item.id_demanda_controle ||
+        item.IdDemandaControle ||
+        item.id ||
+        "",
+    ).trim();
+
+    const idDemanda =
+      idDemandaInformado ||
       (ordem
         ? `DEM-SAP-${ordem}`
         : global.CCEData.stableDemandId({
@@ -631,6 +666,7 @@
 
     return {
       id: String(idDemanda).trim(),
+      idDemandaInformado,
 
       ordem,
       tipoDemanda:
@@ -731,7 +767,7 @@
     return Array.from(mapa.values());
   }
 
-  async function loadBaseFromJson() {
+  async function loadBaseSourcesFromJson() {
     const [baseOrdensRaw, baseFuturasRaw] = await Promise.all([
       fetchJsonArray("./base/base_ordens.json", "base_ordens.json"),
       fetchJsonArray("./base/base_futuras.json", "base_futuras.json").catch(
@@ -750,6 +786,11 @@
       mapBaseItemToDemand(item, "SAP BO - Demandas Futuras"),
     );
 
+    return { baseOrdens, baseFuturas };
+  }
+
+  async function loadBaseFromJson() {
+    const { baseOrdens, baseFuturas } = await loadBaseSourcesFromJson();
     return mergeBaseOrdensEFuturas(baseOrdens, baseFuturas);
   }
   function mergeDemandWithSupabase(baseDemand, delta) {
@@ -846,7 +887,11 @@
     const previousSelection = state.selectedDemandId;
     const previousUserEmail =
       state.currentUser?.email || getStoredSessionEmail();
-    const base = await loadBaseFromJson();
+    const baseSources = await loadBaseSourcesFromJson();
+    const base = mergeBaseOrdensEFuturas(
+      baseSources.baseOrdens,
+      baseSources.baseFuturas,
+    );
     const supabaseData = await state.repo.getAll();
     const mapaCentrosTrabalho = new Map(
       (supabaseData.centrosTrabalho || [])
@@ -867,6 +912,14 @@
     );
 
     const baseIds = new Set(baseEnriquecida.map((item) => item.id));
+    const qualitySourceRecords = buildQualitySourceRecords({
+      baseOrdens: baseSources.baseOrdens,
+      baseFuturas: baseSources.baseFuturas,
+      supabaseDemandas: supabaseData.demandas || [],
+      baseIds,
+      deltasById,
+      mapaCentrosTrabalho,
+    });
 
     const mergedBase = baseEnriquecida.map((item) =>
       enrichDemandWithCentroTrabalho(
@@ -885,6 +938,7 @@
 
     state.db = {
       demandas,
+      qualitySourceRecords,
       usuarios: supabaseData.usuarios || [],
       centrosTrabalho: supabaseData.centrosTrabalho || [],
       configuracoes: supabaseData.configuracoes || {},
@@ -914,6 +968,72 @@
         demanda.centroTrabalhoChave ||
         normalizeCentroTrabalho(demanda.centroTrabalho),
     };
+  }
+
+  function decorateQualitySource(record, fonteQualidade, sequencia) {
+    return {
+      ...record,
+      fonteQualidade: fonteQualidade || record.origem || "Sistema",
+      qualidadeSequencia: sequencia,
+      qualidadeIdInformado:
+        record.qualidadeIdInformado || record.idDemandaInformado || "",
+    };
+  }
+
+  function buildQualitySourceRecords({
+    baseOrdens,
+    baseFuturas,
+    supabaseDemandas,
+    baseIds,
+    deltasById,
+    mapaCentrosTrabalho,
+  }) {
+    const baseRecords = [
+      ...baseOrdens.map((item, index) =>
+        decorateQualitySource(item, "SAP BO - Ordens", `ordens-${index + 1}`),
+      ),
+      ...baseFuturas.map((item, index) =>
+        decorateQualitySource(
+          item,
+          "SAP BO - Demandas Futuras",
+          `futuras-${index + 1}`,
+        ),
+      ),
+    ];
+
+    const supabaseOnlyRecords = (supabaseDemandas || [])
+      .filter((item) => !baseIds.has(item.id))
+      .map((item, index) =>
+        decorateQualitySource(
+          {
+            ...item,
+            qualidadeIdInformado: item.id || "",
+          },
+          item.origem || "Supabase",
+          `supabase-${index + 1}`,
+        ),
+      );
+
+    return [...baseRecords, ...supabaseOnlyRecords].map((item) => {
+      const delta =
+        normalizeText(item.fonteQualidade).includes("SUPABASE") ||
+        !deltasById.has(item.id)
+          ? null
+          : deltasById.get(item.id);
+      const merged = mergeDemandWithSupabase(item, delta);
+      return normalizeDemandRecord(
+        enrichDemandWithCentroTrabalho(
+          {
+            ...merged,
+            fonteQualidade: item.fonteQualidade,
+            qualidadeSequencia: item.qualidadeSequencia,
+            qualidadeIdInformado:
+              item.qualidadeIdInformado || item.idDemandaInformado || "",
+          },
+          mapaCentrosTrabalho,
+        ),
+      );
+    });
   }
 
   function getStoredSessionEmail() {
@@ -1308,6 +1428,356 @@
       pendentesPerda: demands.filter((item) => pendingIssuesOf(item).length)
         .length,
     };
+  }
+
+  function qualityTypeLabel(typeKey) {
+    return (
+      QUALITY_TYPE_DEFINITIONS.find((item) => item.key === typeKey)?.label ||
+      typeKey
+    );
+  }
+
+  function qualitySourceLabel(record) {
+    return record.fonteQualidade || record.origem || "Sistema";
+  }
+
+  function qualityExplicitId(record) {
+    const informed = String(
+      record.qualidadeIdInformado || record.idDemandaInformado || "",
+    ).trim();
+    if (informed) return informed;
+    if (normalizeText(qualitySourceLabel(record)).includes("SUPABASE")) {
+      return String(record.id || "").trim();
+    }
+    return "";
+  }
+
+  function addQualityGroup(map, key, record) {
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(record);
+  }
+
+  function joinedDistinct(records, selector, fallback = "-") {
+    const values = uniqueOptions(
+      records.map(selector).map((value) => String(value || "").trim()),
+    );
+    return values.length ? values.join(" | ") : fallback;
+  }
+
+  function firstFilled(records, selector) {
+    return records.map(selector).find((value) => String(value || "").trim());
+  }
+
+  function makeQualityIssue(typeKey, key, records) {
+    return {
+      typeKey,
+      typeLabel: qualityTypeLabel(typeKey),
+      key,
+      quantidade: records.length,
+      records,
+      origem: joinedDistinct(records, qualitySourceLabel),
+      descricao:
+        firstFilled(records, (item) => item.descricao) || "Nao informado",
+      centroTrabalho:
+        firstFilled(records, (item) => item.centroTrabalho) || "-",
+      gerencia: firstFilled(records, (item) => item.gerencia) || "-",
+      supervisao: firstFilled(records, (item) => item.supervisao) || "-",
+      competencia: firstFilled(records, (item) => item.competencia) || "-",
+    };
+  }
+
+  function buildQualityIssues() {
+    const records = state.db?.qualitySourceRecords || state.db?.demandas || [];
+    const omGroups = new Map();
+    const idGroups = new Map();
+    const missingCenterGroups = new Map();
+    const noKeyRecords = [];
+
+    records.forEach((record) => {
+      const ordem = String(record.ordem || "").trim();
+      const id = qualityExplicitId(record);
+
+      if (ordem) {
+        addQualityGroup(omGroups, ordem, record);
+      } else if (id) {
+        addQualityGroup(idGroups, id, record);
+      } else {
+        noKeyRecords.push(record);
+      }
+
+      if (
+        record.centroTrabalhoChave &&
+        record.centroTrabalhoCadastrado === false
+      ) {
+        addQualityGroup(
+          missingCenterGroups,
+          record.centroTrabalhoChave || record.centroTrabalho,
+          record,
+        );
+      }
+    });
+
+    const issues = [];
+
+    omGroups.forEach((group, key) => {
+      if (group.length > 1)
+        issues.push(makeQualityIssue("om-duplicada", key, group));
+    });
+
+    idGroups.forEach((group, key) => {
+      if (group.length > 1)
+        issues.push(makeQualityIssue("id-duplicado-sem-om", key, group));
+    });
+
+    noKeyRecords.forEach((record, index) => {
+      issues.push(
+        makeQualityIssue("sem-chave", `Sem chave ${index + 1}`, [record]),
+      );
+    });
+
+    missingCenterGroups.forEach((group, key) => {
+      issues.push(makeQualityIssue("centro-sem-cadastro", key, group));
+    });
+
+    const order = QUALITY_TYPE_DEFINITIONS.reduce((acc, item, index) => {
+      acc[item.key] = index;
+      return acc;
+    }, {});
+
+    return issues
+      .sort((a, b) => {
+        const typeOrder = order[a.typeKey] - order[b.typeKey];
+        if (typeOrder) return typeOrder;
+        if (b.quantidade !== a.quantidade) return b.quantidade - a.quantidade;
+        return String(a.key).localeCompare(String(b.key), "pt-BR");
+      })
+      .map((issue, index) => ({ ...issue, id: `${issue.typeKey}-${index}` }));
+  }
+
+  function filteredQualityIssues(issues) {
+    const typeFilter = state.quality.typeFilter;
+    const search = normalizeText(state.quality.search);
+
+    return issues.filter((issue) => {
+      if (typeFilter && issue.typeKey !== typeFilter) return false;
+      if (!search) return true;
+      const haystack = normalizeText(
+        [
+          issue.typeLabel,
+          issue.key,
+          issue.origem,
+          issue.descricao,
+          issue.centroTrabalho,
+          issue.gerencia,
+          issue.supervisao,
+          issue.competencia,
+          ...issue.records.flatMap((record) => [
+            record.id,
+            record.ordem,
+            qualityExplicitId(record),
+            record.descricao,
+            record.localInstalacao,
+          ]),
+        ].join(" "),
+      );
+      return haystack.includes(search);
+    });
+  }
+
+  function qualityIssueStats(issues, typeKey) {
+    const scoped = issues.filter((issue) => issue.typeKey === typeKey);
+    return {
+      groups: scoped.length,
+      records: scoped.reduce((sum, issue) => sum + issue.quantidade, 0),
+    };
+  }
+
+  function renderQualityCards(issues) {
+    $("#qualityCards").innerHTML = QUALITY_TYPE_DEFINITIONS.map((definition) => {
+      const stats = qualityIssueStats(issues, definition.key);
+      const note =
+        definition.key === "sem-chave"
+          ? "sem OM e sem ID"
+          : definition.key === "centro-sem-cadastro"
+            ? `${stats.records} demandas`
+            : `${stats.records} registros envolvidos`;
+      const active = state.quality.typeFilter === definition.key;
+      return `
+        <button class="quality-card ${active ? "is-active" : ""}" data-quality-card="${definition.key}" type="button">
+          <span>${escapeHtml(definition.cardLabel)}</span>
+          <strong>${stats.groups}</strong>
+          <small>${escapeHtml(note)}</small>
+        </button>
+      `;
+    }).join("");
+  }
+
+  function recordCompletenessScore(record) {
+    return [
+      record.ordem,
+      qualityExplicitId(record),
+      record.descricao,
+      record.centroTrabalho,
+      record.localInstalacao,
+      record.gerencia,
+      record.supervisao,
+      record.competencia,
+      record.vencimento,
+      record.tipoOM,
+      record.prioridade,
+      record.dataPlanejada,
+      record.dataReplanejadaAtual,
+      record.dataRealizada,
+      record.comentario,
+      record.observacao,
+      record.usuarioResponsavel,
+    ].filter((value) => String(value || "").trim()).length;
+  }
+
+  function recommendedQualityPrimary(records) {
+    const fromOrders = records.find((record) =>
+      normalizeText(qualitySourceLabel(record)).includes("ORDENS"),
+    );
+    if (fromOrders) {
+      return {
+        record: fromOrders,
+        reason: "base_ordens.json com OM existente",
+      };
+    }
+
+    const [mostComplete] = [...records].sort(
+      (a, b) => recordCompletenessScore(b) - recordCompletenessScore(a),
+    );
+    return mostComplete
+      ? { record: mostComplete, reason: "registro com mais campos preenchidos" }
+      : null;
+  }
+
+  function renderQualityDetail(issue) {
+    const panel = $("#qualityDetailPanel");
+    if (!issue) {
+      panel.innerHTML = `
+        <div class="empty-detail">
+          <strong>Selecione um problema</strong>
+          <span>Os registros envolvidos aparecem aqui.</span>
+        </div>
+      `;
+      return;
+    }
+
+    const recommendation = recommendedQualityPrimary(issue.records);
+    const recommendedSequence = recommendation?.record?.qualidadeSequencia;
+    const hiddenRecords = Math.max(0, issue.records.length - 40);
+
+    panel.innerHTML = `
+      <div class="detail-title">
+        <span>${escapeHtml(issue.typeLabel)}</span>
+        <h3>${escapeHtml(issue.key)}</h3>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item"><span>Quantidade</span><strong>${issue.quantidade}</strong></div>
+        <div class="detail-item"><span>Origem</span><strong>${escapeHtml(issue.origem)}</strong></div>
+        <div class="detail-item"><span>Centro</span><strong>${escapeHtml(issue.centroTrabalho)}</strong></div>
+        <div class="detail-item"><span>Competencia</span><strong>${escapeHtml(issue.competencia)}</strong></div>
+      </div>
+      ${
+        recommendation
+          ? `<div class="quality-recommendation"><strong>Principal sugerido</strong><span>${escapeHtml(recommendation.record.id || qualityExplicitId(recommendation.record) || recommendation.record.ordem || "-")} | ${escapeHtml(recommendation.reason)}</span></div>`
+          : ""
+      }
+      <div class="quality-actions">
+        <button class="button secondary" type="button" disabled>Definir principal</button>
+        <button class="button secondary" type="button" disabled>Mesclar</button>
+        <button class="button secondary" type="button" disabled>Salvar ajuste</button>
+      </div>
+      <div class="quality-record-list">
+        ${issue.records
+          .slice(0, 40)
+          .map((record, index) => {
+            const isRecommended =
+              recommendedSequence &&
+              recommendedSequence === record.qualidadeSequencia;
+            return `
+              <article class="quality-record ${isRecommended ? "is-recommended" : ""}">
+                <header>
+                  <strong>Registro ${index + 1}</strong>
+                  ${isRecommended ? statusChip("Principal sugerido") : ""}
+                </header>
+                <div class="detail-grid">
+                  <div class="detail-item"><span>ID</span><strong>${escapeHtml(record.id || "-")}</strong></div>
+                  <div class="detail-item"><span>ID informado</span><strong>${escapeHtml(qualityExplicitId(record) || "-")}</strong></div>
+                  <div class="detail-item"><span>OM</span><strong>${escapeHtml(record.ordem || "-")}</strong></div>
+                  <div class="detail-item"><span>Origem</span><strong>${escapeHtml(qualitySourceLabel(record))}</strong></div>
+                  <div class="detail-item"><span>Descricao</span><strong>${escapeHtml(record.descricao || "-")}</strong></div>
+                  <div class="detail-item"><span>Centro</span><strong>${escapeHtml(record.centroTrabalho || "-")}</strong></div>
+                  <div class="detail-item"><span>Gerencia</span><strong>${escapeHtml(record.gerencia || "-")}</strong></div>
+                  <div class="detail-item"><span>Supervisao</span><strong>${escapeHtml(record.supervisao || "-")}</strong></div>
+                  <div class="detail-item"><span>Competencia</span><strong>${escapeHtml(record.competencia || "-")}</strong></div>
+                  <div class="detail-item"><span>Vencimento</span><strong>${formatDate(record.vencimento)}</strong></div>
+                  <div class="detail-item"><span>Status</span><strong>${statusChip(primaryStatusOf(record))}</strong></div>
+                  <div class="detail-item"><span>Responsavel</span><strong>${escapeHtml(record.usuarioResponsavel || "-")}</strong></div>
+                </div>
+                ${
+                  record.comentario || record.observacao
+                    ? `<div class="quality-note">${escapeHtml([record.comentario, record.observacao].filter(Boolean).join(" | "))}</div>`
+                    : ""
+                }
+              </article>
+            `;
+          })
+          .join("")}
+        ${
+          hiddenRecords
+            ? `<span class="muted">Mais ${hiddenRecords} registros neste grupo.</span>`
+            : ""
+        }
+      </div>
+    `;
+  }
+
+  function renderQuality() {
+    const allIssues = buildQualityIssues();
+    const filtered = filteredQualityIssues(allIssues);
+    const selectedInFilter = filtered.some(
+      (issue) => issue.id === state.quality.selectedIssueId,
+    );
+
+    if (!selectedInFilter) {
+      state.quality.selectedIssueId = filtered[0]?.id || "";
+    }
+
+    $("#qualityTypeFilter").value = state.quality.typeFilter;
+    $("#qualitySearch").value = state.quality.search;
+    $("#qualityCount").textContent = `${filtered.length} problemas encontrados`;
+    renderQualityCards(allIssues);
+
+    const tbody = $("#qualityIssueTableBody");
+    tbody.innerHTML = filtered.length
+      ? filtered
+          .map((issue) => {
+            const selected =
+              issue.id === state.quality.selectedIssueId ? "is-selected" : "";
+            return `
+              <tr class="${selected}" data-quality-issue-id="${escapeHtml(issue.id)}">
+                <td>${statusChip(issue.typeLabel)}</td>
+                <td><strong>${escapeHtml(issue.key)}</strong></td>
+                <td>${issue.quantidade}</td>
+                <td>${escapeHtml(issue.origem)}</td>
+                <td class="description-cell">${escapeHtml(issue.descricao)}</td>
+                <td>${escapeHtml(issue.centroTrabalho)}</td>
+                <td>${escapeHtml(issue.gerencia)}</td>
+                <td>${escapeHtml(issue.supervisao)}</td>
+                <td>${escapeHtml(issue.competencia)}</td>
+                <td><button class="button secondary compact-button" data-quality-issue-id="${escapeHtml(issue.id)}" type="button">Ver detalhes</button></td>
+              </tr>
+            `;
+          })
+          .join("")
+      : '<tr><td colspan="10"><div class="empty-detail"><strong>Nenhum problema no recorte</strong><span>Ajuste os filtros para consultar outros grupos.</span></div></td></tr>';
+
+    renderQualityDetail(
+      filtered.find((issue) => issue.id === state.quality.selectedIssueId),
+    );
   }
 
   function alertItems() {
@@ -1780,6 +2250,7 @@
     if (state.currentView === "carteira") renderCarteira();
     if (state.currentView === "lote") renderBatch();
     if (state.currentView === "futuras") renderFutureDemandas();
+    if (state.currentView === "qualidade") renderQuality();
     if (state.currentView === "indicadores") renderIndicators();
     if (state.currentView === "administracao") renderAdmin();
     if (state.currentView === "logs") renderLogs();
@@ -1925,6 +2396,7 @@
       ORDEM: "ordem",
       ORDEMSAP: "ordem",
       ID: "id",
+      IDDEMANDA: "id",
       IDDEMANDACONTROLE: "id",
       DESCRICAO: "descricao",
       DESCRIO: "descricao",
@@ -3369,6 +3841,7 @@
 
   function downloadTemplate() {
     const header = [
+      "ID_Demanda_Controle",
       "ordem",
       "descricao",
       "centro trabalho",
@@ -3384,6 +3857,7 @@
       "comentario",
     ];
     const example = [
+      "ID-188042-2379636-20260427-409",
       "910123456",
       "Inspeção preventiva em subestação",
       "EVT-ENE-04",
@@ -3581,6 +4055,37 @@
           linkButton.dataset.linkTarget,
         );
       }
+    });
+    $("#qualityTypeFilter").addEventListener("change", (event) => {
+      state.quality.typeFilter = event.target.value;
+      state.quality.selectedIssueId = "";
+      renderQuality();
+    });
+    $("#qualitySearch").addEventListener("input", (event) => {
+      state.quality.search = event.target.value.trim();
+      renderQuality();
+    });
+    $("#qualityClearFilters").addEventListener("click", () => {
+      state.quality.typeFilter = "";
+      state.quality.search = "";
+      state.quality.selectedIssueId = "";
+      renderQuality();
+    });
+    $("#qualityCards").addEventListener("click", (event) => {
+      const card = event.target.closest("[data-quality-card]");
+      if (!card) return;
+      state.quality.typeFilter =
+        state.quality.typeFilter === card.dataset.qualityCard
+          ? ""
+          : card.dataset.qualityCard;
+      state.quality.selectedIssueId = "";
+      renderQuality();
+    });
+    $("#qualityIssueTableBody").addEventListener("click", (event) => {
+      const target = event.target.closest("[data-quality-issue-id]");
+      if (!target) return;
+      state.quality.selectedIssueId = target.dataset.qualityIssueId;
+      renderQuality();
     });
     $("#adminTabs").addEventListener("click", (event) => {
       const button = event.target.closest("[data-admin-tab]");

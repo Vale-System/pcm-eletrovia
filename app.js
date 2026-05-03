@@ -61,17 +61,29 @@
   const FILTER_DEFINITIONS = [
     { key: "gerencia", label: "Gerencia", field: "gerencia" },
     { key: "supervisao", label: "Supervisao", field: "supervisao" },
-    { key: "centroTrabalho", label: "Centro Trabalho", field: "centroTrabalho" },
+    {
+      key: "centroTrabalho",
+      label: "Centro Trabalho",
+      field: "centroTrabalho",
+    },
     { key: "tipoDemanda", label: "Tipo Demanda", field: "tipoDemanda" },
     { key: "origem", label: "Origem", field: "origem" },
     { key: "tipoOM", label: "Tipo OM", field: "tipoOM" },
     { key: "competencia", label: "Competencia", field: "competencia" },
-    { key: "statusOperacional", label: "Status Operacional", special: "status" },
+    {
+      key: "statusOperacional",
+      label: "Status Operacional",
+      special: "status",
+    },
     { key: "prioridade", label: "Prioridade", field: "prioridade" },
     { key: "planejadorOM", label: "Planejador OM", field: "planejadorOM" },
     { key: "programador", label: "Programador", field: "programador" },
     { key: "centroStatus", label: "Cadastro Centro", special: "centroStatus" },
-    { key: "localInstalacao", label: "Local Instalacao", field: "localInstalacao" },
+    {
+      key: "localInstalacao",
+      label: "Local Instalacao",
+      field: "localInstalacao",
+    },
     { key: "statusSistema", label: "Status Sistema", field: "statusSistema" },
     { key: "anoVencimento", label: "Ano Vencimento", special: "anoVencimento" },
     { key: "mesVencimento", label: "Mes Vencimento", special: "mesVencimento" },
@@ -754,7 +766,9 @@
         baseDemand.competencia || delta.competencia,
       ),
       tipoOM: baseDemand.tipoOM || delta.tipoOM,
-      prioridade: normalizePrioridade(baseDemand.prioridade || delta.prioridade),
+      prioridade: normalizePrioridade(
+        baseDemand.prioridade || delta.prioridade,
+      ),
       vencimento: baseDemand.vencimento || delta.vencimento,
 
       dataPlanejada: delta.dataPlanejada || baseDemand.dataPlanejada || "",
@@ -825,14 +839,16 @@
 
   async function loadDatabase() {
     const previousSelection = state.selectedDemandId;
-    const previousUserEmail = state.currentUser?.email || getStoredSessionEmail();
+    const previousUserEmail =
+      state.currentUser?.email || getStoredSessionEmail();
     const base = await loadBaseFromJson();
     const supabaseData = await state.repo.getAll();
     const mapaCentrosTrabalho = new Map(
       (supabaseData.centrosTrabalho || [])
         .filter((item) => item.ativo !== false)
         .map((item) => [
-          item.centroTrabalhoChave || normalizeCentroTrabalho(item.centroTrabalho),
+          item.centroTrabalhoChave ||
+            normalizeCentroTrabalho(item.centroTrabalho),
           item,
         ]),
     );
@@ -877,10 +893,11 @@
 
     setCurrentUserFromEmail(previousUserEmail);
     state.lastDataUpdateAt = latestDataUpdateAt();
-    state.selectedDemandId =
-      demandas.some((item) => item.id === previousSelection)
-        ? previousSelection
-        : demandas[0]?.id || "";
+    state.selectedDemandId = demandas.some(
+      (item) => item.id === previousSelection,
+    )
+      ? previousSelection
+      : demandas[0]?.id || "";
   }
 
   function normalizeDemandRecord(demanda) {
@@ -913,8 +930,7 @@
     state.currentUser =
       state.db.usuarios.find(
         (user) =>
-          user.ativo &&
-          normalizeText(user.email) === normalizeText(email),
+          user.ativo && normalizeText(user.email) === normalizeText(email),
       ) || null;
   }
 
@@ -1011,7 +1027,9 @@
   async function handleLogin(event) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const email = String(form.get("email") || "").trim().toLowerCase();
+    const email = String(form.get("email") || "")
+      .trim()
+      .toLowerCase();
     const matricula = String(form.get("matricula") || "").trim();
     const user = state.db.usuarios.find(
       (item) => normalizeText(item.email) === normalizeText(email),
@@ -1051,7 +1069,10 @@
     state.currentUser = user;
     global.localStorage.setItem(
       "cce.session",
-      JSON.stringify({ email: user.email, createdAt: new Date().toISOString() }),
+      JSON.stringify({
+        email: user.email,
+        createdAt: new Date().toISOString(),
+      }),
     );
     event.currentTarget.reset();
     renderLoginState();
@@ -1211,41 +1232,43 @@
         return false;
     }
 
-      if (filters.perda === "sim" && !item.perda) return false;
-      if (filters.perda === "nao" && item.perda) return false;
-      if (
-        filters.planejado === "sim" &&
-        !item.dataPlanejada &&
-        !item.dataReplanejadaAtual
-      )
-        return false;
-      if (
-        filters.planejado === "nao" &&
-        (item.dataPlanejada || item.dataReplanejadaAtual)
-      )
-        return false;
-      if (filters.realizado === "sim" && !item.dataRealizada) return false;
-      if (filters.realizado === "nao" && item.dataRealizada) return false;
+    if (filters.perda === "sim" && !item.perda) return false;
+    if (filters.perda === "nao" && item.perda) return false;
+    if (
+      filters.planejado === "sim" &&
+      !item.dataPlanejada &&
+      !item.dataReplanejadaAtual
+    )
+      return false;
+    if (
+      filters.planejado === "nao" &&
+      (item.dataPlanejada || item.dataReplanejadaAtual)
+    )
+      return false;
+    if (filters.realizado === "sim" && !item.dataRealizada) return false;
+    if (filters.realizado === "nao" && item.dataRealizada) return false;
 
-      if (search) {
-        const haystack = normalizeText(
-          [
-            item.id,
-            item.ordem,
-            item.descricao,
-            item.centroTrabalho,
-            item.localInstalacao,
-          ].join(" "),
-        );
-        if (!haystack.includes(search)) return false;
-      }
+    if (search) {
+      const haystack = normalizeText(
+        [
+          item.id,
+          item.ordem,
+          item.descricao,
+          item.centroTrabalho,
+          item.localInstalacao,
+        ].join(" "),
+      );
+      if (!haystack.includes(search)) return false;
+    }
 
-      return true;
+    return true;
   }
 
   function filteredDemandas() {
     const filters = collectFilters();
-    return state.db.demandas.filter((item) => demandMatchesFilters(item, filters));
+    return state.db.demandas.filter((item) =>
+      demandMatchesFilters(item, filters),
+    );
   }
 
   function dashboardStats(demands) {
@@ -1722,10 +1745,7 @@
         dataRealizada: demand.dataRealizada,
         perda: demand.perda,
         motivoPerda: demand.motivoPerda,
-        motivoPerdaChave: configKeyByName(
-          "perfisPerda",
-          demand.motivoPerda,
-        ),
+        motivoPerdaChave: configKeyByName("perfisPerda", demand.motivoPerda),
         justificativaPerda: demand.justificativaPerda,
         justificativaPerdaChave: configKeyByName(
           "justificativasPerda",
@@ -2127,7 +2147,13 @@
       modulo: "CARGA_LOTE",
     });
     await refreshAll();
-    state.batch = { rows: [], valid: [], warnings: [], errors: [], fileName: "" };
+    state.batch = {
+      rows: [],
+      valid: [],
+      warnings: [],
+      errors: [],
+      fileName: "",
+    };
     renderBatch();
     showToast(`${records.length} registros salvos.`, "success");
   }
@@ -2241,61 +2267,86 @@
     }
   }
 
-  function renderFutureDemandas() {
-    const futures = state.db.demandas.filter(
-      (item) =>
-        !item.ordem ||
-        normalizeText(item.origem).includes("DEMANDAS FUTURAS") ||
-        normalizeText(item.tipoDemanda).includes("FUTURA") ||
-        normalizeText(item.origem).includes("DEMANDA ANTECIPADA"),
+  function isFutureDemand(item) {
+    const origem = normalizeText(item.origem);
+    const tipo = normalizeText(item.tipoDemanda);
+
+    return (
+      !item.ordem ||
+      origem.includes("DEMANDAS FUTURAS") ||
+      origem.includes("DEMANDA ANTECIPADA") ||
+      tipo.includes("FUTURA") ||
+      tipo.includes("SISTEMATICA") ||
+      tipo.includes("SISTEMÁTICA")
     );
-    $("#futureCount").textContent = `${futures.length} demandas`;
+  }
+
+  function renderFutureDemandas() {
+    const futures = state.db.demandas.filter(isFutureDemand);
+
+    const limit = 100;
+    const visibleFutures = futures.slice(0, limit);
+
+    $("#futureCount").textContent =
+      futures.length > limit
+        ? `${futures.length} demandas | exibindo primeiras ${limit}`
+        : `${futures.length} demandas`;
+
     $("#futureDemandList").innerHTML =
-      futures
+      visibleFutures
         .map((item) => {
-          const suggestions = linkSuggestions(item).slice(0, 3);
           return `
-            <article class="future-card">
-              <header>
-                <div>
-                  <h3>${escapeHtml(item.descricao)}</h3>
-                  <span class="muted">${escapeHtml(item.id)} | ${escapeHtml(item.ordem ? `OM ${item.ordem}` : "Sem OM SAP")} | ${escapeHtml(item.centroTrabalho)} | ${escapeHtml(item.localInstalacao)} | ${escapeHtml(item.competencia)}</span>
-                </div>
-                ${statusChipGroup(statusListOf(item))}
-              </header>
-              <div class="detail-grid" style="margin-top: 10px;">
-                <div class="detail-item"><span>Vencimento</span><strong>${formatDate(item.vencimento)}</strong></div>
-                <div class="detail-item"><span>Frequência</span><strong>${escapeHtml(item.frequencia || "-")}</strong></div>
-                <div class="detail-item"><span>Gerencia</span><strong>${escapeHtml(item.gerencia || "-")}</strong></div>
-                <div class="detail-item"><span>Supervisao</span><strong>${escapeHtml(item.supervisao || "-")}</strong></div>
+          <article class="future-card">
+            <header>
+              <div>
+                <h3>${escapeHtml(item.descricao || "-")}</h3>
+                <span class="muted">
+                  ${escapeHtml(item.id)}
+                  |
+                  ${escapeHtml(item.ordem ? `OM ${item.ordem}` : "Sem OM SAP")}
+                  |
+                  ${escapeHtml(item.centroTrabalho || "-")}
+                  |
+                  ${escapeHtml(item.localInstalacao || "-")}
+                  |
+                  ${escapeHtml(item.competencia || "-")}
+                </span>
               </div>
-              <div class="suggestion-list">
-                ${
-                  suggestions.length
-                    ? suggestions
-                        .map(
-                          (suggestion) => `
-                        <div class="suggestion-item">
-                          <div>
-                            <strong>${escapeHtml(suggestion.target.ordem)} | ${escapeHtml(suggestion.target.descricao)}</strong>
-                            <div class="muted">${suggestion.score}% de similaridade</div>
-                          </div>
-                          <button class="button planner-only" data-link-future="${escapeHtml(item.id)}" data-link-target="${escapeHtml(suggestion.target.id)}" type="button">Vincular</button>
-                        </div>
-                      `,
-                        )
-                        .join("")
-                    : '<span class="muted">Sem sugestão automática no recorte atual.</span>'
-                }
+              ${statusChipGroup(statusListOf(item))}
+            </header>
+
+            <div class="detail-grid" style="margin-top: 10px;">
+              <div class="detail-item">
+                <span>Vencimento</span>
+                <strong>${formatDate(item.vencimento)}</strong>
               </div>
-            </article>
-          `;
+              <div class="detail-item">
+                <span>Frequência</span>
+                <strong>${escapeHtml(item.frequencia || "-")}</strong>
+              </div>
+              <div class="detail-item">
+                <span>Gerência</span>
+                <strong>${escapeHtml(item.gerencia || "-")}</strong>
+              </div>
+              <div class="detail-item">
+                <span>Supervisão</span>
+                <strong>${escapeHtml(item.supervisao || "-")}</strong>
+              </div>
+            </div>
+
+            <div class="suggestion-list">
+              <span class="muted">
+                Sugestões automáticas desativadas na abertura para evitar travamento.
+              </span>
+            </div>
+          </article>
+        `;
         })
         .join("") ||
       '<div class="empty-detail"><strong>Nenhuma demanda futura encontrada</strong><span>Verifique a base_futuras.json ou os registros criados no sistema.</span></div>';
+
     applyPermissions();
   }
-
   function tokenOverlap(a, b) {
     const left = new Set(
       normalizeText(a)
@@ -2910,7 +2961,8 @@
 
       const centro = centros.find(
         (item) =>
-          (item.centroTrabalhoChave || normalizeCentroTrabalho(item.centroTrabalho)) ===
+          (item.centroTrabalhoChave ||
+            normalizeCentroTrabalho(item.centroTrabalho)) ===
           button.dataset.editCentro,
       );
 
@@ -3245,7 +3297,13 @@
     });
     $("#validateBatch").addEventListener("click", validateBatchFile);
     $("#clearBatch").addEventListener("click", () => {
-      state.batch = { rows: [], valid: [], warnings: [], errors: [], fileName: "" };
+      state.batch = {
+        rows: [],
+        valid: [],
+        warnings: [],
+        errors: [],
+        fileName: "",
+      };
       $("#batchFile").value = "";
       renderBatch();
     });

@@ -417,27 +417,92 @@
       };
     });
   }
+  function mergeDemandWithSupabase(baseDemand, delta) {
+    if (!delta) return baseDemand;
+
+    return {
+      ...baseDemand,
+      ...delta,
+
+      id: baseDemand.id || delta.id,
+      ordem: baseDemand.ordem || delta.ordem,
+
+      descricao: baseDemand.descricao || delta.descricao,
+      gerencia: baseDemand.gerencia || delta.gerencia,
+      supervisao: baseDemand.supervisao || delta.supervisao,
+      centroTrabalho: baseDemand.centroTrabalho || delta.centroTrabalho,
+      localInstalacao: baseDemand.localInstalacao || delta.localInstalacao,
+      competencia: baseDemand.competencia || delta.competencia,
+      tipoOM: baseDemand.tipoOM || delta.tipoOM,
+      prioridade: baseDemand.prioridade || delta.prioridade,
+      vencimento: baseDemand.vencimento || delta.vencimento,
+
+      dataPlanejada: delta.dataPlanejada || baseDemand.dataPlanejada || "",
+      dataReplanejadaAtual:
+        delta.dataReplanejadaAtual || baseDemand.dataReplanejadaAtual || "",
+      dataRealizada: delta.dataRealizada || baseDemand.dataRealizada || "",
+
+      perda: delta.perda ?? baseDemand.perda ?? false,
+      motivoPerda: delta.motivoPerda || baseDemand.motivoPerda || "",
+      justificativaPerda:
+        delta.justificativaPerda || baseDemand.justificativaPerda || "",
+      comentario: delta.comentario || baseDemand.comentario || "",
+      usuarioResponsavel:
+        delta.usuarioResponsavel || baseDemand.usuarioResponsavel || "",
+
+      quantidadeReplanejamentos:
+        delta.quantidadeReplanejamentos ??
+        baseDemand.quantidadeReplanejamentos ??
+        0,
+
+      origem: delta.origem || baseDemand.origem || "SAP BO",
+    };
+  }
+
   async function loadDatabase() {
     const base = await loadBaseFromJson();
+    const supabaseData = await state.repo.getAll();
+
+    const deltasById = new Map(
+      (supabaseData.demandas || []).map((item) => [item.id, item]),
+    );
+
+    const baseIds = new Set(base.map((item) => item.id));
+
+    const mergedBase = base.map((item) =>
+      mergeDemandWithSupabase(item, deltasById.get(item.id)),
+    );
+
+    const demandasSomenteSupabase = (supabaseData.demandas || []).filter(
+      (item) => !baseIds.has(item.id),
+    );
 
     state.db = {
-      demandas: base,
-      usuarios: [],
-      configuracoes: {},
-      parametros: {},
-      historicoPlanejamento: [],
-      historicoReplanejamento: [],
-      historicoRealizadoPerdas: [],
-      logs: [],
+      demandas: [...demandasSomenteSupabase, ...mergedBase],
+      usuarios: supabaseData.usuarios || [],
+      configuracoes: supabaseData.configuracoes || {},
+      parametros: supabaseData.parametros || {},
+      historicoPlanejamento: supabaseData.historicoPlanejamento || [],
+      historicoReplanejamento: supabaseData.historicoReplanejamento || [],
+      historicoRealizadoPerdas: supabaseData.historicoRealizadoPerdas || [],
+      logs: supabaseData.logs || [],
     };
 
-    state.currentUser = {
-      nome: "Weslley",
-      email: "weslley.santos@vale.com",
-      perfil: "Administrador",
-    };
+    const params = new URLSearchParams(global.location.search);
+    const emailParam = params.get("user") || "weslley.santos@vale.com";
 
-    state.selectedDemandId = base[0]?.id || "";
+    state.currentUser = state.db.usuarios.find(
+      (user) => normalizeText(user.email) === normalizeText(emailParam),
+    ) ||
+      state.db.usuarios.find((user) => user.perfil === "Administrador") ||
+      state.db.usuarios.find((user) => user.ativo) || {
+        nome: "Weslley",
+        email: "weslley.santos@vale.com",
+        perfil: "Administrador",
+        ativo: true,
+      };
+
+    state.selectedDemandId = state.db.demandas[0]?.id || "";
   }
   function demandById(id) {
     return state.db.demandas.find((item) => item.id === id);

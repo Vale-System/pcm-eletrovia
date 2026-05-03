@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Central de Controle Eletrovia</title>
     <link rel="stylesheet" href="styles.css" />
-    <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+    ></script>
     <script defer src="data/sample-data.js"></script>
     <script defer src="sharepoint-adapter.js"></script>
+    <script defer src="supabase-adapter.js"></script>
     <script defer src="app.js"></script>
   </head>
   <body>
@@ -31,7 +35,11 @@
             <span class="nav-text">Carga em Lote</span>
           </button>
           <button class="nav-item" data-view="futuras" type="button">
-            <span class="nav-icon" data-icon="calendar" aria-hidden="true"></span>
+            <span
+              class="nav-icon"
+              data-icon="calendar"
+              aria-hidden="true"
+            ></span>
             <span class="nav-text">Demandas Futuras</span>
           </button>
           <button class="nav-item" data-view="indicadores" type="button">
@@ -39,7 +47,11 @@
             <span class="nav-text">Indicadores</span>
           </button>
           <button class="nav-item" data-view="administracao" type="button">
-            <span class="nav-icon" data-icon="settings" aria-hidden="true"></span>
+            <span
+              class="nav-icon"
+              data-icon="settings"
+              aria-hidden="true"
+            ></span>
             <span class="nav-text">Administração</span>
           </button>
           <button class="nav-item" data-view="logs" type="button">
@@ -72,7 +84,12 @@
               <span class="pulse" aria-hidden="true"></span>
               <span id="lastSync">Sincronizado agora</span>
             </div>
-            <button class="alert-button" id="alertButton" type="button" aria-label="Alertas operacionais">
+            <button
+              class="alert-button"
+              id="alertButton"
+              type="button"
+              aria-label="Alertas operacionais"
+            >
               <span data-icon="bell" aria-hidden="true"></span>
               <strong id="alertCount">0</strong>
             </button>
@@ -94,7 +111,11 @@
           </div>
         </header>
 
-        <section class="view is-active" id="view-carteira" data-view-panel="carteira">
+        <section
+          class="view is-active"
+          id="view-carteira"
+          data-view-panel="carteira"
+        >
           <div class="filter-panel" aria-label="Filtros da carteira">
             <label>
               Gerência
@@ -114,11 +135,18 @@
             </label>
             <label>
               Status Operacional
-              <select id="filterStatusOperacional" data-filter="statusOperacional"></select>
+              <select
+                id="filterStatusOperacional"
+                data-filter="statusOperacional"
+              ></select>
             </label>
             <label class="search-field">
               Busca rápida
-              <input id="quickSearch" type="search" placeholder="Ordem, ID ou descrição" />
+              <input
+                id="quickSearch"
+                type="search"
+                placeholder="Ordem, ID ou descrição"
+              />
             </label>
             <label class="advanced-filter hidden">
               Local Instalação
@@ -130,7 +158,10 @@
             </label>
             <label class="advanced-filter hidden">
               Status Sistema
-              <select id="filterStatusSistema" data-filter="statusSistema"></select>
+              <select
+                id="filterStatusSistema"
+                data-filter="statusSistema"
+              ></select>
             </label>
             <label class="advanced-filter hidden">
               Ano Vencimento
@@ -165,9 +196,19 @@
               </select>
             </label>
             <div class="filter-actions">
-              <button class="button secondary" id="toggleAdvancedFilters" type="button">Filtros avançados</button>
-              <button class="button secondary" id="clearFilters" type="button">Limpar</button>
-              <button class="button" id="exportCsv" type="button">Exportar CSV</button>
+              <button
+                class="button secondary"
+                id="toggleAdvancedFilters"
+                type="button"
+              >
+                Filtros avançados
+              </button>
+              <button class="button secondary" id="clearFilters" type="button">
+                Limpar
+              </button>
+              <button class="button" id="exportCsv" type="button">
+                Exportar CSV
+              </button>
             </div>
           </div>
 
@@ -189,12 +230,21 @@
                       <option value="48">48</option>
                     </select>
                   </label>
-                  <button class="button admin-only" id="refreshData" type="button">Atualizar</button>
+                  <button
+                    class="button admin-only"
+                    id="refreshData"
+                    type="button"
+                  >
+                    Atualizar
+                  </button>
                 </div>
               </div>
 
               <div class="table-scroll">
-                <table class="data-table portfolio-table" aria-describedby="resultCount">
+                <table
+                  class="data-table portfolio-table"
+                  aria-describedby="resultCount"
+                >
                   <thead>
                     <tr>
                       <th>ID</th>
@@ -221,16 +271,23 @@
               </div>
 
               <div class="pagination">
-                <button class="button secondary" id="prevPage" type="button">Anterior</button>
+                <button class="button secondary" id="prevPage" type="button">
+                  Anterior
+                </button>
                 <span id="pageInfo">Página 1 de 1</span>
-                <button class="button secondary" id="nextPage" type="button">Próxima</button>
+                <button class="button secondary" id="nextPage" type="button">
+                  Próxima
+                </button>
               </div>
             </div>
 
             <aside class="detail-panel" id="detailPanel" aria-live="polite">
               <div class="empty-detail">
                 <strong>Selecione uma demanda</strong>
-                <span>O resumo operacional, histórico e ações permitidas aparecem aqui.</span>
+                <span
+                  >O resumo operacional, histórico e ações permitidas aparecem
+                  aqui.</span
+                >
               </div>
             </aside>
           </section>
@@ -241,7 +298,9 @@
             <div>
               <h2>Carga em Lote</h2>
             </div>
-            <button class="button" id="downloadTemplate" type="button">Baixar Modelo CSV</button>
+            <button class="button" id="downloadTemplate" type="button">
+              Baixar Modelo CSV
+            </button>
           </div>
 
           <div class="batch-layout">
@@ -249,11 +308,20 @@
               <label class="file-drop">
                 <input id="batchFile" type="file" accept=".csv,.xlsx,.xls" />
                 <strong>Selecionar arquivo Excel ou CSV</strong>
-                <span>Colunas aceitas: ordem, descrição, centro trabalho, local instalação, competência, data planejada, motivo, justificativa, perda, motivo perda, justificativa perda e comentário.</span>
+                <span
+                  >Colunas aceitas: ordem, descrição, centro trabalho, local
+                  instalação, competência, data planejada, motivo,
+                  justificativa, perda, motivo perda, justificativa perda e
+                  comentário.</span
+                >
               </label>
               <div class="batch-actions">
-                <button class="button" id="validateBatch" type="button">Validar Arquivo</button>
-                <button class="button secondary" id="clearBatch" type="button">Limpar Validação</button>
+                <button class="button" id="validateBatch" type="button">
+                  Validar Arquivo
+                </button>
+                <button class="button secondary" id="clearBatch" type="button">
+                  Limpar Validação
+                </button>
               </div>
             </section>
 
@@ -265,8 +333,16 @@
                   <input id="confirmWarnings" type="checkbox" />
                   Confirmar registros com alerta
                 </label>
-                <button class="button" id="saveValidBatch" type="button">Salvar Válidos</button>
-                <button class="button danger" id="saveConfirmedBatch" type="button">Salvar Válidos + Alertas</button>
+                <button class="button" id="saveValidBatch" type="button">
+                  Salvar Válidos
+                </button>
+                <button
+                  class="button danger"
+                  id="saveConfirmedBatch"
+                  type="button"
+                >
+                  Salvar Válidos + Alertas
+                </button>
               </div>
             </section>
           </div>
@@ -283,7 +359,11 @@
             <form class="future-form" id="futureDemandForm">
               <label>
                 Descrição
-                <input name="descricao" required placeholder="Ex.: Inspeção preventiva em via energizada" />
+                <input
+                  name="descricao"
+                  required
+                  placeholder="Ex.: Inspeção preventiva em via energizada"
+                />
               </label>
               <label>
                 Tipo de Demanda
@@ -295,11 +375,19 @@
               </label>
               <label>
                 Centro Trabalho
-                <input name="centroTrabalho" required placeholder="EVT-PCM-01" />
+                <input
+                  name="centroTrabalho"
+                  required
+                  placeholder="EVT-PCM-01"
+                />
               </label>
               <label>
                 Local Instalação
-                <input name="localInstalacao" required placeholder="ELV-TR-0001" />
+                <input
+                  name="localInstalacao"
+                  required
+                  placeholder="ELV-TR-0001"
+                />
               </label>
               <label>
                 Competência Prevista
@@ -328,7 +416,9 @@
                 Observação
                 <textarea name="comentario" rows="3"></textarea>
               </label>
-              <button class="button editor-only" type="submit">Criar Demanda Futura</button>
+              <button class="button editor-only" type="submit">
+                Criar Demanda Futura
+              </button>
             </form>
 
             <section class="future-list">
@@ -343,7 +433,11 @@
           </div>
         </section>
 
-        <section class="view" id="view-indicadores" data-view-panel="indicadores">
+        <section
+          class="view"
+          id="view-indicadores"
+          data-view-panel="indicadores"
+        >
           <div class="page-heading">
             <div>
               <h2>Painel de Indicadores</h2>
@@ -378,17 +472,29 @@
           </div>
         </section>
 
-        <section class="view" id="view-administracao" data-view-panel="administracao">
+        <section
+          class="view"
+          id="view-administracao"
+          data-view-panel="administracao"
+        >
           <div class="page-heading">
             <div>
               <h2>Administração</h2>
             </div>
           </div>
           <div class="admin-tabs" id="adminTabs">
-            <button class="is-active" data-admin-tab="usuarios" type="button">Usuários</button>
-            <button data-admin-tab="motivos" type="button">Motivos e Justificativas</button>
-            <button data-admin-tab="perfisPerda" type="button">Perfis e Justificativas de Perda</button>
-            <button data-admin-tab="parametros" type="button">Parâmetros</button>
+            <button class="is-active" data-admin-tab="usuarios" type="button">
+              Usuários
+            </button>
+            <button data-admin-tab="motivos" type="button">
+              Motivos e Justificativas
+            </button>
+            <button data-admin-tab="perfisPerda" type="button">
+              Perfis e Justificativas de Perda
+            </button>
+            <button data-admin-tab="parametros" type="button">
+              Parâmetros
+            </button>
           </div>
           <div id="adminContent" class="admin-content"></div>
         </section>
@@ -398,7 +504,9 @@
             <div>
               <h2>Logs do Sistema</h2>
             </div>
-            <button class="button" id="exportLogs" type="button">Exportar Logs</button>
+            <button class="button" id="exportLogs" type="button">
+              Exportar Logs
+            </button>
           </div>
           <div class="table-panel">
             <div class="table-scroll">
@@ -428,12 +536,23 @@
             <span id="modalDemandId"></span>
             <h2 id="modalTitle">Ação</h2>
           </div>
-          <button class="icon-button" value="cancel" aria-label="Fechar" type="submit">×</button>
+          <button
+            class="icon-button"
+            value="cancel"
+            aria-label="Fechar"
+            type="submit"
+          >
+            ×
+          </button>
         </div>
         <div id="modalBody" class="modal-body"></div>
         <div class="modal-footer">
-          <button class="button secondary" value="cancel" type="submit">Cancelar</button>
-          <button class="button" id="modalSave" value="default" type="button">Salvar</button>
+          <button class="button secondary" value="cancel" type="submit">
+            Cancelar
+          </button>
+          <button class="button" id="modalSave" value="default" type="button">
+            Salvar
+          </button>
         </div>
       </form>
     </dialog>

@@ -4,15 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Central de Controle Eletrovia</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-2" />
+    <link rel="stylesheet" href="styles.css?v=20260503-3" />
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
     ></script>
-    <script defer src="data/sample-data.js?v=20260503-2"></script>
-    <script defer src="sharepoint-adapter.js?v=20260503-2"></script>
-    <script defer src="supabase-adapter.js?v=20260503-2"></script>
-    <script defer src="app.js?v=20260503-2"></script>
+    <script defer src="data/sample-data.js?v=20260503-3"></script>
+    <script defer src="sharepoint-adapter.js?v=20260503-3"></script>
+    <script defer src="supabase-adapter.js?v=20260503-3"></script>
+    <script defer src="app.js?v=20260503-3"></script>
   </head>
   <body>
     <section class="login-screen" id="loginScreen" aria-live="polite">
@@ -133,7 +133,11 @@
               </div>
               <span data-icon="chevron-down" aria-hidden="true"></span>
             </div>
-            <button class="button secondary topbar-logout" id="logoutButton" type="button">
+            <button
+              class="button secondary topbar-logout"
+              id="logoutButton"
+              type="button"
+            >
               Sair
             </button>
             <label class="user-select dev-user-select hidden">
@@ -164,16 +168,46 @@
                 placeholder="Ordem, ID, descrição ou responsável"
               />
             </label>
-            <div class="advanced-filter hidden" data-multi-filter="tipoDemanda"></div>
-            <div class="advanced-filter hidden" data-multi-filter="origem"></div>
-            <div class="advanced-filter hidden" data-multi-filter="prioridade"></div>
-            <div class="advanced-filter hidden" data-multi-filter="planejadorOM"></div>
-            <div class="advanced-filter hidden" data-multi-filter="programador"></div>
-            <div class="advanced-filter hidden" data-multi-filter="centroStatus"></div>
-            <div class="advanced-filter hidden" data-multi-filter="localInstalacao"></div>
-            <div class="advanced-filter hidden" data-multi-filter="statusSistema"></div>
-            <div class="advanced-filter hidden" data-multi-filter="anoVencimento"></div>
-            <div class="advanced-filter hidden" data-multi-filter="mesVencimento"></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="tipoDemanda"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="origem"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="prioridade"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="planejadorOM"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="programador"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="centroStatus"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="localInstalacao"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="statusSistema"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="anoVencimento"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="mesVencimento"
+            ></div>
             <label class="advanced-filter hidden">
               Perda
               <select id="filterPerda" data-filter="perda">
@@ -326,7 +360,11 @@
                 >
               </label>
               <div class="batch-actions">
-                <button class="button batch-only" id="validateBatch" type="button">
+                <button
+                  class="button batch-only"
+                  id="validateBatch"
+                  type="button"
+                >
                   Validar Arquivo
                 </button>
                 <button class="button secondary" id="clearBatch" type="button">
@@ -343,7 +381,11 @@
                   <input id="confirmWarnings" type="checkbox" />
                   Confirmar registros com alerta
                 </label>
-                <button class="button batch-only" id="saveValidBatch" type="button">
+                <button
+                  class="button batch-only"
+                  id="saveValidBatch"
+                  type="button"
+                >
                   Salvar Válidos
                 </button>
                 <button

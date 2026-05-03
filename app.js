@@ -98,6 +98,11 @@
     selectedDemandId: "",
     page: 1,
     pageSize: 12,
+
+    futurePage: 1,
+    futurePageSize: 50,
+    futureSearch: "",
+
     advancedFilters: false,
     identity: null,
     realizedAutoSynced: false,
@@ -2281,19 +2286,95 @@
     );
   }
 
-  function renderFutureDemandas() {
-    const futures = state.db.demandas.filter(isFutureDemand);
+  function filteredFutureDemandas() {
+    const search = normalizeText(state.futureSearch);
 
-    const limit = 100;
-    const visibleFutures = futures.slice(0, limit);
+    return state.db.demandas.filter((item) => {
+      if (!isFutureDemand(item)) return false;
+
+      if (!search) return true;
+
+      const haystack = normalizeText(
+        [
+          item.id,
+          item.ordem,
+          item.descricao,
+          item.centroTrabalho,
+          item.localInstalacao,
+          item.gerencia,
+          item.supervisao,
+          item.competencia,
+          item.origem,
+          item.frequencia,
+        ].join(" "),
+      );
+
+      return haystack.includes(search);
+    });
+  }
+
+  function renderFutureDemandas() {
+    const futures = filteredFutureDemandas();
+
+    const totalPages = Math.max(
+      1,
+      Math.ceil(futures.length / state.futurePageSize),
+    );
+
+    if (state.futurePage > totalPages) {
+      state.futurePage = totalPages;
+    }
+
+    const start = (state.futurePage - 1) * state.futurePageSize;
+    const pageRows = futures.slice(start, start + state.futurePageSize);
 
     $("#futureCount").textContent =
-      futures.length > limit
-        ? `${futures.length} demandas | exibindo primeiras ${limit}`
-        : `${futures.length} demandas`;
+      `${futures.length} demandas | Página ${state.futurePage} de ${totalPages}`;
 
-    $("#futureDemandList").innerHTML =
-      visibleFutures
+    const toolbarHtml = `
+    <div class="future-toolbar" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+      <label style="min-width:280px; flex:1;">
+        Buscar demanda futura
+        <input
+          id="futureSearch"
+          type="search"
+          placeholder="Digite ID, OM, descrição, centro, local, gerência ou supervisão"
+          value="${escapeHtml(state.futureSearch)}"
+        />
+      </label>
+
+      <label>
+        Linhas por página
+        <select id="futurePageSize">
+          <option value="25" ${state.futurePageSize === 25 ? "selected" : ""}>25</option>
+          <option value="50" ${state.futurePageSize === 50 ? "selected" : ""}>50</option>
+          <option value="100" ${state.futurePageSize === 100 ? "selected" : ""}>100</option>
+          <option value="200" ${state.futurePageSize === 200 ? "selected" : ""}>200</option>
+        </select>
+      </label>
+
+      <button
+        class="button secondary"
+        id="futurePrevPage"
+        type="button"
+        ${state.futurePage <= 1 ? "disabled" : ""}
+      >
+        Anterior
+      </button>
+
+      <button
+        class="button secondary"
+        id="futureNextPage"
+        type="button"
+        ${state.futurePage >= totalPages ? "disabled" : ""}
+      >
+        Próxima
+      </button>
+    </div>
+  `;
+
+    const listHtml =
+      pageRows
         .map((item) => {
           const possuiOM = Boolean(String(item.ordem || "").trim());
 
@@ -2340,7 +2421,7 @@
               ${
                 possuiOM
                   ? `<span class="muted">Esta demanda já possui OM SAP vinculada. Sugestão não necessária.</span>`
-                  : `<button class="button secondary editor-only" type="button" data-load-suggestions="${escapeHtml(item.id)}">
+                  : `<button class="button secondary planner-only" type="button" data-load-suggestions="${escapeHtml(item.id)}">
                       Ver sugestões de vínculo
                     </button>`
               }
@@ -2349,14 +2430,50 @@
         `;
         })
         .join("") ||
-      '<div class="empty-detail"><strong>Nenhuma demanda futura encontrada</strong><span>Verifique a base_futuras.json ou os registros criados no sistema.</span></div>';
+      '<div class="empty-detail"><strong>Nenhuma demanda futura encontrada</strong><span>Verifique a busca, a base_futuras.json ou os registros criados no sistema.</span></div>';
+
+    $("#futureDemandList").innerHTML = toolbarHtml + listHtml;
+
+    const searchInput = $("#futureSearch");
+    if (searchInput) {
+      searchInput.addEventListener("input", (event) => {
+        state.futureSearch = event.target.value;
+        state.futurePage = 1;
+        renderFutureDemandas();
+      });
+    }
+
+    const pageSize = $("#futurePageSize");
+    if (pageSize) {
+      pageSize.addEventListener("change", (event) => {
+        state.futurePageSize = Number(event.target.value);
+        state.futurePage = 1;
+        renderFutureDemandas();
+      });
+    }
+
+    const prev = $("#futurePrevPage");
+    if (prev) {
+      prev.addEventListener("click", () => {
+        state.futurePage = Math.max(1, state.futurePage - 1);
+        renderFutureDemandas();
+      });
+    }
+
+    const next = $("#futureNextPage");
+    if (next) {
+      next.addEventListener("click", () => {
+        state.futurePage = Math.min(totalPages, state.futurePage + 1);
+        renderFutureDemandas();
+      });
+    }
 
     applyPermissions();
   }
 
   function renderFutureSuggestions(futureId) {
     const future = demandById(futureId);
-    const container = $(`#suggestions-${CSS.escape(futureId)}`);
+    const container = document.getElementById(`suggestions-${futureId}`);
 
     if (!future || !container) return;
 

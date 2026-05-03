@@ -772,16 +772,94 @@
     return Array.from(mapa.values());
   }
 
+  function applyBaseRealizadosToCarteira(carteira, baseRealizados) {
+    if (!Array.isArray(baseRealizados) || !baseRealizados.length) {
+      return carteira;
+    }
+
+    const realizadosPorOrdem = new Map();
+
+    baseRealizados.forEach((realizado) => {
+      const ordem = String(realizado.ordem || "").trim();
+      if (!ordem) return;
+
+      const atual = realizadosPorOrdem.get(ordem);
+
+      if (!atual) {
+        realizadosPorOrdem.set(ordem, realizado);
+        return;
+      }
+
+      const dataAtual = toDate(atual.dataRealizada);
+      const dataNova = toDate(realizado.dataRealizada);
+
+      if (dataNova && (!dataAtual || dataNova > dataAtual)) {
+        realizadosPorOrdem.set(ordem, realizado);
+      }
+    });
+
+    return carteira.map((demanda) => {
+      const ordem = String(demanda.ordem || "").trim();
+      if (!ordem) return demanda;
+
+      const realizado = realizadosPorOrdem.get(ordem);
+      if (!realizado) return demanda;
+
+      const dataRealizada =
+        realizado.dataRealizada || demanda.dataRealizada || "";
+
+      return {
+        ...demanda,
+
+        // Mantém dados técnicos principais da carteira/base_ordens,
+        // mas usa a base_realizados como prioridade para baixa/conclusão.
+        statusSistema: realizado.statusSistema || demanda.statusSistema || "",
+        statusUsuario: realizado.statusUsuario || demanda.statusUsuario || "",
+        dataRealizada,
+
+        // Se apareceu na base_realizados, a carteira deve entender como realizado.
+        // Depois podemos refinar cancelado/encerrado sem data por regra de status.
+        statusOperacional: "Realizado",
+        substatusOperacional: dataRealizada
+          ? "Baixada pelo SAP BO"
+          : "Realizada/Encerrada no SAP BO",
+
+        origemRealizacao: "SAP BO - Realizados",
+        dataUltimaAtualizacao:
+          realizado.dataUltimaAtualizacao ||
+          demanda.dataUltimaAtualizacao ||
+          new Date().toISOString(),
+
+        fontesConsolidadas: [
+          demanda.origem || "Carteira",
+          "SAP BO - Realizados",
+        ]
+          .filter(Boolean)
+          .join(" | "),
+      };
+    });
+  }
+
   async function loadBaseSourcesFromJson() {
-    const [baseOrdensRaw, baseFuturasRaw] = await Promise.all([
-      fetchJsonArray("./base/base_ordens.json", "base_ordens.json"),
-      fetchJsonArray("./base/base_futuras.json", "base_futuras.json").catch(
-        (error) => {
-          console.warn("base_futuras.json não carregada:", error);
+    const [baseOrdensRaw, baseFuturasRaw, baseRealizadosRaw] =
+      await Promise.all([
+        fetchJsonArray("./base/base_ordens.json", "base_ordens.json"),
+
+        fetchJsonArray("./base/base_futuras.json", "base_futuras.json").catch(
+          (error) => {
+            console.warn("base_futuras.json não carregada:", error);
+            return [];
+          },
+        ),
+
+        fetchJsonArray(
+          "./base/base_realizados.json",
+          "base_realizados.json",
+        ).catch((error) => {
+          console.warn("base_realizados.json não carregada:", error);
           return [];
-        },
-      ),
-    ]);
+        }),
+      ]);
 
     const baseOrdens = baseOrdensRaw.map((item) =>
       mapBaseItemToDemand(item, "SAP BO - Ordens"),
@@ -791,12 +869,20 @@
       mapBaseItemToDemand(item, "SAP BO - Demandas Futuras"),
     );
 
-    return { baseOrdens, baseFuturas };
+    const baseRealizados = baseRealizadosRaw.map((item) =>
+      mapBaseItemToDemand(item, "SAP BO - Realizados"),
+    );
+
+    return { baseOrdens, baseFuturas, baseRealizados };
   }
 
   async function loadBaseFromJson() {
-    const { baseOrdens, baseFuturas } = await loadBaseSourcesFromJson();
-    return mergeBaseOrdensEFuturas(baseOrdens, baseFuturas);
+    const { baseOrdens, baseFuturas, baseRealizados } =
+      await loadBaseSourcesFromJson();
+
+    const carteiraBase = mergeBaseOrdensEFuturas(baseOrdens, baseFuturas);
+
+    return applyBaseRealizadosToCarteira(carteiraBase, baseRealizados);
   }
   function mergeDemandWithSupabase(baseDemand, delta) {
     if (!delta) return baseDemand;
@@ -821,10 +907,16 @@
         baseDemand.prioridade || delta.prioridade,
       ),
       vencimento: baseDemand.vencimento || delta.vencimento,
+      statusSistema: baseDemand.statusSistema || delta.statusSistema || "",
+      statusUsuario: baseDemand.statusUsuario || delta.statusUsuario || "",
 
       dataPlanejada: delta.dataPlanejada || baseDemand.dataPlanejada || "",
       dataReplanejadaAtual:
         delta.dataReplanejadaAtual || baseDemand.dataReplanejadaAtual || "",
+
+      // Data realizada pode vir do Supabase manualmente,
+      // mas se a base_realizados existir, ela será aplicada depois
+      // em applyBaseRealizadosToCarteira().
       dataRealizada: delta.dataRealizada || baseDemand.dataRealizada || "",
 
       perda: delta.perda ?? baseDemand.perda ?? false,
@@ -937,9 +1029,15 @@
       .filter((item) => !baseIds.has(item.id))
       .map((item) => enrichDemandWithCentroTrabalho(item, mapaCentrosTrabalho));
 
-    const demandas = [...demandasSomenteSupabase, ...mergedBase].map(
-      normalizeDemandRecord,
-    );
+    const demandasAntesRealizados = [
+      ...demandasSomenteSupabase,
+      ...mergedBase,
+    ].map(normalizeDemandRecord);
+
+    const demandas = applyBaseRealizadosToCarteira(
+      demandasAntesRealizados,
+      baseSources.baseRealizados,
+    ).map(normalizeDemandRecord);
 
     state.db = {
       demandas,

@@ -798,7 +798,13 @@
       }
     });
 
-    return carteira.map((demanda) => {
+    const ordensExistentesNaCarteira = new Set(
+      carteira
+        .map((demanda) => String(demanda.ordem || "").trim())
+        .filter(Boolean),
+    );
+
+    const carteiraAtualizada = carteira.map((demanda) => {
       const ordem = String(demanda.ordem || "").trim();
       if (!ordem) return demanda;
 
@@ -808,17 +814,13 @@
       const dataRealizada =
         realizado.dataRealizada || demanda.dataRealizada || "";
 
-      return {
+      return normalizeDemandRecord({
         ...demanda,
 
-        // Mantém dados técnicos principais da carteira/base_ordens,
-        // mas usa a base_realizados como prioridade para baixa/conclusão.
         statusSistema: realizado.statusSistema || demanda.statusSistema || "",
         statusUsuario: realizado.statusUsuario || demanda.statusUsuario || "",
         dataRealizada,
 
-        // Se apareceu na base_realizados, a carteira deve entender como realizado.
-        // Depois podemos refinar cancelado/encerrado sem data por regra de status.
         statusOperacional: "Realizado",
         substatusOperacional: dataRealizada
           ? "Baixada pelo SAP BO"
@@ -836,8 +838,62 @@
         ]
           .filter(Boolean)
           .join(" | "),
-      };
+      });
     });
+
+    const realizadosSomenteNaBase = [];
+
+    realizadosPorOrdem.forEach((realizado, ordem) => {
+      if (ordensExistentesNaCarteira.has(ordem)) return;
+
+      const dataRealizada = realizado.dataRealizada || "";
+
+      realizadosSomenteNaBase.push(
+        normalizeDemandRecord({
+          ...realizado,
+
+          // Importante:
+          // Mesmo que o JSON venha com REAL-SAP-123,
+          // usamos DEM-SAP-123 como ID consolidado da carteira,
+          // porque a OM é a chave operacional principal.
+          id: `DEM-SAP-${ordem}`,
+          idDemandaInformado:
+            realizado.idDemandaInformado || realizado.id || `REAL-SAP-${ordem}`,
+
+          ordem,
+          tipoDemanda: realizado.tipoDemanda || "Realizada",
+          origem: "SAP BO - Realizados",
+
+          statusSistema: realizado.statusSistema || "",
+          statusUsuario: realizado.statusUsuario || "",
+          dataRealizada,
+
+          statusOperacional: "Realizado",
+          substatusOperacional: dataRealizada
+            ? "Baixada pelo SAP BO"
+            : "Realizada/Encerrada no SAP BO",
+
+          origemRealizacao: "SAP BO - Realizados",
+          dataUltimaAtualizacao:
+            realizado.dataUltimaAtualizacao || new Date().toISOString(),
+
+          fontesConsolidadas: "SAP BO - Realizados",
+
+          dataPlanejada: realizado.dataPlanejada || "",
+          dataReplanejadaAtual: realizado.dataReplanejadaAtual || "",
+
+          perda: realizado.perda ?? false,
+          motivoPerda: realizado.motivoPerda || "",
+          justificativaPerda: realizado.justificativaPerda || "",
+          comentario: realizado.comentario || "",
+          usuarioResponsavel: realizado.usuarioResponsavel || "",
+          quantidadeReplanejamentos:
+            Number(realizado.quantidadeReplanejamentos || 0) || 0,
+        }),
+      );
+    });
+
+    return [...carteiraAtualizada, ...realizadosSomenteNaBase];
   }
 
   async function loadBaseSourcesFromJson() {

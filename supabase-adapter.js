@@ -23,7 +23,7 @@
     cargasLoteItens: "cargas_lote_itens",
     evidencias: "evidencias",
     centrosTrabalho: "cadastro_centros_trabalho",
-    parametros: "parametros_sistema",
+    // parametros: "parametros_sistema",
   };
 
   function normalizeText(value) {
@@ -437,7 +437,6 @@
         historicoRealizadoPerdas,
         logs,
         centrosTrabalho,
-        parametros,
       ] = await Promise.all([
         selectAll(TABLES.controle, "select=*&ativo=eq.true"),
         selectAll(TABLES.usuarios, "select=*&ativo=eq.true"),
@@ -471,13 +470,9 @@
         ),
         selectAll(TABLES.logs, "select=*&order=data_hora.desc"),
         selectAll(TABLES.centrosTrabalho, "select=*&order=centro_trabalho.asc"),
-        selectAllOptional(TABLES.parametros, "select=*&ativo=eq.true"),
       ]);
 
-      const parametrosMap = parametros.reduce((acc, item) => {
-        acc[item.chave] = item.valor ?? item.valor_texto ?? "";
-        return acc;
-      }, {});
+      const parametrosMap = {};
 
       return {
         demandas: demandas.map(mapControleToDemand),
@@ -508,7 +503,7 @@
           })),
         },
         parametros: parametrosMap,
-        parametrosDisponiveis: parametros.length > 0,
+        parametrosDisponiveis: false,
         historicoPlanejamento: historicoPlanejamento.map(
           mapHistoricoPlanejamento,
         ),
@@ -794,14 +789,17 @@
     }
 
     async updateParameters(parameters) {
-      const payload = Object.entries(parameters).map(([chave, valor]) => ({
-        chave,
-        valor: String(valor ?? ""),
-        ativo: true,
-        updated_at: new Date().toISOString(),
-      }));
-      const saved = await upsert(TABLES.parametros, payload, "chave");
-      return Array.isArray(saved) ? saved : parameters;
+      await this.addLog({
+        acao: "PARAMETROS_NAO_MIGRADOS",
+        usuario: "",
+        lista: "PARAMETROS",
+        referencia: "updateParameters",
+        detalhe: JSON.stringify(parameters),
+        modulo: "CONFIGURACOES",
+        nivel: "AVISO",
+      });
+
+      return parameters;
     }
 
     async createBatchRun(summary) {

@@ -656,7 +656,10 @@ label {
   border-radius: var(--radius-sm);
   font-weight: 750;
   min-height: 34px;
-  transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease;
 }
 
 .button {
@@ -1688,30 +1691,78 @@ label {
     text-transform: uppercase;
   }
 
-  .portfolio-table td:nth-child(1)::before { content: "ID"; }
-  .portfolio-table td:nth-child(2)::before { content: "Ordem"; }
-  .portfolio-table td:nth-child(3)::before { content: "Descrição"; }
-  .portfolio-table td:nth-child(4)::before { content: "Status"; }
-  .portfolio-table td:nth-child(5)::before { content: "Substatus"; }
-  .portfolio-table td:nth-child(6)::before { content: "Origem"; }
-  .portfolio-table td:nth-child(7)::before { content: "Gerencia"; }
-  .portfolio-table td:nth-child(8)::before { content: "Supervisao"; }
-  .portfolio-table td:nth-child(9)::before { content: "Vencimento"; }
-  .portfolio-table td:nth-child(10)::before { content: "Competencia"; }
-  .portfolio-table td:nth-child(11)::before { content: "Tipo"; }
-  .portfolio-table td:nth-child(12)::before { content: "Centro"; }
-  .portfolio-table td:nth-child(13)::before { content: "Cad. centro"; }
-  .portfolio-table td:nth-child(14)::before { content: "Planejador"; }
-  .portfolio-table td:nth-child(15)::before { content: "Programador"; }
-  .portfolio-table td:nth-child(16)::before { content: "Local"; }
-  .portfolio-table td:nth-child(17)::before { content: "Prioridade"; }
-  .portfolio-table td:nth-child(18)::before { content: "Planejada"; }
-  .portfolio-table td:nth-child(19)::before { content: "Replanejada"; }
-  .portfolio-table td:nth-child(20)::before { content: "Realizada"; }
-  .portfolio-table td:nth-child(21)::before { content: "Perda"; }
-  .portfolio-table td:nth-child(22)::before { content: "Motivo"; }
-  .portfolio-table td:nth-child(23)::before { content: "Atualizacao"; }
-  .portfolio-table td:nth-child(24)::before { content: "Acoes"; }
+  .portfolio-table td:nth-child(1)::before {
+    content: "ID";
+  }
+  .portfolio-table td:nth-child(2)::before {
+    content: "Ordem";
+  }
+  .portfolio-table td:nth-child(3)::before {
+    content: "Descrição";
+  }
+  .portfolio-table td:nth-child(4)::before {
+    content: "Status";
+  }
+  .portfolio-table td:nth-child(5)::before {
+    content: "Substatus";
+  }
+  .portfolio-table td:nth-child(6)::before {
+    content: "Origem";
+  }
+  .portfolio-table td:nth-child(7)::before {
+    content: "Gerencia";
+  }
+  .portfolio-table td:nth-child(8)::before {
+    content: "Supervisao";
+  }
+  .portfolio-table td:nth-child(9)::before {
+    content: "Vencimento";
+  }
+  .portfolio-table td:nth-child(10)::before {
+    content: "Competencia";
+  }
+  .portfolio-table td:nth-child(11)::before {
+    content: "Tipo";
+  }
+  .portfolio-table td:nth-child(12)::before {
+    content: "Centro";
+  }
+  .portfolio-table td:nth-child(13)::before {
+    content: "Cad. centro";
+  }
+  .portfolio-table td:nth-child(14)::before {
+    content: "Planejador";
+  }
+  .portfolio-table td:nth-child(15)::before {
+    content: "Programador";
+  }
+  .portfolio-table td:nth-child(16)::before {
+    content: "Local";
+  }
+  .portfolio-table td:nth-child(17)::before {
+    content: "Prioridade";
+  }
+  .portfolio-table td:nth-child(18)::before {
+    content: "Planejada";
+  }
+  .portfolio-table td:nth-child(19)::before {
+    content: "Replanejada";
+  }
+  .portfolio-table td:nth-child(20)::before {
+    content: "Realizada";
+  }
+  .portfolio-table td:nth-child(21)::before {
+    content: "Perda";
+  }
+  .portfolio-table td:nth-child(22)::before {
+    content: "Motivo";
+  }
+  .portfolio-table td:nth-child(23)::before {
+    content: "Atualizacao";
+  }
+  .portfolio-table td:nth-child(24)::before {
+    content: "Acoes";
+  }
 
   .portfolio-table th:last-child,
   .portfolio-table td:last-child {
@@ -1737,5 +1788,361 @@ label {
   *::after {
     scroll-behavior: auto !important;
     transition: none !important;
+  }
+}
+/* ============================================================
+   LOGIN PREMIUM - CENTRAL DE CONTROLE PCM ELETROVIA
+   ============================================================ */
+
+.login-screen-premium {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  min-height: 100vh;
+  padding: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 18% 18%,
+      rgba(29, 118, 85, 0.16),
+      transparent 32%
+    ),
+    linear-gradient(90deg, #f4f8f6 0%, #f8fbfa 52%, #064631 52%, #02271d 100%);
+}
+
+.login-screen-premium.hidden {
+  display: none !important;
+}
+
+.login-shell-premium {
+  width: 100%;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(460px, 52%) minmax(420px, 48%);
+}
+
+.login-panel-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+}
+
+.login-card-premium {
+  width: min(460px, 100%);
+  max-width: 460px;
+  border: 1px solid rgba(8, 76, 54, 0.08);
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow:
+    0 28px 80px rgba(6, 40, 30, 0.14),
+    0 10px 24px rgba(6, 40, 30, 0.08);
+  backdrop-filter: blur(16px);
+  padding: 42px 40px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.login-logo-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.login-logo {
+  width: 118px;
+  max-height: 118px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.16));
+}
+
+.login-card-heading {
+  text-align: center;
+}
+
+.login-eyebrow {
+  display: inline-flex;
+  margin: 0 0 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(17, 122, 86, 0.1);
+  color: var(--green-700);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.login-card-heading h1 {
+  margin: 0;
+  color: #092f23;
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.08;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.login-card-heading p {
+  margin: 14px auto 0;
+  color: var(--gray-600);
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 370px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #103b2e;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.login-field input {
+  width: 100%;
+  height: 54px;
+  border: 1px solid rgba(7, 77, 54, 0.18);
+  border-radius: 16px;
+  background: #ffffff;
+  color: #0b2f24;
+  font-size: 15px;
+  outline: none;
+  padding: 0 16px;
+  box-shadow: 0 1px 0 rgba(7, 77, 54, 0.04);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.login-field input:focus {
+  border-color: rgba(13, 126, 89, 0.75);
+  box-shadow:
+    0 0 0 4px rgba(13, 126, 89, 0.12),
+    0 10px 24px rgba(8, 76, 54, 0.08);
+  transform: translateY(-1px);
+}
+
+.login-submit {
+  height: 56px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #159a6c 0%, #08784f 45%, #034b35 100%);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow:
+    0 16px 34px rgba(8, 120, 79, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+}
+
+.login-submit:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.03);
+  box-shadow:
+    0 22px 46px rgba(8, 120, 79, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.login-security-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(8, 76, 54, 0.08);
+  border-radius: 16px;
+  background: rgba(10, 112, 78, 0.055);
+}
+
+.login-security-note span {
+  color: var(--green-700);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.login-security-note strong {
+  color: #49655c;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.login-panel-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 72px;
+  background:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(33, 185, 124, 0.22),
+      transparent 26%
+    ),
+    radial-gradient(
+      circle at 80% 72%,
+      rgba(255, 255, 255, 0.08),
+      transparent 30%
+    ),
+    linear-gradient(135deg, #0c6f4d 0%, #064631 46%, #02271d 100%);
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.login-panel-right::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(90deg, transparent, #000 22%, #000 100%);
+}
+
+.login-hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 580px;
+}
+
+.login-badge {
+  display: inline-flex;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  color: #eaf8f2;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.login-hero-content h2 {
+  margin: 26px 0 18px;
+  max-width: 560px;
+  color: #ffffff;
+  font-size: clamp(42px, 5.5vw, 70px);
+  line-height: 0.95;
+  font-weight: 950;
+  letter-spacing: -0.06em;
+  text-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+}
+
+.login-hero-content h2 strong {
+  color: #b8f3cf;
+}
+
+.login-hero-content > p {
+  max-width: 560px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 18px;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.login-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 34px;
+}
+
+.login-hero-grid div {
+  min-height: 142px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.105);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  backdrop-filter: blur(10px);
+}
+
+.login-hero-grid span {
+  display: inline-flex;
+  margin-bottom: 14px;
+  color: #b8f3cf;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.login-hero-grid strong {
+  display: block;
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 1.25;
+  margin-bottom: 8px;
+}
+
+.login-hero-grid small {
+  display: block;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.login-footer-signature {
+  position: absolute;
+  z-index: 1;
+  left: 72px;
+  right: 72px;
+  bottom: 34px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  text-align: center;
+}
+
+body.is-login-required .app-shell {
+  filter: blur(3px);
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (max-width: 1100px) {
+  .login-shell-premium {
+    grid-template-columns: 1fr;
+  }
+
+  .login-panel-right {
+    display: none;
+  }
+
+  .login-screen-premium {
+    background:
+      radial-gradient(
+        circle at 20% 20%,
+        rgba(29, 118, 85, 0.16),
+        transparent 36%
+      ),
+      linear-gradient(135deg, #f4f8f6 0%, #eef7f3 100%);
+  }
+
+  .login-panel-left {
+    padding: 28px;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-card-premium {
+    padding: 30px 22px 26px;
+    border-radius: 24px;
+  }
+
+  .login-logo {
+    width: 92px;
+  }
+
+  .login-card-heading h1 {
+    font-size: 26px;
   }
 }

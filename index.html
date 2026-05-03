@@ -15,35 +15,113 @@
     <script defer src="app.js?v=20260503-3"></script>
   </head>
   <body>
-    <section class="login-screen" id="loginScreen" aria-live="polite">
-      <form class="login-card" id="loginForm">
-        <div>
-          <p class="section-label">Central de Controle PCM</p>
-          <h1>Entrar na Central Eletrovia</h1>
+    <section
+      class="login-screen login-screen-premium"
+      id="loginScreen"
+      aria-live="polite"
+    >
+      <div class="login-shell-premium">
+        <div class="login-panel-left">
+          <form class="login-card login-card-premium" id="loginForm">
+            <div class="login-logo-wrap">
+              <img
+                src="assets/logo-pcm.png"
+                alt="Logo PCM"
+                class="login-logo"
+              />
+            </div>
+
+            <div class="login-card-heading">
+              <p class="login-eyebrow">Central de Controle PCM</p>
+              <h1>Acesso Operacional Eletrovia</h1>
+              <p>
+                Entre com seu e-mail Vale e matrícula para acompanhar a
+                carteira, planejar demandas, controlar replanejamentos,
+                registrar realizados e consultar indicadores operacionais.
+              </p>
+            </div>
+
+            <label class="login-field">
+              <span>E-mail Vale</span>
+              <input
+                name="email"
+                type="email"
+                autocomplete="username"
+                placeholder="nome.sobrenome@vale.com"
+                required
+              />
+            </label>
+
+            <label class="login-field">
+              <span>Matrícula</span>
+              <input
+                name="matricula"
+                type="password"
+                autocomplete="current-password"
+                inputmode="numeric"
+                placeholder="Digite sua matrícula"
+                required
+              />
+            </label>
+
+            <button class="login-submit" type="submit">
+              Entrar na Central
+            </button>
+
+            <span class="login-error" id="loginError"></span>
+
+            <div class="login-security-note">
+              <span>Ambiente interno</span>
+              <strong
+                >Controle com perfil de acesso e rastreabilidade por
+                usuário.</strong
+              >
+            </div>
+          </form>
         </div>
-        <label>
-          E-mail Vale
-          <input
-            name="email"
-            type="email"
-            autocomplete="username"
-            placeholder="nome.sobrenome@vale.com"
-            required
-          />
-        </label>
-        <label>
-          Matrícula
-          <input
-            name="matricula"
-            type="password"
-            autocomplete="current-password"
-            inputmode="numeric"
-            required
-          />
-        </label>
-        <button class="button" type="submit">Entrar</button>
-        <span class="login-error" id="loginError"></span>
-      </form>
+
+        <aside class="login-panel-right">
+          <div class="login-hero-content">
+            <span class="login-badge">PCM Eletrovia • Sistema Oficial</span>
+
+            <h2>
+              Gestão integrada da
+              <strong>carteira de manutenção</strong>
+              ferroviária
+            </h2>
+
+            <p>
+              Centralize ordens SAP, demandas futuras, planejamento,
+              replanejamento, perdas, realizados, centros de trabalho,
+              responsáveis e indicadores em uma única visão operacional.
+            </p>
+
+            <div class="login-hero-grid">
+              <div>
+                <span>01</span>
+                <strong>Carteira unificada</strong>
+                <small>Ordens SAP, futuras e atualizações do Supabase.</small>
+              </div>
+
+              <div>
+                <span>02</span>
+                <strong>Rastreabilidade</strong>
+                <small>Histórico, logs e responsáveis por alteração.</small>
+              </div>
+
+              <div>
+                <span>03</span>
+                <strong>Indicadores PCM</strong>
+                <small>Gerência, supervisão, status, perdas e aderência.</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="login-footer-signature">
+            © 2026 • Central de Controle PCM Eletrovia
+          </div>
+        </aside>
+      </div>
     </section>
     <div class="app-shell">
       <aside class="sidebar" id="sidebar" aria-label="Navegação principal">

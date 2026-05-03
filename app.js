@@ -2133,13 +2133,16 @@
       linhasComErro: state.batch.errors.length,
       status: state.batch.errors.length ? "PROCESSADO_COM_ERRO" : "PROCESSADO",
     });
-    if (batchRun?.id) {
+    const loteId = batchRun?.lote_id || batchRun?.id;
+
+    if (loteId) {
       const auditItems = [
         ...state.batch.valid.map((item) => ({ ...item, status: "VALIDO" })),
         ...state.batch.warnings.map((item) => ({ ...item, status: "ALERTA" })),
         ...state.batch.errors.map((item) => ({ ...item, status: "ERRO" })),
       ];
-      await state.repo.addBatchItems?.(batchRun.id, auditItems);
+
+      await state.repo.addBatchItems?.(loteId, auditItems);
     }
     await state.repo.addLog({
       usuario: state.currentUser.email,

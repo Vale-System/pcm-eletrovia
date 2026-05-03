@@ -470,10 +470,7 @@
           "select=*&order=data_hora_registro.desc",
         ),
         selectAll(TABLES.logs, "select=*&order=data_hora.desc"),
-        selectAll(
-          TABLES.centrosTrabalho,
-          "select=*&order=centro_trabalho.asc",
-        ),
+        selectAll(TABLES.centrosTrabalho, "select=*&order=centro_trabalho.asc"),
         selectAllOptional(TABLES.parametros, "select=*&ativo=eq.true"),
       ]);
 
@@ -709,48 +706,49 @@
 
     async addUser(user) {
       const perfil = user.perfil || user.perfil_acesso || "Visualizador";
-      const defaults = {
-        Administrador: {
-          planejar: true,
-          replanejar: true,
-          realizar: true,
-          configurar: true,
-          exportar: true,
-          cargaLote: true,
-        },
-        Editor: {
-          planejar: true,
-          replanejar: true,
-          realizar: true,
-          configurar: false,
-          exportar: true,
-          cargaLote: true,
-        },
-        Planejador: {
-          planejar: true,
-          replanejar: true,
-          realizar: false,
-          configurar: false,
-          exportar: true,
-          cargaLote: true,
-        },
-        Gestor: {
-          planejar: false,
-          replanejar: false,
-          realizar: false,
-          configurar: false,
-          exportar: true,
-          cargaLote: false,
-        },
-        Visualizador: {
-          planejar: false,
-          replanejar: false,
-          realizar: false,
-          configurar: false,
-          exportar: true,
-          cargaLote: false,
-        },
-      }[perfil] || {};
+      const defaults =
+        {
+          Administrador: {
+            planejar: true,
+            replanejar: true,
+            realizar: true,
+            configurar: true,
+            exportar: true,
+            cargaLote: true,
+          },
+          Editor: {
+            planejar: true,
+            replanejar: true,
+            realizar: true,
+            configurar: false,
+            exportar: true,
+            cargaLote: true,
+          },
+          Planejador: {
+            planejar: true,
+            replanejar: true,
+            realizar: false,
+            configurar: false,
+            exportar: true,
+            cargaLote: true,
+          },
+          Gestor: {
+            planejar: false,
+            replanejar: false,
+            realizar: false,
+            configurar: false,
+            exportar: true,
+            cargaLote: false,
+          },
+          Visualizador: {
+            planejar: false,
+            replanejar: false,
+            realizar: false,
+            configurar: false,
+            exportar: true,
+            cargaLote: false,
+          },
+        }[perfil] || {};
       const boolValue = (value, fallback) =>
         value === true || value === "on" || value === "true"
           ? true
@@ -765,18 +763,30 @@
         area: user.area || "",
         perfil_acesso: perfil,
         ativo: user.ativo === false || user.ativo === "false" ? false : true,
-        permissao_planejar: boolValue(user.permissaoPlanejar, defaults.planejar),
+        permissao_planejar: boolValue(
+          user.permissaoPlanejar,
+          defaults.planejar,
+        ),
         permissao_replanejar: boolValue(
           user.permissaoReplanejar,
           defaults.replanejar,
         ),
-        permissao_realizar: boolValue(user.permissaoRealizar, defaults.realizar),
+        permissao_realizar: boolValue(
+          user.permissaoRealizar,
+          defaults.realizar,
+        ),
         permissao_configurar: boolValue(
           user.permissaoConfigurar,
           defaults.configurar,
         ),
-        permissao_exportar: boolValue(user.permissaoExportar, defaults.exportar),
-        permissao_carga_lote: boolValue(user.permissaoCargaLote, defaults.cargaLote),
+        permissao_exportar: boolValue(
+          user.permissaoExportar,
+          defaults.exportar,
+        ),
+        permissao_carga_lote: boolValue(
+          user.permissaoCargaLote,
+          defaults.cargaLote,
+        ),
       };
 
       const saved = await upsert(TABLES.usuarios, payload, "email");
@@ -795,32 +805,51 @@
     }
 
     async createBatchRun(summary) {
+      const loteId =
+        summary.loteId ||
+        summary.lote_id ||
+        `LOTE-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
       const payload = {
-        nome_arquivo: summary.nomeArquivo || "",
+        lote_id: loteId,
+        nome_arquivo: summary.nomeArquivo || summary.nome_arquivo || "",
         usuario: summary.usuario || "",
         usuario_email: summary.usuario || "",
-        total_linhas: Number(summary.totalLinhas || 0),
-        linhas_validas: Number(summary.linhasValidas || 0),
-        linhas_com_erro: Number(summary.linhasComErro || 0),
+        total_linhas: Number(summary.totalLinhas || summary.total_linhas || 0),
+        linhas_validas: Number(
+          summary.linhasValidas || summary.linhas_validas || 0,
+        ),
+        linhas_alerta: Number(
+          summary.linhasAlerta || summary.linhas_alerta || 0,
+        ),
+        linhas_com_erro: Number(
+          summary.linhasComErro || summary.linhas_com_erro || 0,
+        ),
         status: summary.status || "PROCESSADO",
+        data_hora: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      const saved = await insert(TABLES.cargasLote, payload);
-      return Array.isArray(saved) ? saved[0] : saved;
-    }
 
-    async addBatchItems(batchId, items) {
+      const saved = await insert(TABLES.cargasLote, payload);
+
+      return Array.isArray(saved) ? saved[0] : payload;
+    }
+    async addBatchItems(loteId, items) {
+      if (!loteId || !items?.length) return [];
+
       const payload = items.map((item) => ({
-        lote_id: batchId,
+        lote_id: loteId,
         linha: Number(item.line || item.linha || 0),
         status: item.status || "",
         mensagem_validacao: item.message || item.mensagem || "",
         id_demanda_controle: item.record?.id || item.idDemandaControle || "",
         ordem_sap: item.record?.ordem ? String(item.record.ordem) : "",
+        payload_original: item.record || {},
+        created_at: new Date().toISOString(),
       }));
+
       return insertMany(TABLES.cargasLoteItens, payload);
     }
-
     async getCurrentUserIdentity() {
       const params = new URLSearchParams(global.location.search);
       const email = params.get("user") || "";

@@ -2759,7 +2759,15 @@
           <tr class="${selected}" data-demand-id="${escapeHtml(item.id)}">
             <td><strong>${escapeHtml(item.id)}</strong></td>
             <td>${escapeHtml(compact(item.ordem))}</td>
-            <td class="description-cell">${escapeHtml(item.descricao)}<div class="muted">${escapeHtml(item.usuarioResponsavel || "")}</div></td>
+
+            <td class="description-cell">
+              ${escapeHtml(item.descricao)}
+              <div class="muted">${escapeHtml(item.usuarioResponsavel || "")}</div>
+            </td>
+
+            <td class="sap-status-cell">${escapeHtml(formatSapStatusFilter(item.statusSistema) || "-")}</td>
+            <td class="sap-status-cell">${escapeHtml(formatSapStatusFilter(item.statusUsuario) || "-")}</td>
+
             <td>${statusChip(status)}</td>
             <td>${statusChipGroup(substatuses)}</td>
             <td>${escapeHtml(item.origem || "-")}</td>

@@ -748,7 +748,7 @@ label {
   align-items: start;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(0, 1fr) 306px;
+  grid-template-columns: minmax(0, 1fr) 286px;
 }
 
 .table-panel,
@@ -810,6 +810,10 @@ label {
   width: 100%;
 }
 
+.portfolio-table {
+  min-width: 2380px;
+}
+
 .data-table th,
 .data-table td {
   border-top: 1px solid var(--gray-150);
@@ -860,8 +864,16 @@ label {
 .description-cell {
   color: var(--gray-950);
   font-weight: 700;
-  max-width: 240px;
-  min-width: 210px;
+  max-width: 260px;
+  min-width: 220px;
+}
+
+.sap-status-cell {
+  color: var(--gray-800);
+  font-size: 11px;
+  font-weight: 800;
+  min-width: 86px;
+  white-space: nowrap;
 }
 
 .muted {
@@ -1848,66 +1860,72 @@ label {
     content: "Descrição";
   }
   .portfolio-table td:nth-child(4)::before {
-    content: "Status";
+    content: "Status Sistema";
   }
   .portfolio-table td:nth-child(5)::before {
-    content: "Substatus";
+    content: "Status Usuário";
   }
   .portfolio-table td:nth-child(6)::before {
-    content: "Origem";
+    content: "Status";
   }
   .portfolio-table td:nth-child(7)::before {
-    content: "Gerencia";
+    content: "Substatus";
   }
   .portfolio-table td:nth-child(8)::before {
-    content: "Supervisao";
+    content: "Origem";
   }
   .portfolio-table td:nth-child(9)::before {
-    content: "Vencimento";
+    content: "Gerencia";
   }
   .portfolio-table td:nth-child(10)::before {
-    content: "Competencia";
+    content: "Supervisao";
   }
   .portfolio-table td:nth-child(11)::before {
-    content: "Tipo";
+    content: "Vencimento";
   }
   .portfolio-table td:nth-child(12)::before {
-    content: "Centro";
+    content: "Competencia";
   }
   .portfolio-table td:nth-child(13)::before {
-    content: "Cad. centro";
+    content: "Tipo";
   }
   .portfolio-table td:nth-child(14)::before {
-    content: "Planejador";
+    content: "Centro";
   }
   .portfolio-table td:nth-child(15)::before {
-    content: "Programador";
+    content: "Cad. centro";
   }
   .portfolio-table td:nth-child(16)::before {
-    content: "Local";
+    content: "Planejador";
   }
   .portfolio-table td:nth-child(17)::before {
-    content: "Prioridade";
+    content: "Programador";
   }
   .portfolio-table td:nth-child(18)::before {
-    content: "Planejada";
+    content: "Local";
   }
   .portfolio-table td:nth-child(19)::before {
-    content: "Replanejada";
+    content: "Prioridade";
   }
   .portfolio-table td:nth-child(20)::before {
-    content: "Realizada";
+    content: "Planejada";
   }
   .portfolio-table td:nth-child(21)::before {
-    content: "Perda";
+    content: "Replanejada";
   }
   .portfolio-table td:nth-child(22)::before {
-    content: "Motivo";
+    content: "Realizada";
   }
   .portfolio-table td:nth-child(23)::before {
-    content: "Atualizacao";
+    content: "Perda";
   }
   .portfolio-table td:nth-child(24)::before {
+    content: "Motivo";
+  }
+  .portfolio-table td:nth-child(25)::before {
+    content: "Atualizacao";
+  }
+  .portfolio-table td:nth-child(26)::before {
     content: "Acoes";
   }
 

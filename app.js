@@ -3665,30 +3665,33 @@
       })
       .filter(Boolean);
 
-    if (!records.length)
-      if (blockedInSave.length) {
-        state.batch.errors = [
-          ...state.batch.errors,
-          ...blockedInSave.map((item) => ({
-            ...item,
-            status: "ERRO",
-            acao: "BLOQUEADO_STATUS_FINAL",
-          })),
-        ];
+    if (blockedInSave.length) {
+      state.batch.errors = [
+        ...state.batch.errors,
+        ...blockedInSave.map((item) => ({
+          ...item,
+          status: "ERRO",
+          acao: "BLOQUEADO_STATUS_FINAL",
+        })),
+      ];
 
-        renderBatch();
+      renderBatch();
 
-        showToast(
-          `${blockedInSave.length} registro(s) bloqueado(s) por status Realizado/Cancelado.`,
-          "error",
-        );
-      }
-    {
+      showToast(
+        `${blockedInSave.length} registro(s) bloqueado(s) por status Realizado/Cancelado.`,
+        "error",
+      );
+    }
+
+    if (!records.length) {
       showBatchStatus(
         "error",
         "Nenhum registro foi preparado para gravação.",
-        "As linhas válidas não encontraram correspondência na carteira atual.",
+        blockedInSave.length
+          ? "Todas as linhas selecionadas estavam bloqueadas por status Realizado/Cancelado."
+          : "As linhas válidas não encontraram correspondência na carteira atual.",
       );
+
       showToast("Nenhum registro foi preparado para gravação.", "error");
       return;
     }

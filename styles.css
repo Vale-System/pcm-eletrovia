@@ -3278,13 +3278,13 @@ body.is-login-required .app-shell {
   max-height: calc(100vh - 48px);
   overflow: hidden;
   padding: 30px 38px 26px;
-  gap: 14px;
+  gap: 16px;
 }
 
 /* Corrige a logo que estava com 414px e causando rolagem */
 .login-logo {
-  width: 112px;
-  height: 112px;
+  width: 414x;
+  height: 414px;
   max-height: 112px;
   object-fit: contain;
 }

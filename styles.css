@@ -745,10 +745,12 @@ label {
 }
 
 .content-grid {
-  align-items: start;
+  align-items: stretch;
   display: grid;
   gap: 10px;
   grid-template-columns: minmax(0, 1fr) 286px;
+  height: calc(100vh - 315px);
+  min-height: 540px;
 }
 
 .table-panel,
@@ -766,6 +768,9 @@ label {
 
 .table-panel {
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-toolbar,
@@ -799,7 +804,9 @@ label {
 }
 
 .table-scroll {
-  max-height: min(62vh, 680px);
+  flex: 1;
+  min-height: 0;
+  max-height: none;
   overflow: auto;
   width: 100%;
 }
@@ -937,12 +944,16 @@ label {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
-  min-height: 52px;
+  min-height: 54px;
   padding: 10px 12px;
+  flex-shrink: 0;
 }
 
 .detail-panel {
-  min-height: 500px;
+  min-height: 0;
+  height: 100%;
+  max-height: calc(100vh - 150px);
+  overflow: auto;
   padding: 14px;
   position: sticky;
   top: 18px;

@@ -671,6 +671,39 @@
     setTimeout(() => toast.remove(), 3600);
   }
 
+  function showBatchStatus(type, title, detail = "") {
+    const panel = $(".validation-panel");
+    if (!panel) return;
+
+    let bar = $("#batchStatusBar");
+
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = "batchStatusBar";
+      panel.prepend(bar);
+    }
+
+    bar.className = `batch-status-bar ${type || ""}`;
+    bar.innerHTML = `
+    <div class="batch-status-icon">
+      ${
+        type === "success"
+          ? iconSvg("check")
+          : type === "error"
+            ? iconSvg("help")
+            : iconSvg("sync")
+      }
+    </div>
+
+    <div class="batch-status-content">
+      <strong>${escapeHtml(title)}</strong>
+      ${detail ? `<span>${escapeHtml(detail)}</span>` : ""}
+    </div>
+  `;
+
+    bar.classList.remove("hidden");
+  }
+
   function downloadFile(filename, text, type = "text/csv;charset=utf-8") {
     const blob = new Blob([text], { type });
     const url = URL.createObjectURL(blob);
@@ -3427,12 +3460,26 @@
       return;
     }
     try {
+      showBatchStatus(
+        "loading",
+        "Validando arquivo...",
+        "Lendo o arquivo e conferindo as linhas antes da gravação.",
+      );
+
       const rows = await readBatchFile(file);
       state.batch.fileName = file.name;
       validateBatchRows(rows);
       renderBatch();
+
+      showBatchStatus(
+        "success",
+        "Arquivo validado com sucesso.",
+        `${state.batch.valid.length} válidos, ${state.batch.warnings.length} alertas e ${state.batch.errors.length} erros encontrados.`,
+      );
+
       showToast("Arquivo validado.", "success");
     } catch (error) {
+      showBatchStatus("error", "Erro ao validar arquivo.", error.message);
       showToast(error.message, "error");
     }
   }
@@ -3442,9 +3489,11 @@
       showToast("Perfil sem permissão para salvar carga em lote.", "error");
       return;
     }
+
     const candidates = includeWarnings
       ? state.batch.valid.concat(state.batch.warnings)
       : state.batch.valid;
+
     if (
       includeWarnings &&
       state.batch.warnings.length &&
@@ -3453,10 +3502,17 @@
       showToast("Confirme os registros com alerta antes de salvar.", "error");
       return;
     }
+
     if (!candidates.length) {
       showToast("Nenhum registro disponível para salvar.", "error");
       return;
     }
+
+    showBatchStatus(
+      "loading",
+      "Enviando carga em lote...",
+      `${candidates.length} registro(s) em processamento. Aguarde a gravação no Supabase.`,
+    );
 
     const records = candidates
       .map((item) => {
@@ -3483,65 +3539,121 @@
       })
       .filter(Boolean);
 
-    await state.repo.bulkUpsertDemandas(records);
-    const batchRun = await state.repo.createBatchRun?.({
-      nomeArquivo: state.batch.fileName || "arquivo_sem_nome",
-      tipoCarga: "ATUALIZACAO_DEMANDAS",
-      usuario: state.currentUser?.nome || state.currentUser?.email || "",
-      usuarioEmail: state.currentUser?.email || "",
-      totalLinhas: state.batch.rows.length,
-      linhasValidas: state.batch.valid.length,
-      linhasAlerta: state.batch.warnings.length,
-      linhasComErro: state.batch.errors.length,
-      linhasProcessadas: records.length,
-      status: state.batch.errors.length ? "PROCESSADO_COM_ERRO" : "PROCESSADO",
-      detalheErro: state.batch.errors.length
-        ? `${state.batch.errors.length} linhas com erro de validação.`
-        : "",
-    });
-    const loteId = batchRun?.lote_id || batchRun?.id;
-
-    if (loteId) {
-      const auditItems = [
-        ...state.batch.valid.map((item) => ({
-          ...item,
-          status: "VALIDO",
-          acao: "UPSERT_DEMANDA",
-        })),
-        ...state.batch.warnings.map((item) => ({
-          ...item,
-          status: "ALERTA",
-          acao: "UPSERT_DEMANDA_COM_ALERTA",
-        })),
-        ...state.batch.errors.map((item) => ({
-          ...item,
-          status: "ERRO",
-          acao: "VALIDACAO_ERRO",
-        })),
-      ];
-
-      await state.repo.addBatchItems?.(loteId, auditItems);
+    if (!records.length) {
+      showBatchStatus(
+        "error",
+        "Nenhum registro foi preparado para gravação.",
+        "As linhas válidas não encontraram correspondência na carteira atual.",
+      );
+      showToast("Nenhum registro foi preparado para gravação.", "error");
+      return;
     }
-    await state.repo.addLog({
-      usuario: state.currentUser.email,
-      acao: "Carga em Lote",
-      lista: "cargas_lote",
-      referencia: `${records.length} registros`,
-      detalhe: includeWarnings
-        ? "Válidos e alertas confirmados"
-        : "Somente válidos",
-      modulo: "CARGA_LOTE",
-    });
-    await refreshAll();
-    state.batch = {
-      rows: [],
-      valid: [],
-      warnings: [],
-      errors: [],
-      fileName: "",
-    };
-    renderBatch();
-    showToast(`${records.length} registros salvos.`, "success");
+
+    try {
+      await state.repo.bulkUpsertDemandas(records);
+
+      const batchRun = await state.repo.createBatchRun?.({
+        nomeArquivo: state.batch.fileName || "arquivo_sem_nome",
+        tipoCarga: "ATUALIZACAO_DEMANDAS",
+        usuario: state.currentUser?.nome || state.currentUser?.email || "",
+        usuarioEmail: state.currentUser?.email || "",
+        totalLinhas: state.batch.rows.length,
+        linhasValidas: state.batch.valid.length,
+        linhasAlerta: state.batch.warnings.length,
+        linhasComErro: state.batch.errors.length,
+        linhasProcessadas: records.length,
+        status: state.batch.errors.length
+          ? "PROCESSADO_COM_ERRO"
+          : "PROCESSADO",
+        detalheErro: state.batch.errors.length
+          ? `${state.batch.errors.length} linhas com erro de validação.`
+          : "",
+      });
+
+      const loteId = batchRun?.lote_id || batchRun?.id;
+
+      if (loteId) {
+        const auditItems = [
+          ...state.batch.valid.map((item) => ({
+            ...item,
+            status: "VALIDO",
+            acao: "UPSERT_DEMANDA",
+          })),
+          ...state.batch.warnings.map((item) => ({
+            ...item,
+            status: "ALERTA",
+            acao: "UPSERT_DEMANDA_COM_ALERTA",
+          })),
+          ...state.batch.errors.map((item) => ({
+            ...item,
+            status: "ERRO",
+            acao: "VALIDACAO_ERRO",
+          })),
+        ];
+
+        await state.repo.addBatchItems?.(loteId, auditItems);
+      }
+
+      await state.repo.addLog({
+        usuario: state.currentUser.email,
+        acao: "Carga em Lote",
+        lista: "cargas_lote",
+        referencia: `${records.length} registros`,
+        detalhe: includeWarnings
+          ? "Válidos e alertas confirmados"
+          : "Somente válidos",
+        modulo: "CARGA_LOTE",
+        status: "SUCESSO",
+      });
+
+      const resumoCarga = {
+        processados: records.length,
+        validos: state.batch.valid.length,
+        alertas: includeWarnings ? state.batch.warnings.length : 0,
+        erros: state.batch.errors.length,
+        loteId: loteId || "",
+      };
+
+      await refreshAll();
+
+      state.batch = {
+        rows: [],
+        valid: [],
+        warnings: [],
+        errors: [],
+        fileName: "",
+      };
+
+      renderBatch();
+
+      showBatchStatus(
+        "success",
+        "Carga em lote enviada com sucesso.",
+        `${resumoCarga.processados} registro(s) processado(s). ${
+          resumoCarga.loteId ? `Lote: ${resumoCarga.loteId}. ` : ""
+        }${
+          resumoCarga.alertas
+            ? `${resumoCarga.alertas} alerta(s) confirmado(s). `
+            : ""
+        }${
+          resumoCarga.erros
+            ? `${resumoCarga.erros} linha(s) ficaram com erro de validação.`
+            : ""
+        }`,
+      );
+
+      showToast(`${records.length} registros salvos.`, "success");
+    } catch (error) {
+      console.error(error);
+
+      showBatchStatus(
+        "error",
+        "Erro ao enviar carga em lote.",
+        error.message || "Falha inesperada ao gravar registros no Supabase.",
+      );
+
+      showToast("Erro ao salvar carga em lote.", "error");
+    }
   }
 
   async function syncRealizedRows(rows, sourceName, showResult = false) {

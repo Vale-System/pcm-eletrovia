@@ -8,6 +8,7 @@
     "Planejado",
     "Replanejado",
     "Realizado",
+    "Cancelado",
   ];
 
   const PROFILE_RULES = {
@@ -467,16 +468,45 @@
     return "No Prazo";
   }
 
+  function hasSapStatusText(demand, token) {
+    const statusSistema = normalizeText(demand.statusSistema);
+    const statusUsuario = normalizeText(demand.statusUsuario);
+    const alvo = normalizeText(token);
+
+    return statusSistema.includes(alvo) || statusUsuario.includes(alvo);
+  }
+
+  function isCanceledBySap(demand) {
+    return hasSapStatusText(demand, "CANC");
+  }
+
+  function isRealizedBySapStatus(demand) {
+    const statusSistema = normalizeText(demand.statusSistema);
+
+    return statusSistema.includes("ENTE") || statusSistema.includes("ENCE");
+  }
+
   function primaryStatusOf(demand) {
+    if (isCanceledBySap(demand)) {
+      return "Cancelado";
+    }
+
+    if (isRealizedBySapStatus(demand)) {
+      return "Realizado";
+    }
+
     if (demand.dataRealizada) {
       return "Realizado";
     }
+
     if (demand.dataReplanejadaAtual) {
       return "Replanejado";
     }
+
     if (demand.dataPlanejada) {
       return "Planejado";
     }
+
     return "A Planejar";
   }
 
@@ -490,11 +520,25 @@
   }
 
   function substatusListOf(demand) {
+    const status = primaryStatusOf(demand);
     const substatuses = [];
+
+    if (status === "Cancelado") {
+      substatuses.push("Cancelado no SAP BO");
+      return Array.from(new Set(substatuses));
+    }
+
+    if (status === "Realizado" && !demand.dataRealizada) {
+      substatuses.push("Encerrado no SAP BO sem data realizada");
+    }
+
     if (demand.perda) substatuses.push("Perda");
+
     const dueClass = dueClassOf(demand);
     if (dueClass) substatuses.push(dueClass);
+
     if (pendingIssuesOf(demand).length) substatuses.push("Pendente");
+
     return Array.from(new Set(substatuses));
   }
 
@@ -525,6 +569,8 @@
     if (status === "Replanejado") return "status-replanejado";
     if (status === "Realizado" || status === "No Prazo")
       return "status-realizado";
+    if (status === "Cancelado" || status === "Cancelado no SAP BO")
+      return "status-perda";
     if (status === "Cadastrado") return "status-realizado";
     if (status === "Nao cadastrado" || status === "Sem centro")
       return "status-perda";
@@ -545,10 +591,11 @@
 
   function allowedActionsFor(demand) {
     const status = primaryStatusOf(demand);
+
     return {
       planejar: status === "A Planejar",
       replanejar: status === "Planejado" || status === "Replanejado",
-      realizado: true,
+      realizado: status !== "Cancelado",
       historico: true,
     };
   }
@@ -773,20 +820,7 @@
   }
 
   function demandIsRealizada(demanda) {
-    const statusOperacional = normalizeText(demanda.statusOperacional);
-    const statusSistema = normalizeText(demanda.statusSistema);
-    const statusUsuario = normalizeText(demanda.statusUsuario);
-
-    return (
-      Boolean(demanda.dataRealizada) ||
-      statusOperacional.includes("realizado") ||
-      statusSistema.includes("ence") ||
-      statusSistema.includes("concl") ||
-      statusSistema.includes("ente") ||
-      statusUsuario.includes("encr") ||
-      statusUsuario.includes("concl") ||
-      statusUsuario.includes("realiz")
-    );
+    return primaryStatusOf(demanda) === "Realizado";
   }
 
   function mergeCarteiraDuplicateByOrder(principal, secundario) {
@@ -965,17 +999,12 @@
       const dataRealizada =
         realizado.dataRealizada || demanda.dataRealizada || "";
 
-      return normalizeDemandRecord({
+      const atualizado = {
         ...demanda,
 
         statusSistema: realizado.statusSistema || demanda.statusSistema || "",
         statusUsuario: realizado.statusUsuario || demanda.statusUsuario || "",
         dataRealizada,
-
-        statusOperacional: "Realizado",
-        substatusOperacional: dataRealizada
-          ? "Baixada pelo SAP BO"
-          : "Realizada/Encerrada no SAP BO",
 
         origemRealizacao: "SAP BO - Realizados",
         dataUltimaAtualizacao:
@@ -989,7 +1018,12 @@
         ]
           .filter(Boolean)
           .join(" | "),
-      });
+      };
+
+      atualizado.statusOperacional = primaryStatusOf(atualizado);
+      atualizado.substatusOperacional = substatusListOf(atualizado).join(" | ");
+
+      return normalizeDemandRecord(atualizado);
     });
 
     const realizadosSomenteNaBase = [];
@@ -999,49 +1033,44 @@
 
       const dataRealizada = realizado.dataRealizada || "";
 
-      realizadosSomenteNaBase.push(
-        normalizeDemandRecord({
-          ...realizado,
+      const novoRealizado = {
+        ...realizado,
 
-          // Importante:
-          // Mesmo que o JSON venha com REAL-SAP-123,
-          // usamos DEM-SAP-123 como ID consolidado da carteira,
-          // porque a OM é a chave operacional principal.
-          id: `DEM-SAP-${ordem}`,
-          idDemandaInformado:
-            realizado.idDemandaInformado || realizado.id || `REAL-SAP-${ordem}`,
+        id: `DEM-SAP-${ordem}`,
+        idDemandaInformado:
+          realizado.idDemandaInformado || realizado.id || `REAL-SAP-${ordem}`,
 
-          ordem,
-          tipoDemanda: realizado.tipoDemanda || "Realizada",
-          origem: "SAP BO - Realizados",
+        ordem,
+        tipoDemanda: realizado.tipoDemanda || "Realizada",
+        origem: "SAP BO - Realizados",
 
-          statusSistema: realizado.statusSistema || "",
-          statusUsuario: realizado.statusUsuario || "",
-          dataRealizada,
+        statusSistema: realizado.statusSistema || "",
+        statusUsuario: realizado.statusUsuario || "",
+        dataRealizada,
 
-          statusOperacional: "Realizado",
-          substatusOperacional: dataRealizada
-            ? "Baixada pelo SAP BO"
-            : "Realizada/Encerrada no SAP BO",
+        origemRealizacao: "SAP BO - Realizados",
+        dataUltimaAtualizacao:
+          realizado.dataUltimaAtualizacao || new Date().toISOString(),
 
-          origemRealizacao: "SAP BO - Realizados",
-          dataUltimaAtualizacao:
-            realizado.dataUltimaAtualizacao || new Date().toISOString(),
+        fontesConsolidadas: "SAP BO - Realizados",
 
-          fontesConsolidadas: "SAP BO - Realizados",
+        dataPlanejada: realizado.dataPlanejada || "",
+        dataReplanejadaAtual: realizado.dataReplanejadaAtual || "",
 
-          dataPlanejada: realizado.dataPlanejada || "",
-          dataReplanejadaAtual: realizado.dataReplanejadaAtual || "",
+        perda: realizado.perda ?? false,
+        motivoPerda: realizado.motivoPerda || "",
+        justificativaPerda: realizado.justificativaPerda || "",
+        comentario: realizado.comentario || "",
+        usuarioResponsavel: realizado.usuarioResponsavel || "",
+        quantidadeReplanejamentos:
+          Number(realizado.quantidadeReplanejamentos || 0) || 0,
+      };
 
-          perda: realizado.perda ?? false,
-          motivoPerda: realizado.motivoPerda || "",
-          justificativaPerda: realizado.justificativaPerda || "",
-          comentario: realizado.comentario || "",
-          usuarioResponsavel: realizado.usuarioResponsavel || "",
-          quantidadeReplanejamentos:
-            Number(realizado.quantidadeReplanejamentos || 0) || 0,
-        }),
-      );
+      novoRealizado.statusOperacional = primaryStatusOf(novoRealizado);
+      novoRealizado.substatusOperacional =
+        substatusListOf(novoRealizado).join(" | ");
+
+      realizadosSomenteNaBase.push(normalizeDemandRecord(novoRealizado));
     });
 
     return [...carteiraAtualizada, ...realizadosSomenteNaBase];

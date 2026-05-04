@@ -2832,19 +2832,22 @@
       </div>
       <div class="detail-grid">
         <div class="detail-item"><span>Status</span><strong>${statusChip(status)}</strong></div>
-        <div class="detail-item"><span>Substatus</span><strong>${statusChipGroup(substatuses)}</strong></div>
-        <div class="detail-item"><span>Origem</span><strong>${escapeHtml(demand.origem || "-")}</strong></div>
-        <div class="detail-item"><span>Ultima atualizacao</span><strong>${formatDateTime(demand.dataUltimaAtualizacao)}</strong></div>
-        <div class="detail-item"><span>Gerencia</span><strong>${escapeHtml(demand.gerencia || "-")}</strong></div>
-        <div class="detail-item"><span>Supervisao</span><strong>${escapeHtml(demand.supervisao || "-")}</strong></div>
+        <div class="detail-item"><span>Última atualização</span><strong>${formatDateTime(demand.dataUltimaAtualizacao)}</strong></div>
+
+        <div class="detail-item"><span>Gerência</span><strong>${escapeHtml(demand.gerencia || "-")}</strong></div>
+        <div class="detail-item"><span>Supervisão</span><strong>${escapeHtml(demand.supervisao || "-")}</strong></div>
+
         <div class="detail-item"><span>Vencimento</span><strong>${formatDate(demand.vencimento)}</strong></div>
         <div class="detail-item"><span>Centro</span><strong>${escapeHtml(demand.centroTrabalho || "-")}</strong></div>
-        <div class="detail-item"><span>Cadastro centro</span><strong>${statusChip(demand.centroTrabalhoStatus || "Nao cadastrado")}</strong></div>
+
         <div class="detail-item"><span>Planejador OM</span><strong>${escapeHtml(demand.planejadorOM || "-")}</strong></div>
         <div class="detail-item"><span>Programador</span><strong>${escapeHtml(demand.programador || "-")}</strong></div>
+
         <div class="detail-item"><span>Local</span><strong>${escapeHtml(demand.localInstalacao || "-")}</strong></div>
+
         <div class="detail-item"><span>Tolerância Mín.</span><strong>${formatDate(demand.toleranciaMin)}</strong></div>
         <div class="detail-item"><span>Tolerância Máx.</span><strong>${formatDate(demand.toleranciaMax)}</strong></div>
+
         <div class="detail-item"><span>Planejada</span><strong>${formatDate(demand.dataPlanejada)}</strong></div>
         <div class="detail-item"><span>Replanejada</span><strong>${formatDate(demand.dataReplanejadaAtual)}</strong></div>
       </div>

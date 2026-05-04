@@ -3057,3 +3057,145 @@ body.is-login-required .app-shell {
   border-radius: 28px;
   filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.18));
 }
+/* ============================================================
+   CARTEIRA - DETALHE LATERAL SUBINDO ATÉ OS KPIs
+   ============================================================ */
+
+#view-carteira.is-active {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-areas:
+    "filters filters"
+    "kpis detail"
+    "table detail";
+  gap: 10px;
+  align-items: start;
+}
+
+#view-carteira .filter-panel {
+  grid-area: filters;
+}
+
+#view-carteira .kpi-strip {
+  grid-area: kpis;
+  margin: 0;
+}
+
+#view-carteira .content-grid {
+  display: contents;
+}
+
+#view-carteira .table-panel {
+  grid-area: table;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#view-carteira .detail-panel {
+  grid-area: detail;
+  position: sticky;
+  top: 12px;
+  height: calc(100vh - 24px);
+  max-height: calc(100vh - 24px);
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+#view-carteira .table-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: calc(100vh - 330px);
+  overflow: auto;
+}
+
+#view-carteira .pagination {
+  flex-shrink: 0;
+}
+
+/* Detalhe lateral mais compacto */
+#view-carteira .detail-title {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+}
+
+#view-carteira .detail-title span {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+#view-carteira .detail-title h3 {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+#view-carteira .detail-grid {
+  gap: 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#view-carteira .detail-item {
+  padding: 7px;
+}
+
+#view-carteira .detail-item span {
+  font-size: 10px;
+}
+
+#view-carteira .detail-item strong {
+  font-size: 11px;
+}
+
+#view-carteira .detail-actions {
+  gap: 7px;
+  margin: 12px 0;
+}
+
+#view-carteira .detail-action-button {
+  font-size: 11px;
+  font-weight: 850;
+  gap: 5px;
+  min-height: 32px;
+  padding: 6px 5px;
+}
+
+#view-carteira .detail-action-button svg {
+  height: 14px;
+  width: 14px;
+}
+
+#view-carteira .timeline h3 {
+  font-size: 13px;
+}
+
+#view-carteira .timeline-item strong {
+  font-size: 11px;
+}
+
+#view-carteira .timeline-item span {
+  font-size: 10px;
+}
+
+@media (max-width: 1280px) {
+  #view-carteira.is-active {
+    display: block;
+  }
+
+  #view-carteira .content-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #view-carteira .detail-panel {
+    position: static;
+    height: auto;
+    max-height: none;
+    margin-top: 10px;
+  }
+
+  #view-carteira .table-scroll {
+    max-height: none;
+  }
+}

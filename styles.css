@@ -3544,3 +3544,154 @@ body.is-login-required .app-shell {
     padding: 6px 8px;
   }
 }
+/* ============================================================
+   CENTRAL DE NOTIFICAÇÕES OPERACIONAIS
+   ============================================================ */
+
+.notification-cards {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  margin-bottom: 12px;
+}
+
+.notification-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  cursor: pointer;
+  min-height: 82px;
+  padding: 11px 12px;
+  text-align: left;
+}
+
+.notification-card:hover,
+.notification-card:focus-visible,
+.notification-card.is-active {
+  border-color: var(--green-700);
+  box-shadow: 0 0 0 2px rgba(29, 118, 85, 0.12);
+  outline: none;
+}
+
+.notification-card span,
+.notification-card small {
+  color: var(--gray-600);
+  display: block;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.notification-card strong {
+  color: var(--gray-950);
+  display: block;
+  font-size: 24px;
+  line-height: 1.05;
+  margin: 5px 0;
+}
+
+.notification-filters {
+  align-items: end;
+  background: var(--surface);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 260px minmax(260px, 1fr) auto;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+}
+
+.notification-table {
+  min-width: 1500px;
+}
+
+.notification-table-scroll {
+  max-height: calc(100vh - 300px);
+}
+
+.notification-badge {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 900;
+  min-height: 24px;
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+
+.notification-badge.critical {
+  background: var(--red-100);
+  color: var(--red-700);
+}
+
+.notification-badge.warning {
+  background: #fff5dc;
+  color: #885503;
+}
+
+.notification-badge.info {
+  background: #e9f2ff;
+  color: var(--blue-700);
+}
+
+.notification-actions {
+  min-width: 220px;
+}
+
+.alert-button.has-critical-alerts strong {
+  background: #ff4d3d;
+  color: #ffffff;
+}
+
+.alert-menu {
+  width: 390px;
+}
+
+.alert-menu-summary {
+  background: var(--gray-100);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 8px;
+}
+
+.alert-menu-summary span {
+  color: var(--gray-700);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.alert-menu-item.critical {
+  border-left-color: var(--red-700);
+}
+
+.alert-menu-item.warning {
+  border-left-color: var(--amber-600);
+}
+
+.alert-menu-open-panel {
+  background: var(--green-700) !important;
+  border-left: 0 !important;
+  color: var(--white) !important;
+  font-weight: 900;
+  justify-content: center;
+  text-align: center !important;
+}
+
+@media (max-width: 1280px) {
+  .notification-cards {
+    grid-template-columns: repeat(3, minmax(130px, 1fr));
+  }
+
+  .notification-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .notification-cards {
+    grid-template-columns: 1fr;
+  }
+}

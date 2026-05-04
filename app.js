@@ -151,6 +151,12 @@
       errors: [],
       fileName: "",
     },
+
+    notifications: {
+      typeFilter: "",
+      search: "",
+    },
+
     quality: {
       typeFilter: "",
       search: "",
@@ -2740,49 +2746,374 @@
     });
   }
 
-  function alertItems() {
+  function notificationTypeMeta(type) {
+    const meta = {
+      vencida: {
+        label: "Vencida",
+        group: "vencida",
+        criticality: "Crítica",
+        className: "critical",
+      },
+      vencendo: {
+        label: "Perto do vencimento",
+        group: "vencendo",
+        criticality: "Atenção",
+        className: "warning",
+      },
+      "replanejamento-incompleto": {
+        label: "Replanejamento incompleto",
+        group: "replanejamento-incompleto",
+        criticality: "Atenção",
+        className: "warning",
+      },
+      "realizada-fora-prazo": {
+        label: "Realizada fora do prazo",
+        group: "realizada-fora-prazo",
+        criticality: "Crítica",
+        className: "critical",
+      },
+      "perda-incompleta": {
+        label: "Perda incompleta",
+        group: "perda-incompleta",
+        criticality: "Crítica",
+        className: "critical",
+      },
+    };
+
+    return (
+      meta[type] || {
+        label: type,
+        group: type,
+        criticality: "Informativo",
+        className: "info",
+      }
+    );
+  }
+
+  function daysFromToday(value) {
+    const date = toDate(value);
     const today = toDate(todayText());
-    return state.db.demandas
+
+    if (!date || !today) return null;
+
+    return Math.ceil((date - today) / 86400000);
+  }
+
+  function isDemandOpenForDueNotification(demand) {
+    const status = primaryStatusOf(demand);
+
+    return status !== "Realizado" && status !== "Cancelado";
+  }
+
+  function latestRealizadoPerdaHistory(demandId) {
+    return [...(state.db.historicoRealizadoPerdas || [])]
+      .filter((item) => item.demandaId === demandId)
+      .sort((a, b) => new Date(b.dataHora || 0) - new Date(a.dataHora || 0))[0];
+  }
+
+  function makeNotification({
+    type,
+    demand,
+    message,
+    days = null,
+    action = "abrir",
+    historyId = "",
+    source = "",
+  }) {
+    const meta = notificationTypeMeta(type);
+
+    return {
+      id: [type, demand.id, historyId, source, message]
+        .filter(Boolean)
+        .join("|"),
+      type,
+      group: meta.group,
+      label: meta.label,
+      criticality: meta.criticality,
+      className: meta.className,
+      demandId: demand.id,
+      ordem: demand.ordem || "",
+      descricao: demand.descricao || "",
+      gerencia: demand.gerencia || "",
+      supervisao: demand.supervisao || "",
+      centroTrabalho: demand.centroTrabalho || "",
+      vencimento: demand.vencimento || "",
+      status: primaryStatusOf(demand),
+      message,
+      days,
+      action,
+      historyId,
+    };
+  }
+
+  function buildNotifications() {
+    const notifications = [];
+
+    (state.db.demandas || [])
       .filter(demandIsVisibleForCurrentUserAlerts)
-      .map((item) => {
-        const due = toDate(item.vencimento);
-        const days = due ? Math.ceil((due - today) / 86400000) : 9999;
-        const pending = pendingIssuesOf(item);
-        if (pending.length) {
-          return { item, type: "Pendente", message: pending.join(" | ") };
+      .forEach((demand) => {
+        const status = primaryStatusOf(demand);
+        const days = daysFromToday(demand.vencimento);
+
+        if (
+          isDemandOpenForDueNotification(demand) &&
+          days !== null &&
+          days < 0
+        ) {
+          notifications.push(
+            makeNotification({
+              type: "vencida",
+              demand,
+              days,
+              action:
+                demand.dataPlanejada || demand.dataReplanejadaAtual
+                  ? "replanejar"
+                  : "planejar",
+              message: `Vencida há ${Math.abs(days)} dia(s).`,
+            }),
+          );
         }
-        if (!item.dataRealizada && days >= 0 && days <= 7) {
-          return {
-            item,
-            type: "Vencimento",
-            message: `Vence em ${days} dia${days === 1 ? "" : "s"}.`,
-          };
+
+        if (
+          isDemandOpenForDueNotification(demand) &&
+          days !== null &&
+          days >= 0 &&
+          days <= 7
+        ) {
+          notifications.push(
+            makeNotification({
+              type: "vencendo",
+              demand,
+              days,
+              action:
+                demand.dataPlanejada || demand.dataReplanejadaAtual
+                  ? "abrir"
+                  : "planejar",
+              message: `Vence em ${days} dia(s).`,
+            }),
+          );
         }
-        return null;
-      })
-      .filter(Boolean)
-      .slice(0, 30);
+
+        (state.db.historicoReplanejamento || [])
+          .filter((item) => item.demandaId === demand.id)
+          .forEach((history) => {
+            if (!history.motivo || !history.justificativa) {
+              const missing = [
+                !history.motivo ? "motivo" : "",
+                !history.justificativa ? "justificativa" : "",
+              ]
+                .filter(Boolean)
+                .join(" e ");
+
+              notifications.push(
+                makeNotification({
+                  type: "replanejamento-incompleto",
+                  demand,
+                  historyId: history.id,
+                  action: "regularizar-replanejamento",
+                  source: "historico-replanejamento",
+                  message: `Replanejamento sem ${missing}.`,
+                }),
+              );
+            }
+          });
+
+        const foraPrazo =
+          status === "Realizado" && dueClassOf(demand) === "Fora do Prazo";
+
+        if (foraPrazo && !demand.perda) {
+          notifications.push(
+            makeNotification({
+              type: "realizada-fora-prazo",
+              demand,
+              action: "regularizar-perda",
+              source: "fora-prazo-sem-perda",
+              message:
+                "Realizada fora da tolerância e ainda sem registro de perda.",
+            }),
+          );
+        }
+
+        if (
+          foraPrazo &&
+          demand.perda &&
+          (!demand.motivoPerda || !demand.justificativaPerda)
+        ) {
+          const missing = [
+            !demand.motivoPerda ? "perfil de perda" : "",
+            !demand.justificativaPerda ? "justificativa de perda" : "",
+          ]
+            .filter(Boolean)
+            .join(" e ");
+
+          notifications.push(
+            makeNotification({
+              type: "perda-incompleta",
+              demand,
+              action: "regularizar-perda",
+              source: "perda-incompleta-fora-prazo",
+              message: `Perda fora do prazo sem ${missing}.`,
+            }),
+          );
+        }
+
+        if (
+          demand.perda &&
+          (!demand.motivoPerda || !demand.justificativaPerda)
+        ) {
+          const missing = [
+            !demand.motivoPerda ? "perfil de perda" : "",
+            !demand.justificativaPerda ? "justificativa de perda" : "",
+          ]
+            .filter(Boolean)
+            .join(" e ");
+
+          notifications.push(
+            makeNotification({
+              type: "perda-incompleta",
+              demand,
+              action: "regularizar-perda",
+              source: "perda-incompleta",
+              message: `Perda sem ${missing}.`,
+            }),
+          );
+        }
+      });
+
+    const unique = new Map();
+
+    notifications.forEach((notification) => {
+      if (!unique.has(notification.id)) {
+        unique.set(notification.id, notification);
+      }
+    });
+
+    return Array.from(unique.values()).sort((a, b) => {
+      const priority = {
+        Crítica: 1,
+        Atenção: 2,
+        Informativo: 3,
+      };
+
+      const priorityDiff =
+        (priority[a.criticality] || 9) - (priority[b.criticality] || 9);
+
+      if (priorityDiff) return priorityDiff;
+
+      return String(a.vencimento || "").localeCompare(
+        String(b.vencimento || ""),
+      );
+    });
+  }
+
+  function notificationStats(notifications) {
+    const stats = {
+      total: notifications.length,
+      vencida: 0,
+      vencendo: 0,
+      "replanejamento-incompleto": 0,
+      "realizada-fora-prazo": 0,
+      "perda-incompleta": 0,
+    };
+
+    notifications.forEach((item) => {
+      stats[item.group] = (stats[item.group] || 0) + 1;
+    });
+
+    return stats;
+  }
+
+  function filteredNotifications() {
+    const typeFilter = state.notifications.typeFilter;
+    const search = normalizeText(state.notifications.search);
+
+    return buildNotifications().filter((notification) => {
+      if (typeFilter && notification.group !== typeFilter) return false;
+
+      if (!search) return true;
+
+      const haystack = normalizeText(
+        [
+          notification.label,
+          notification.criticality,
+          notification.ordem,
+          notification.demandId,
+          notification.descricao,
+          notification.gerencia,
+          notification.supervisao,
+          notification.centroTrabalho,
+          notification.message,
+          notification.status,
+        ].join(" "),
+      );
+
+      return haystack.includes(search);
+    });
+  }
+
+  function notificationActionLabel(action) {
+    const labels = {
+      planejar: "Planejar",
+      replanejar: "Replanejar",
+      abrir: "Abrir demanda",
+      "regularizar-replanejamento": "Regularizar replanejamento",
+      "regularizar-perda": "Regularizar perda",
+    };
+
+    return labels[action] || "Abrir";
+  }
+
+  function findNotification(notificationId) {
+    return buildNotifications().find((item) => item.id === notificationId);
   }
 
   function renderAlerts() {
-    const alerts = alertItems();
-    $("#alertCount").textContent = String(alerts.length);
-    $("#alertButton").classList.toggle("has-alerts", alerts.length > 0);
+    const notifications = buildNotifications();
+    const stats = notificationStats(notifications);
+
+    $("#alertCount").textContent = String(stats.total);
+    $("#alertButton").classList.toggle("has-alerts", stats.total > 0);
+    $("#alertButton").classList.toggle(
+      "has-critical-alerts",
+      notifications.some((item) => item.criticality === "Crítica"),
+    );
+
     $("#alertMenu").innerHTML =
       `<strong>Alertas operacionais</strong>` +
-      (alerts.length
-        ? alerts
-            .slice(0, 8)
-            .map(
-              ({ item, type, message }) => `
-              <button type="button" data-alert-demand="${escapeHtml(item.id)}">
-                <span>${escapeHtml(type)}</span>
-                <strong>${escapeHtml(item.ordem || item.id)}</strong>
-                <small>${escapeHtml(message)}</small>
+      (notifications.length
+        ? `
+        <div class="alert-menu-summary">
+          <span>${stats.vencida || 0} vencidas</span>
+          <span>${stats.vencendo || 0} vencendo</span>
+          <span>${stats["replanejamento-incompleto"] || 0} replanejamentos</span>
+          <span>${stats["perda-incompleta"] || 0} perdas</span>
+        </div>
+
+        ${notifications
+          .slice(0, 8)
+          .map(
+            (notification) => `
+              <button
+                type="button"
+                class="alert-menu-item ${notification.className}"
+                data-alert-notification="${escapeHtml(notification.id)}"
+              >
+                <span>${escapeHtml(notification.label)} | ${escapeHtml(notification.criticality)}</span>
+                <strong>${escapeHtml(notification.ordem || notification.demandId)}</strong>
+                <small>${escapeHtml(notification.message)}</small>
               </button>
             `,
-            )
-            .join("")
+          )
+          .join("")}
+
+        <button
+          type="button"
+          class="alert-menu-open-panel"
+          data-alert-open-panel
+        >
+          Abrir Central de Notificações
+        </button>
+      `
         : "<p>Sem alertas críticos no momento.</p>");
   }
 
@@ -3085,6 +3416,165 @@
     else dialog.setAttribute("open", "open");
   }
 
+  function openReplanNotificationDialog(notification) {
+    const demand = demandById(notification.demandId);
+
+    if (!demand) {
+      showToast("Demanda não encontrada.", "error");
+      return;
+    }
+
+    const history = (state.db.historicoReplanejamento || []).find(
+      (item) => item.id === notification.historyId,
+    );
+
+    if (!history) {
+      showToast("Histórico de replanejamento não encontrado.", "error");
+      return;
+    }
+
+    state.actionContext = {
+      action: "regularizarReplanejamento",
+      demandId: demand.id,
+      historyId: history.id,
+    };
+
+    $("#modalDemandId").textContent =
+      `${demand.id} | ${demand.ordem || "Sem ordem SAP"}`;
+    $("#modalTitle").textContent = "Regularizar Replanejamento";
+
+    $("#modalBody").innerHTML = `
+    <div class="pending-box">
+      <strong>Pendência identificada</strong>
+      <span>${escapeHtml(notification.message)}</span>
+    </div>
+
+    <div class="modal-grid">
+      <label>
+        Data anterior
+        <input value="${formatDate(history.dataAnterior)}" disabled />
+      </label>
+
+      <label>
+        Nova data
+        <input value="${formatDate(history.novaData)}" disabled />
+      </label>
+
+      <label>
+        Motivo
+        <select name="motivo" required>
+          <option value=""></option>
+          ${optionsMarkup(configNames("motivos"), history.motivo)}
+        </select>
+      </label>
+
+      <label>
+        Justificativa
+        <select
+          name="justificativa"
+          data-selected="${escapeHtml(history.justificativa || "")}"
+          required
+        ></select>
+      </label>
+
+      <label class="span-2">
+        Comentário
+        <textarea name="comentario" rows="4">${escapeHtml(history.comentario || demand.comentario || "")}</textarea>
+      </label>
+    </div>
+  `;
+
+    $("#modalSave").classList.remove("hidden");
+
+    const dialog = $("#actionDialog");
+    bindDependentSelects();
+
+    if (dialog.showModal) dialog.showModal();
+    else dialog.setAttribute("open", "open");
+  }
+
+  function openLossNotificationDialog(notification) {
+    const demand = demandById(notification.demandId);
+
+    if (!demand) {
+      showToast("Demanda não encontrada.", "error");
+      return;
+    }
+
+    const history = latestRealizadoPerdaHistory(demand.id);
+
+    state.actionContext = {
+      action: "regularizarPerda",
+      demandId: demand.id,
+      historyId: history?.id || "",
+    };
+
+    $("#modalDemandId").textContent =
+      `${demand.id} | ${demand.ordem || "Sem ordem SAP"}`;
+    $("#modalTitle").textContent = "Regularizar Perda";
+
+    $("#modalBody").innerHTML = `
+    <div class="pending-box">
+      <strong>Pendência identificada</strong>
+      <span>${escapeHtml(notification.message)}</span>
+    </div>
+
+    <div class="modal-grid">
+      <label>
+        Data realizada
+        <input value="${formatDate(demand.dataRealizada)}" disabled />
+      </label>
+
+      <label>
+        Classe de prazo
+        <input value="${escapeHtml(dueClassOf(demand) || "-")}" disabled />
+      </label>
+
+      <label>
+        Perda
+        <select name="perda" required>
+          <option value="sim" selected>Sim</option>
+        </select>
+      </label>
+
+      <label>
+        Perfil da perda
+        <select name="motivoPerda" required>
+          <option value=""></option>
+          ${optionsMarkup(configNames("perfisPerda"), demand.motivoPerda)}
+        </select>
+      </label>
+
+      <label class="span-2">
+        Justificativa perda
+        <select
+          name="justificativaPerda"
+          data-selected="${escapeHtml(demand.justificativaPerda || "")}"
+          required
+        ></select>
+      </label>
+
+      <label class="span-2">
+        Comentário
+        <textarea name="comentario" rows="4">${escapeHtml(demand.comentario || history?.comentario || "")}</textarea>
+      </label>
+
+      <label class="span-2">
+        Evidência
+        <input name="evidencia" placeholder="URL ou referência do anexo no SharePoint" />
+      </label>
+    </div>
+  `;
+
+    $("#modalSave").classList.remove("hidden");
+
+    const dialog = $("#actionDialog");
+    bindDependentSelects();
+
+    if (dialog.showModal) dialog.showModal();
+    else dialog.setAttribute("open", "open");
+  }
+
   async function saveAction() {
     const context = state.actionContext;
     if (!context) return;
@@ -3092,6 +3582,101 @@
     if (!demand) return;
     const form = new FormData($("#actionForm"));
     const userEmail = state.currentUser.email;
+
+    if (context.action === "regularizarReplanejamento") {
+      const motivo = form.get("motivo") || "";
+      const justificativa = form.get("justificativa") || "";
+
+      if (!motivo || !justificativa) {
+        showToast("Informe motivo e justificativa do replanejamento.", "error");
+        return;
+      }
+
+      await state.repo.updateReplanHistory(context.historyId, {
+        demandaId: demand.id,
+        ordem: demand.ordem,
+        motivo,
+        motivoChave: configKeyByName("motivos", motivo),
+        justificativa,
+        justificativaChave: configKeyByName("justificativas", justificativa),
+        comentario: form.get("comentario") || "",
+        usuario: userEmail,
+        origemAlteracao: "NOTIFICACAO_OPERACIONAL",
+      });
+
+      demand.comentario = form.get("comentario") || demand.comentario || "";
+      Object.assign(demand, prepareDemandForSave(demand));
+
+      await state.repo.upsertDemanda(demand);
+
+      await state.repo.addLog?.({
+        usuario: userEmail,
+        acao: "Regularização Replanejamento",
+        lista: "historico_replanejamento",
+        referencia: demand.id,
+        detalhe: `${motivo} | ${justificativa}`,
+        modulo: "NOTIFICACOES",
+        status: "SUCESSO",
+      });
+
+      $("#actionDialog").close();
+      await refreshAll();
+      showToast("Replanejamento regularizado com sucesso.", "success");
+      return;
+    }
+
+    if (context.action === "regularizarPerda") {
+      const motivoPerda = form.get("motivoPerda") || "";
+      const justificativaPerda = form.get("justificativaPerda") || "";
+
+      if (!motivoPerda || !justificativaPerda) {
+        showToast("Informe perfil e justificativa de perda.", "error");
+        return;
+      }
+
+      demand.perda = true;
+      demand.motivoPerda = motivoPerda;
+      demand.justificativaPerda = justificativaPerda;
+      demand.comentario = form.get("comentario") || demand.comentario || "";
+      demand.usuarioResponsavel = userEmail;
+
+      Object.assign(demand, prepareDemandForSave(demand));
+
+      await state.repo.upsertDemanda(demand);
+
+      await state.repo.updateRealizadoPerdaHistory(context.historyId, {
+        demandaId: demand.id,
+        ordem: demand.ordem,
+        dataRealizada: demand.dataRealizada,
+        perda: true,
+        motivoPerda,
+        motivoPerdaChave: configKeyByName("perfisPerda", motivoPerda),
+        justificativaPerda,
+        justificativaPerdaChave: configKeyByName(
+          "justificativasPerda",
+          justificativaPerda,
+        ),
+        comentario: demand.comentario,
+        evidencia: form.get("evidencia") || "",
+        usuario: userEmail,
+        origemAlteracao: "NOTIFICACAO_OPERACIONAL",
+      });
+
+      await state.repo.addLog?.({
+        usuario: userEmail,
+        acao: "Regularização Perda",
+        lista: "historico_realizado_perdas",
+        referencia: demand.id,
+        detalhe: `${motivoPerda} | ${justificativaPerda}`,
+        modulo: "NOTIFICACOES",
+        status: "SUCESSO",
+      });
+
+      $("#actionDialog").close();
+      await refreshAll();
+      showToast("Perda regularizada com sucesso.", "success");
+      return;
+    }
 
     if (context.action === "planejar") {
       const previous = demand.dataPlanejada || "";
@@ -3222,6 +3807,7 @@
     if (state.currentView === "lote") renderBatch();
     if (state.currentView === "futuras") renderFutureDemandas();
     if (state.currentView === "qualidade") renderQuality();
+    if (state.currentView === "notificacoes") renderNotifications();
     if (state.currentView === "indicadores") renderIndicators();
     if (state.currentView === "administracao") renderAdmin();
     if (state.currentView === "logs") renderLogs();
@@ -4319,6 +4905,175 @@
         .join("") || '<span class="muted">Sem dados no recorte.</span>';
   }
 
+  function renderNotificationCards(notifications) {
+    const stats = notificationStats(notifications);
+
+    const cards = [
+      ["Todas", "total", stats.total, "notificações abertas"],
+      ["Vencidas", "vencida", stats.vencida || 0, "prazo estourado"],
+      ["Vencendo", "vencendo", stats.vencendo || 0, "até 7 dias"],
+      [
+        "Replanejamento",
+        "replanejamento-incompleto",
+        stats["replanejamento-incompleto"] || 0,
+        "motivo/justificativa",
+      ],
+      [
+        "Fora do prazo",
+        "realizada-fora-prazo",
+        stats["realizada-fora-prazo"] || 0,
+        "regularizar perda",
+      ],
+      [
+        "Perda incompleta",
+        "perda-incompleta",
+        stats["perda-incompleta"] || 0,
+        "perfil/justificativa",
+      ],
+    ];
+
+    $("#notificationCards").innerHTML = cards
+      .map(
+        ([label, type, value, note]) => `
+        <button
+          class="notification-card ${
+            state.notifications.typeFilter === type ||
+            (!state.notifications.typeFilter && type === "total")
+              ? "is-active"
+              : ""
+          }"
+          type="button"
+          data-notification-card="${type}"
+        >
+          <span>${escapeHtml(label)}</span>
+          <strong>${value}</strong>
+          <small>${escapeHtml(note)}</small>
+        </button>
+      `,
+      )
+      .join("");
+  }
+
+  function renderNotifications() {
+    const all = buildNotifications();
+    const rows = filteredNotifications();
+
+    renderNotificationCards(all);
+
+    $("#notificationTypeFilter").value = state.notifications.typeFilter;
+    $("#notificationSearch").value = state.notifications.search;
+
+    $("#notificationCount").textContent =
+      `${rows.length} notificações encontradas`;
+
+    const tbody = $("#notificationTableBody");
+
+    tbody.innerHTML = rows.length
+      ? rows
+          .map(
+            (notification) => `
+            <tr>
+              <td>
+                <span class="notification-badge ${notification.className}">
+                  ${escapeHtml(notification.criticality)}
+                </span>
+              </td>
+              <td>${escapeHtml(notification.label)}</td>
+              <td>
+                <strong>${escapeHtml(notification.ordem || notification.demandId)}</strong>
+                <div class="muted">${escapeHtml(notification.demandId)}</div>
+              </td>
+              <td class="description-cell">${escapeHtml(notification.descricao)}</td>
+              <td>${escapeHtml(notification.gerencia || "-")}</td>
+              <td>${escapeHtml(notification.supervisao || "-")}</td>
+              <td>${escapeHtml(notification.centroTrabalho || "-")}</td>
+              <td>${formatDate(notification.vencimento)}</td>
+              <td>${statusChip(notification.status)}</td>
+              <td>${escapeHtml(notification.message)}</td>
+              <td>
+                <div class="row-actions notification-actions">
+                  <button
+                    class="button compact-button"
+                    type="button"
+                    data-notification-action="${escapeHtml(notification.id)}"
+                  >
+                    ${escapeHtml(notificationActionLabel(notification.action))}
+                  </button>
+
+                  <button
+                    class="button secondary compact-button"
+                    type="button"
+                    data-notification-open="${escapeHtml(notification.demandId)}"
+                  >
+                    Carteira
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `,
+          )
+          .join("")
+      : `
+      <tr>
+        <td colspan="11">
+          <div class="empty-detail">
+            <strong>Nenhuma notificação no recorte</strong>
+            <span>Altere os filtros ou verifique se as pendências já foram tratadas.</span>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  function openDemandFromNotification(demandId) {
+    const demand = demandById(demandId);
+
+    if (!demand) {
+      showToast("Demanda não encontrada na carteira atual.", "error");
+      return;
+    }
+
+    state.selectedDemandId = demandId;
+    $("#quickSearch").value = demand.ordem || demand.id;
+    state.page = 1;
+
+    collectFilters();
+    buildFilterOptions();
+    switchView("carteira");
+    renderCarteira();
+  }
+
+  function openNotificationAction(notificationId) {
+    const notification = findNotification(notificationId);
+
+    if (!notification) {
+      showToast("Notificação não encontrada.", "error");
+      return;
+    }
+
+    if (notification.action === "planejar") {
+      openAction("planejar", notification.demandId);
+      return;
+    }
+
+    if (notification.action === "replanejar") {
+      openAction("replanejar", notification.demandId);
+      return;
+    }
+
+    if (notification.action === "regularizar-replanejamento") {
+      openReplanNotificationDialog(notification);
+      return;
+    }
+
+    if (notification.action === "regularizar-perda") {
+      openLossNotificationDialog(notification);
+      return;
+    }
+
+    openDemandFromNotification(notification.demandId);
+  }
+
   function renderIndicators() {
     const demands = filteredDemandas();
     const stats = dashboardStats(demands);
@@ -5231,12 +5986,29 @@
       $("#alertMenu").classList.toggle("hidden");
     });
     $("#alertMenu").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-alert-demand]");
-      if (!button) return;
-      state.selectedDemandId = button.dataset.alertDemand;
-      $("#alertMenu").classList.add("hidden");
-      switchView("carteira");
-      renderCarteira();
+      const openPanel = event.target.closest("[data-alert-open-panel]");
+      if (openPanel) {
+        $("#alertMenu").classList.add("hidden");
+        switchView("notificacoes");
+        return;
+      }
+
+      const notificationButton = event.target.closest(
+        "[data-alert-notification]",
+      );
+      if (notificationButton) {
+        $("#alertMenu").classList.add("hidden");
+        openNotificationAction(notificationButton.dataset.alertNotification);
+        return;
+      }
+
+      const demandButton = event.target.closest("[data-alert-demand]");
+      if (demandButton) {
+        state.selectedDemandId = demandButton.dataset.alertDemand;
+        $("#alertMenu").classList.add("hidden");
+        switchView("carteira");
+        renderCarteira();
+      }
     });
 
     $("#mainNav").addEventListener("click", (event) => {
@@ -5511,6 +6283,44 @@
 
       if (action === "save-merge") {
         await saveQualityMerge();
+      }
+    });
+    $("#notificationTypeFilter")?.addEventListener("change", (event) => {
+      state.notifications.typeFilter = event.target.value;
+      renderNotifications();
+    });
+
+    $("#notificationSearch")?.addEventListener("input", (event) => {
+      state.notifications.search = event.target.value;
+      renderNotifications();
+    });
+
+    $("#notificationClearFilters")?.addEventListener("click", () => {
+      state.notifications.typeFilter = "";
+      state.notifications.search = "";
+      renderNotifications();
+    });
+
+    $("#notificationCards")?.addEventListener("click", (event) => {
+      const card = event.target.closest("[data-notification-card]");
+      if (!card) return;
+
+      const type = card.dataset.notificationCard;
+
+      state.notifications.typeFilter = type === "total" ? "" : type;
+      renderNotifications();
+    });
+
+    $("#notificationTableBody")?.addEventListener("click", (event) => {
+      const actionButton = event.target.closest("[data-notification-action]");
+      if (actionButton) {
+        openNotificationAction(actionButton.dataset.notificationAction);
+        return;
+      }
+
+      const openButton = event.target.closest("[data-notification-open]");
+      if (openButton) {
+        openDemandFromNotification(openButton.dataset.notificationOpen);
       }
     });
     $("#adminTabs").addEventListener("click", (event) => {

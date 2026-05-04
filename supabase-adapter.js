@@ -595,6 +595,80 @@
       return Array.isArray(saved) ? saved.map(mapControleToDemand) : records;
     }
 
+    async updateReplanHistory(id, entry) {
+      if (!id) {
+        return this.addHistory("replanejamento", entry);
+      }
+
+      const payload = {
+        motivo: entry.motivo || "",
+        motivo_chave: entry.motivoChave || slugify(entry.motivo || ""),
+        justificativa: entry.justificativa || "",
+        justificativa_chave:
+          entry.justificativaChave || slugify(entry.justificativa || ""),
+        comentario: entry.comentario || "",
+        usuario: entry.usuario || "",
+        usuario_email: entry.usuario || "",
+        data_hora_alteracao: new Date().toISOString(),
+        origem_alteracao: entry.origemAlteracao || "NOTIFICACAO_OPERACIONAL",
+      };
+
+      const saved = await request(
+        `${TABLES.historicoReplanejamento}?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      return saved?.[0] ? mapHistoricoReplanejamento(saved[0]) : entry;
+    }
+
+    async updateRealizadoPerdaHistory(id, entry) {
+      if (!id) {
+        return this.addHistory("realizadoPerda", entry);
+      }
+
+      const payload = {
+        perda: Boolean(entry.perda),
+        perfil_perda: entry.motivoPerda || "",
+        perfil_perda_chave:
+          entry.motivoPerdaChave || slugify(entry.motivoPerda || ""),
+        motivo_perda: entry.motivoPerda || "",
+        motivo_perda_chave:
+          entry.motivoPerdaChave || slugify(entry.motivoPerda || ""),
+        justificativa_perda: entry.justificativaPerda || "",
+        justificativa_perda_chave:
+          entry.justificativaPerdaChave ||
+          slugify(entry.justificativaPerda || ""),
+        comentario: entry.comentario || "",
+        evidencia: entry.evidencia || "",
+        url_evidencia: entry.evidencia || "",
+        usuario: entry.usuario || "",
+        usuario_email: entry.usuario || "",
+        data_hora_registro: new Date().toISOString(),
+        origem_alteracao: entry.origemAlteracao || "NOTIFICACAO_OPERACIONAL",
+      };
+
+      const saved = await request(
+        `${TABLES.historicoRealizadoPerdas}?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      return saved?.[0] ? mapHistoricoRealizadoPerda(saved[0]) : entry;
+    }
+
     async addHistory(type, entry) {
       if (type === "planejamento") {
         const payload = {

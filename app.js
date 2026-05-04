@@ -85,7 +85,18 @@
       label: "Local Instalacao",
       field: "localInstalacao",
     },
-    { key: "statusSistema", label: "Status Sistema", field: "statusSistema" },
+    {
+      key: "statusSistema",
+      label: "Status Sistema",
+      field: "statusSistema",
+      formatter: "sapStatus",
+    },
+    {
+      key: "statusUsuario",
+      label: "Status Usuario",
+      field: "statusUsuario",
+      formatter: "sapStatus",
+    },
     { key: "anoVencimento", label: "Ano Vencimento", special: "anoVencimento" },
     { key: "mesVencimento", label: "Mes Vencimento", special: "mesVencimento" },
   ];
@@ -617,6 +628,17 @@
 
   function normalizeText(value) {
     return global.CCEData.normalizeText(value);
+  }
+
+  function formatSapStatusFilter(value) {
+    const text = String(value || "")
+      .replace(/_/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!text) return "";
+
+    return text.slice(0, 9).trim();
   }
 
   function uniqueOptions(values) {
@@ -1652,53 +1674,102 @@
 
   function filterValueFor(item, definition) {
     if (definition.special === "status") return primaryStatusOf(item);
+
     if (definition.special === "centroStatus")
       return item.centroTrabalhoStatus || "Nao cadastrado";
+
     if (definition.special === "anoVencimento")
       return item.vencimento?.slice(0, 4) || "";
+
     if (definition.special === "mesVencimento") {
       const month = item.vencimento?.slice(5, 7) || "";
       return month ? `${month} - ${monthName(month)}` : "";
     }
-    return item[definition.field] || "";
+
+    const value = item[definition.field] || "";
+
+    if (definition.formatter === "sapStatus") {
+      return formatSapStatusFilter(value);
+    }
+
+    return value;
   }
 
   function renderMultiFilter(host, definition, options, selected) {
     const selectedSet = new Set(selected || []);
     const checkedCount = selectedSet.size;
+
     const summary =
       checkedCount === 0
         ? "Todos"
         : checkedCount === 1
           ? selected[0]
           : `${checkedCount} selecionados`;
-    host.innerHTML = `
-      <label class="multi-label">${escapeHtml(definition.label)}</label>
-      <details class="multi-select" data-filter-details>
-        <summary title="${escapeHtml(summary)}">${escapeHtml(summary)}</summary>
-        <div class="multi-menu">
-          <input data-multi-search type="search" placeholder="Pesquisar..." aria-label="Pesquisar ${escapeHtml(definition.label)}" />
-          <div class="multi-options">
-            ${
-              options.length
-                ? options
-                    .map(
-                      (option) => `
-                <label class="multi-option">
-                  <input data-multi-option type="checkbox" value="${escapeHtml(option)}" ${selectedSet.has(option) ? "checked" : ""} />
-                  <span>${escapeHtml(option)}</span>
-                </label>
-              `,
-                    )
-                    .join("")
-                : '<span class="muted multi-empty">Sem opcoes no recorte</span>'
-            }
-          </div>
-        </div>
-      </details>
-    `;
-  }
 
+    const normalizedOptions = uniqueOptions(options);
+
+    host.innerHTML = `
+    <label class="multi-label">${escapeHtml(definition.label)}</label>
+
+    <details class="multi-select filter-select-pro" data-filter-details>
+      <summary title="${escapeHtml(summary)}">
+        <span class="multi-summary-text">${escapeHtml(summary)}</span>
+      </summary>
+
+      <div class="multi-menu filter-menu-pro">
+        <div class="multi-search-wrap">
+          ${iconSvg("filter")}
+          <input
+            data-multi-search
+            type="search"
+            placeholder="Pesquisar em ${escapeHtml(definition.label)}..."
+            aria-label="Pesquisar ${escapeHtml(definition.label)}"
+          />
+        </div>
+
+        <div class="multi-menu-actions">
+          <button
+            class="mini-filter-button"
+            type="button"
+            data-multi-select-visible
+          >
+            Selecionar visíveis
+          </button>
+
+          <button
+            class="mini-filter-button secondary"
+            type="button"
+            data-multi-clear
+          >
+            Limpar seleção
+          </button>
+        </div>
+
+        <div class="multi-options">
+          ${
+            normalizedOptions.length
+              ? normalizedOptions
+                  .map(
+                    (option) => `
+              <label class="multi-option">
+                <input
+                  data-multi-option
+                  type="checkbox"
+                  value="${escapeHtml(option)}"
+                  ${selectedSet.has(option) ? "checked" : ""}
+                />
+                <span>${escapeHtml(option)}</span>
+              </label>
+            `,
+                  )
+                  .join("")
+              : '<span class="muted multi-empty">Sem opções no recorte</span>'
+          }
+        </div>
+      </div>
+    </details>
+  `;
+  }
   function demandMatchesFilters(item, filters, ignoredKey = "") {
     const search = normalizeText(filters.quickSearch);
 
@@ -4725,30 +4796,73 @@
       if (
         !event.target.matches("[data-filter]") &&
         !event.target.matches("[data-multi-option]")
-      )
+      ) {
         return;
+      }
+
       state.page = 1;
       collectFilters();
       buildFilterOptions();
       renderCarteira();
     });
+
     $(".filter-panel").addEventListener("input", (event) => {
       if (event.target.matches("[data-multi-search]")) {
         const query = normalizeText(event.target.value);
-        $$(".multi-option", event.target.closest(".multi-menu")).forEach(
-          (option) => {
-            option.classList.toggle(
-              "hidden",
-              query && !normalizeText(option.textContent).includes(query),
-            );
-          },
-        );
+        const menu = event.target.closest(".multi-menu");
+
+        $$(".multi-option", menu).forEach((option) => {
+          option.classList.toggle(
+            "hidden",
+            Boolean(query) &&
+              !normalizeText(option.textContent).includes(query),
+          );
+        });
+
         return;
       }
+
       if (event.target.id === "quickSearch") {
         state.page = 1;
         renderCarteira();
       }
+    });
+
+    $(".filter-panel").addEventListener("click", (event) => {
+      const selectVisibleButton = event.target.closest(
+        "[data-multi-select-visible]",
+      );
+      const clearButton = event.target.closest("[data-multi-clear]");
+
+      if (!selectVisibleButton && !clearButton) return;
+
+      const menu = event.target.closest(".multi-menu");
+      if (!menu) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const visibleOptions = $$("[data-multi-option]", menu).filter(
+        (option) =>
+          !option.closest(".multi-option")?.classList.contains("hidden"),
+      );
+
+      if (selectVisibleButton) {
+        visibleOptions.forEach((option) => {
+          option.checked = true;
+        });
+      }
+
+      if (clearButton) {
+        $$("[data-multi-option]", menu).forEach((option) => {
+          option.checked = false;
+        });
+      }
+
+      state.page = 1;
+      collectFilters();
+      buildFilterOptions();
+      renderCarteira();
     });
     $("#clearFilters").addEventListener("click", () => {
       $$("[data-filter]").forEach((field) => {

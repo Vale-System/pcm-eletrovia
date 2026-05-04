@@ -772,6 +772,157 @@
     return Array.from(mapa.values());
   }
 
+  function demandIsRealizada(demanda) {
+    const statusOperacional = normalizeText(demanda.statusOperacional);
+    const statusSistema = normalizeText(demanda.statusSistema);
+    const statusUsuario = normalizeText(demanda.statusUsuario);
+
+    return (
+      Boolean(demanda.dataRealizada) ||
+      statusOperacional.includes("realizado") ||
+      statusSistema.includes("ence") ||
+      statusSistema.includes("concl") ||
+      statusSistema.includes("ente") ||
+      statusUsuario.includes("encr") ||
+      statusUsuario.includes("concl") ||
+      statusUsuario.includes("realiz")
+    );
+  }
+
+  function mergeCarteiraDuplicateByOrder(principal, secundario) {
+    const merged = { ...secundario, ...principal };
+
+    const camposComplementares = [
+      "descricao",
+      "gerencia",
+      "supervisao",
+      "centroTrabalho",
+      "localInstalacao",
+      "competencia",
+      "tipoOM",
+      "prioridade",
+      "vencimento",
+      "toleranciaMin",
+      "toleranciaMax",
+      "frequencia",
+      "observacao",
+      "vinculadaEm",
+    ];
+
+    camposComplementares.forEach((campo) => {
+      if (
+        (merged[campo] === null ||
+          merged[campo] === undefined ||
+          String(merged[campo]).trim() === "") &&
+        secundario[campo]
+      ) {
+        merged[campo] = secundario[campo];
+      }
+    });
+
+    const camposControleSupabase = [
+      "dataPlanejada",
+      "dataReplanejadaAtual",
+      "perda",
+      "motivoPerda",
+      "justificativaPerda",
+      "comentario",
+      "usuarioResponsavel",
+      "quantidadeReplanejamentos",
+    ];
+
+    camposControleSupabase.forEach((campo) => {
+      if (
+        secundario[campo] !== null &&
+        secundario[campo] !== undefined &&
+        String(secundario[campo]).trim() !== "" &&
+        String(secundario[campo]).trim() !== "false"
+      ) {
+        if (
+          merged[campo] === null ||
+          merged[campo] === undefined ||
+          String(merged[campo]).trim() === "" ||
+          merged[campo] === false
+        ) {
+          merged[campo] = secundario[campo];
+        }
+      }
+    });
+
+    merged.fontesConsolidadas = Array.from(
+      new Set(
+        [
+          principal.fontesConsolidadas,
+          secundario.fontesConsolidadas,
+          principal.origem,
+          secundario.origem,
+        ]
+          .filter(Boolean)
+          .flatMap((item) =>
+            String(item)
+              .split("|")
+              .map((v) => v.trim()),
+          )
+          .filter(Boolean),
+      ),
+    ).join(" | ");
+
+    return merged;
+  }
+
+  function consolidateCarteiraByRealizedOrder(carteira) {
+    const semOrdem = [];
+    const porOrdem = new Map();
+
+    carteira.forEach((demanda) => {
+      const ordem = String(demanda.ordem || "").trim();
+
+      if (!ordem) {
+        semOrdem.push(demanda);
+        return;
+      }
+
+      const atual = porOrdem.get(ordem);
+
+      if (!atual) {
+        porOrdem.set(ordem, demanda);
+        return;
+      }
+
+      const atualRealizada = demandIsRealizada(atual);
+      const novaRealizada = demandIsRealizada(demanda);
+
+      let principal = atual;
+      let secundario = demanda;
+
+      if (novaRealizada && !atualRealizada) {
+        principal = demanda;
+        secundario = atual;
+      } else if (novaRealizada === atualRealizada) {
+        const atualTemSupabase =
+          String(atual.origem || "").includes("Supabase") ||
+          atual.dataPlanejada ||
+          atual.dataReplanejadaAtual ||
+          atual.comentario;
+
+        const novaTemSupabase =
+          String(demanda.origem || "").includes("Supabase") ||
+          demanda.dataPlanejada ||
+          demanda.dataReplanejadaAtual ||
+          demanda.comentario;
+
+        if (novaTemSupabase && !atualTemSupabase) {
+          principal = demanda;
+          secundario = atual;
+        }
+      }
+
+      porOrdem.set(ordem, mergeCarteiraDuplicateByOrder(principal, secundario));
+    });
+
+    return [...semOrdem, ...Array.from(porOrdem.values())];
+  }
+
   function applyBaseRealizadosToCarteira(carteira, baseRealizados) {
     if (!Array.isArray(baseRealizados) || !baseRealizados.length) {
       return carteira;
@@ -1040,12 +1191,16 @@
     const previousSelection = state.selectedDemandId;
     const previousUserEmail =
       state.currentUser?.email || getStoredSessionEmail();
+
     const baseSources = await loadBaseSourcesFromJson();
+
     const base = mergeBaseOrdensEFuturas(
       baseSources.baseOrdens,
       baseSources.baseFuturas,
     );
+
     const supabaseData = await state.repo.getAll();
+
     const mapaCentrosTrabalho = new Map(
       (supabaseData.centrosTrabalho || [])
         .filter((item) => item.ativo !== false)
@@ -1065,6 +1220,7 @@
     );
 
     const baseIds = new Set(baseEnriquecida.map((item) => item.id));
+
     const qualitySourceRecords = buildQualitySourceRecords({
       baseOrdens: baseSources.baseOrdens,
       baseFuturas: baseSources.baseFuturas,
@@ -1090,9 +1246,13 @@
       ...mergedBase,
     ].map(normalizeDemandRecord);
 
-    const demandas = applyBaseRealizadosToCarteira(
+    const demandasComRealizados = applyBaseRealizadosToCarteira(
       demandasAntesRealizados,
       baseSources.baseRealizados,
+    ).map(normalizeDemandRecord);
+
+    const demandas = consolidateCarteiraByRealizedOrder(
+      demandasComRealizados,
     ).map(normalizeDemandRecord);
 
     state.db = {
@@ -1116,7 +1276,9 @@
     state.quality.page = 1;
 
     setCurrentUserFromEmail(previousUserEmail);
+
     state.lastDataUpdateAt = latestDataUpdateAt();
+
     state.selectedDemandId = demandas.some(
       (item) => item.id === previousSelection,
     )

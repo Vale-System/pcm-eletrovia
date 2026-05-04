@@ -3051,8 +3051,8 @@ body.is-login-required .app-shell {
 
 .login-logo {
   display: block;
-  width: 112px;
-  height: 112px;
+  width: 414px;
+  height: 414px;
   object-fit: contain;
   border-radius: 28px;
   filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.16));

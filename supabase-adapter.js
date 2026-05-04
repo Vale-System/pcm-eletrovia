@@ -23,6 +23,7 @@
     cargasLoteItens: "cargas_lote_itens",
     evidencias: "evidencias",
     centrosTrabalho: "cadastro_centros_trabalho",
+    feriasSubstituicoes: "ferias_substituicoes",
     // parametros: "parametros_sistema",
   };
 
@@ -415,6 +416,24 @@
     };
   }
 
+  function mapFeriasSubstituicao(row) {
+    return {
+      id: row.id,
+      emailAusente: row.email_ausente || "",
+      matriculaAusente: row.matricula_ausente || "",
+      emailSubstituto: row.email_substituto || "",
+      matriculaSubstituto: row.matricula_substituto || "",
+      dataInicio: cleanDate(row.data_inicio) || "",
+      dataFim: cleanDate(row.data_fim) || "",
+      escopoGerencia: row.escopo_gerencia || "",
+      escopoCentroTrabalho: row.escopo_centro_trabalho || "",
+      observacao: row.observacao || "",
+      ativo: row.ativo !== false,
+      createdAt: row.created_at || "",
+      updatedAt: row.updated_at || "",
+    };
+  }
+
   class SupabaseRepository {
     constructor() {
       this.mode = "Supabase REST";
@@ -437,6 +456,7 @@
         historicoRealizadoPerdas,
         logs,
         centrosTrabalho,
+        feriasSubstituicoes,
       ] = await Promise.all([
         selectAll(TABLES.controle, "select=*&ativo=eq.true"),
         selectAll(TABLES.usuarios, "select=*&ativo=eq.true"),
@@ -470,6 +490,10 @@
         ),
         selectAll(TABLES.logs, "select=*&order=data_hora.desc"),
         selectAll(TABLES.centrosTrabalho, "select=*&order=centro_trabalho.asc"),
+        selectAllOptional(
+          TABLES.feriasSubstituicoes,
+          "select=*&order=data_inicio.desc",
+        ),
       ]);
 
       const parametrosMap = {};
@@ -513,8 +537,39 @@
         historicoRealizadoPerdas: historicoRealizadoPerdas.map(
           mapHistoricoRealizadoPerda,
         ),
+        feriasSubstituicoes: feriasSubstituicoes.map(mapFeriasSubstituicao),
         logs: logs.map(mapLog),
       };
+    }
+
+    async upsertFeriasSubstituicao(record) {
+      const now = new Date().toISOString();
+
+      const payload = {
+        id: record.id || undefined,
+        email_ausente: record.emailAusente || record.email_ausente || "",
+        matricula_ausente:
+          record.matriculaAusente || record.matricula_ausente || "",
+        email_substituto:
+          record.emailSubstituto || record.email_substituto || "",
+        matricula_substituto:
+          record.matriculaSubstituto || record.matricula_substituto || "",
+        data_inicio: cleanDate(record.dataInicio || record.data_inicio),
+        data_fim: cleanDate(record.dataFim || record.data_fim),
+        escopo_gerencia: record.escopoGerencia || record.escopo_gerencia || "",
+        escopo_centro_trabalho:
+          record.escopoCentroTrabalho || record.escopo_centro_trabalho || "",
+        observacao: record.observacao || "",
+        ativo:
+          record.ativo === false || record.ativo === "false" ? false : true,
+        updated_at: now,
+      };
+
+      const saved = payload.id
+        ? await upsert(TABLES.feriasSubstituicoes, payload, "id")
+        : await insert(TABLES.feriasSubstituicoes, payload);
+
+      return saved?.[0] ? mapFeriasSubstituicao(saved[0]) : record;
     }
 
     async upsertDemanda(record) {

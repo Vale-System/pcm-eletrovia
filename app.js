@@ -1345,6 +1345,7 @@
       qualitySourceRecords,
       usuarios: supabaseData.usuarios || [],
       centrosTrabalho: supabaseData.centrosTrabalho || [],
+      feriasSubstituicoes: supabaseData.feriasSubstituicoes || [],
       configuracoes: supabaseData.configuracoes || {},
       parametros: supabaseData.parametros || {},
       parametrosDisponiveis: supabaseData.parametrosDisponiveis === true,
@@ -2671,9 +2672,78 @@
     });
   }
 
+  function activeVacationSubstitutionsForCurrentUser() {
+    const email = normalizeText(state.currentUser?.email || "");
+    const today = toDate(todayText());
+
+    return (state.db.feriasSubstituicoes || []).filter((item) => {
+      if (!item.ativo) return false;
+
+      const inicio = toDate(item.dataInicio);
+      const fim = toDate(item.dataFim);
+
+      if (!inicio || !fim) return false;
+
+      const isInPeriod = today >= inicio && today <= fim;
+      const isSubstitute = normalizeText(item.emailSubstituto) === email;
+
+      return isInPeriod && isSubstitute;
+    });
+  }
+
+  function responsibleEmailsForDemand(demand) {
+    return [
+      demand.usuarioResponsavel,
+      demand.planejadorOMEmail,
+      demand.programadorEmail,
+    ]
+      .filter(Boolean)
+      .map(normalizeText);
+  }
+
+  function demandMatchesVacationScope(demand, substitution) {
+    const gerencia = normalizeText(substitution.escopoGerencia || "");
+    const centro = normalizeText(substitution.escopoCentroTrabalho || "");
+
+    const demandGerencia = normalizeText(demand.gerencia || "");
+    const demandCentro = normalizeText(demand.centroTrabalho || "");
+
+    const gerenciaOk = !gerencia || demandGerencia === gerencia;
+    const centroOk = !centro || demandCentro === centro;
+
+    return gerenciaOk && centroOk;
+  }
+
+  function demandIsVisibleForCurrentUserAlerts(demand) {
+    const profile = state.currentUser?.perfil || "";
+
+    if (profile === "Administrador" || profile === "Gestor") {
+      return true;
+    }
+
+    const currentEmail = normalizeText(state.currentUser?.email || "");
+    const demandEmails = responsibleEmailsForDemand(demand);
+
+    if (demandEmails.includes(currentEmail)) {
+      return true;
+    }
+
+    const substitutions = activeVacationSubstitutionsForCurrentUser();
+
+    return substitutions.some((substitution) => {
+      const absentEmail = normalizeText(substitution.emailAusente || "");
+
+      return (
+        demandEmails.includes(absentEmail) &&
+        demandMatchesVacationScope(demand, substitution)
+      );
+    });
+  }
+
   function alertItems() {
     const today = toDate(todayText());
     return state.db.demandas
+      .filter(demandIsVisibleForCurrentUserAlerts)
       .map((item) => {
         const due = toDate(item.vencimento);
         const days = due ? Math.ceil((due - today) / 86400000) : 9999;
@@ -3144,8 +3214,7 @@
     }
 
     $("#actionDialog").close();
-    await refreshAll();
-    showToast("Registro salvo com sucesso.", "success");
+    await refreshAfterSave("Registro salvo com sucesso.");
   }
 
   function renderCurrentView() {
@@ -3157,6 +3226,11 @@
     if (state.currentView === "administracao") renderAdmin();
     if (state.currentView === "logs") renderLogs();
     applyPermissions();
+  }
+
+  async function refreshAfterSave(message = "Registro salvo com sucesso.") {
+    await refreshAll();
+    showToast(message, "success");
   }
 
   async function refreshAll() {
@@ -3369,6 +3443,30 @@
     return normalized;
   }
 
+  function isBlockedForBatchUpdate(demand) {
+    if (!demand) return false;
+
+    const status = primaryStatusOf(demand);
+
+    return status === "Realizado" || status === "Cancelado";
+  }
+
+  function blockedBatchMessage(demand, record) {
+    const ordem = record?.ordem || demand?.ordem || "";
+    const id = record?.id || demand?.id || "";
+    const status = primaryStatusOf(demand);
+
+    if (status === "Cancelado") {
+      return `A ordem ${ordem || id} está cancelada/encerrada e não pode ser alterada por carga em lote.`;
+    }
+
+    if (status === "Realizado") {
+      return `A ordem ${ordem || id} está realizada/encerrada e não pode ser alterada por carga em lote.`;
+    }
+
+    return `A ordem ${ordem || id} está bloqueada para alteração por carga em lote.`;
+  }
+
   function validateBatchRows(rows) {
     const valid = [];
     const warnings = [];
@@ -3379,6 +3477,11 @@
       const messages = [];
       const alerts = [];
       const existing = findDemandForBatch(record);
+
+      if (existing && isBlockedForBatchUpdate(existing)) {
+        messages.push(blockedBatchMessage(existing, record));
+      }
+
       if (!record.ordem && !record.id) {
         messages.push("Informe Ordem SAP ou ID_Demanda_Controle.");
       }
@@ -3527,11 +3630,21 @@
       `${candidates.length} registro(s) em processamento. Aguarde a gravação no Supabase.`,
     );
 
+    const blockedInSave = [];
+
     const records = candidates
       .map((item) => {
         const existing = findDemandForBatch(item.record);
 
         if (!existing) return null;
+
+        if (isBlockedForBatchUpdate(existing)) {
+          blockedInSave.push({
+            ...item,
+            message: blockedBatchMessage(existing, item.record),
+          });
+          return null;
+        }
 
         const partial = buildBatchPartialUpdate(item.record);
 
@@ -3552,7 +3665,25 @@
       })
       .filter(Boolean);
 
-    if (!records.length) {
+    if (!records.length)
+      if (blockedInSave.length) {
+        state.batch.errors = [
+          ...state.batch.errors,
+          ...blockedInSave.map((item) => ({
+            ...item,
+            status: "ERRO",
+            acao: "BLOQUEADO_STATUS_FINAL",
+          })),
+        ];
+
+        renderBatch();
+
+        showToast(
+          `${blockedInSave.length} registro(s) bloqueado(s) por status Realizado/Cancelado.`,
+          "error",
+        );
+      }
+    {
       showBatchStatus(
         "error",
         "Nenhum registro foi preparado para gravação.",
@@ -4283,6 +4414,7 @@
     );
     if (state.adminTab === "usuarios") renderUserAdmin();
     else if (state.adminTab === "centrosTrabalho") renderCentrosTrabalhoAdmin();
+    else if (state.adminTab === "ferias") renderFeriasAdmin();
     else if (state.adminTab === "parametros") renderParameterAdmin();
     else renderConfigAdmin(state.adminTab);
   }
@@ -4366,8 +4498,7 @@
         referencia: event.currentTarget.email.value,
         detalhe: "Usuário incluído pela administração.",
       });
-      await refreshAll();
-      showToast("Usuário cadastrado.", "success");
+      await refreshAfterSave("Usuário salvo com sucesso.");
     });
     $("#adminContent").addEventListener("click", (event) => {
       const button = event.target.closest("[data-edit-user]");
@@ -4469,8 +4600,7 @@
         referencia: config.title,
         detalhe: new FormData(event.currentTarget).get("value"),
       });
-      await refreshAll();
-      showToast("Configuração cadastrada.", "success");
+      await refreshAfterSave("Configuração salva com sucesso.");
     });
     $("#addChildConfigForm").addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -4487,8 +4617,7 @@
         referencia: config.title,
         detalhe: form.get("value"),
       });
-      await refreshAll();
-      showToast("Subgrupo cadastrado.", "success");
+      await refreshAfterSave("Subgrupo salvo com sucesso.");
     });
   }
 
@@ -4648,8 +4777,7 @@
         modulo: "CONFIGURACOES",
       });
 
-      await refreshAll();
-      showToast("Centro de trabalho salvo com sucesso.", "success");
+      await refreshAfterSave("Centro de trabalho salvo com sucesso.");
     });
 
     $("#adminContent").addEventListener("click", (event) => {
@@ -4705,6 +4833,186 @@
     );
   }
 
+  function renderFeriasAdmin() {
+    const ferias = state.db.feriasSubstituicoes || [];
+
+    $("#adminContent").innerHTML = `
+    <div class="admin-grid admin-grid-wide">
+      <form class="admin-form" id="feriasForm">
+        <label>
+          E-mail de quem vai sair de férias
+          <input name="emailAusente" type="email" required placeholder="planejador@vale.com" />
+        </label>
+
+        <label>
+          Matrícula de quem vai sair
+          <input name="matriculaAusente" placeholder="000000" />
+        </label>
+
+        <label>
+          E-mail do substituto
+          <input name="emailSubstituto" type="email" required placeholder="substituto@vale.com" />
+        </label>
+
+        <label>
+          Matrícula do substituto
+          <input name="matriculaSubstituto" placeholder="000000" />
+        </label>
+
+        <label>
+          Data início
+          <input name="dataInicio" type="date" required />
+        </label>
+
+        <label>
+          Data fim
+          <input name="dataFim" type="date" required />
+        </label>
+
+        <label>
+          Escopo Gerência
+          <input name="escopoGerencia" placeholder="Ex.: GAL I - deixar vazio para todos" />
+        </label>
+
+        <label>
+          Escopo Centro de Trabalho
+          <input name="escopoCentroTrabalho" placeholder="Ex.: CESSL2 - deixar vazio para todos" />
+        </label>
+
+        <label>
+          Ativo
+          <select name="ativo">
+            <option value="true" selected>Sim</option>
+            <option value="false">Não</option>
+          </select>
+        </label>
+
+        <label class="span-2">
+          Observação
+          <textarea name="observacao" rows="3" placeholder="Ex.: Substituição durante férias do planejador responsável."></textarea>
+        </label>
+
+        <button class="button" type="submit">
+          Salvar Substituição
+        </button>
+      </form>
+
+      <div class="admin-list admin-list-scroll">
+        ${
+          ferias.length
+            ? ferias
+                .map(
+                  (item) => `
+                    <div class="admin-list-item">
+                      <div>
+                        <strong>
+                          ${escapeHtml(item.emailAusente)}
+                          →
+                          ${escapeHtml(item.emailSubstituto)}
+                        </strong>
+
+                        <div class="muted">
+                          ${formatDate(item.dataInicio)}
+                          até
+                          ${formatDate(item.dataFim)}
+                          |
+                          ${item.ativo ? "Ativo" : "Inativo"}
+                        </div>
+
+                        <div class="muted">
+                          Gerência:
+                          ${escapeHtml(item.escopoGerencia || "Todas")}
+                          |
+                          Centro:
+                          ${escapeHtml(item.escopoCentroTrabalho || "Todos")}
+                        </div>
+
+                        <div class="muted">
+                          ${escapeHtml(item.observacao || "")}
+                        </div>
+                      </div>
+
+                      <button
+                        class="button secondary"
+                        type="button"
+                        data-edit-ferias="${escapeHtml(item.id)}"
+                      >
+                        Editar
+                      </button>
+                    </div>
+                  `,
+                )
+                .join("")
+            : '<div class="empty-detail"><strong>Nenhuma substituição cadastrada</strong><span>Cadastre férias para redirecionar notificações e responsabilidades temporárias.</span></div>'
+        }
+      </div>
+    </div>
+  `;
+
+    $("#feriasForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const formElement = event.currentTarget;
+      const form = new FormData(formElement);
+      const record = Object.fromEntries(form.entries());
+
+      if (toDate(record.dataFim) < toDate(record.dataInicio)) {
+        showToast("A data fim não pode ser menor que a data início.", "error");
+        return;
+      }
+
+      record.ativo = record.ativo === "true";
+
+      await state.repo.upsertFeriasSubstituicao(record);
+
+      await state.repo.addLog({
+        usuario: state.currentUser.email,
+        acao: "Cadastro Férias/Substituição",
+        lista: "ferias_substituicoes",
+        referencia: `${record.emailAusente} -> ${record.emailSubstituto}`,
+        detalhe: `${record.dataInicio} até ${record.dataFim}`,
+        modulo: "ADMINISTRACAO",
+        status: "SUCESSO",
+      });
+
+      await refreshAfterSave("Substituição de férias salva com sucesso.");
+    });
+
+    $("#adminContent").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-edit-ferias]");
+      if (!button) return;
+
+      const item = ferias.find(
+        (registro) => registro.id === button.dataset.editFerias,
+      );
+      if (!item) return;
+
+      const form = $("#feriasForm");
+
+      form.emailAusente.value = item.emailAusente || "";
+      form.matriculaAusente.value = item.matriculaAusente || "";
+      form.emailSubstituto.value = item.emailSubstituto || "";
+      form.matriculaSubstituto.value = item.matriculaSubstituto || "";
+      form.dataInicio.value = item.dataInicio || "";
+      form.dataFim.value = item.dataFim || "";
+      form.escopoGerencia.value = item.escopoGerencia || "";
+      form.escopoCentroTrabalho.value = item.escopoCentroTrabalho || "";
+      form.ativo.value = item.ativo !== false ? "true" : "false";
+      form.observacao.value = item.observacao || "";
+
+      let hiddenId = form.querySelector('[name="id"]');
+
+      if (!hiddenId) {
+        hiddenId = document.createElement("input");
+        hiddenId.type = "hidden";
+        hiddenId.name = "id";
+        form.appendChild(hiddenId);
+      }
+
+      hiddenId.value = item.id;
+    });
+  }
+
   function renderParameterAdmin() {
     const params = state.db.parametros || {};
     if (!state.db.parametrosDisponiveis) {
@@ -4739,8 +5047,7 @@
         referencia: "Geral",
         detalhe: "Parâmetros atualizados.",
       });
-      await refreshAll();
-      showToast("Parâmetros salvos.", "success");
+      await refreshAfterSave("Parâmetros salvos com sucesso.");
     });
   }
 

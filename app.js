@@ -524,7 +524,7 @@
     const substatuses = [];
 
     if (status === "Cancelado") {
-      substatuses.push("Cancelado no SAP BO");
+      substatuses.push("Cancelado");
       return Array.from(new Set(substatuses));
     }
 
@@ -569,8 +569,7 @@
     if (status === "Replanejado") return "status-replanejado";
     if (status === "Realizado" || status === "No Prazo")
       return "status-realizado";
-    if (status === "Cancelado" || status === "Cancelado no SAP BO")
-      return "status-perda";
+    if (status === "Cancelado" || status === "Cancelado") return "status-perda";
     if (status === "Cadastrado") return "status-realizado";
     if (status === "Nao cadastrado" || status === "Sem centro")
       return "status-perda";

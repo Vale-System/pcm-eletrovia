@@ -3199,3 +3199,140 @@ body.is-login-required .app-shell {
     max-height: none;
   }
 }
+/* ============================================================
+   AJUSTE FINAL - ALTURA DA CARTEIRA E LOGIN
+   ============================================================ */
+
+/* CARTEIRA: aumenta a tabela para cima/baixo */
+#view-carteira.is-active {
+  gap: 8px;
+}
+
+#view-carteira .kpi-strip {
+  gap: 7px;
+  margin: 0;
+}
+
+#view-carteira .kpi-card {
+  min-height: 64px;
+  padding: 8px 10px;
+}
+
+#view-carteira .kpi-card span {
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+#view-carteira .kpi-card strong {
+  font-size: 20px;
+}
+
+#view-carteira .kpi-card small {
+  font-size: 10px;
+  margin-top: 3px;
+}
+
+#view-carteira .panel-toolbar {
+  min-height: 44px;
+  padding: 7px 10px;
+}
+
+#view-carteira .table-scroll {
+  max-height: calc(100vh - 245px);
+  min-height: calc(100vh - 315px);
+  overflow: auto;
+}
+
+#view-carteira .pagination {
+  min-height: 46px;
+  padding: 7px 10px;
+}
+
+#view-carteira .detail-panel {
+  top: 8px;
+  height: calc(100vh - 16px);
+  max-height: calc(100vh - 16px);
+}
+
+/* LOGIN: remove rolagem e sobe o card levemente */
+.login-screen-premium {
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.login-shell-premium {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.login-panel-left {
+  align-items: flex-start;
+  padding: 34px 48px 24px;
+  overflow: hidden;
+}
+
+.login-card-premium {
+  transform: translateY(-6px);
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  padding: 30px 38px 26px;
+  gap: 14px;
+}
+
+/* Corrige a logo que estava com 414px e causando rolagem */
+.login-logo {
+  width: 112px;
+  height: 112px;
+  max-height: 112px;
+  object-fit: contain;
+}
+
+.login-card-heading p {
+  margin-top: 9px;
+  line-height: 1.42;
+}
+
+.login-field {
+  gap: 6px;
+}
+
+.login-field input {
+  height: 48px;
+}
+
+.login-submit {
+  height: 50px;
+}
+
+.login-security-note {
+  padding: 11px 14px;
+}
+
+.login-panel-right {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Se a tela for baixa, aí sim libera rolagem controlada */
+@media (max-height: 760px) {
+  .login-screen-premium {
+    overflow: auto;
+  }
+
+  .login-shell-premium {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .login-panel-left {
+    overflow: visible;
+    padding: 24px;
+  }
+
+  .login-card-premium {
+    transform: none;
+    max-height: none;
+  }
+}

@@ -3416,7 +3416,7 @@
       $("#modalTitle").textContent = "Planejar Demanda";
       $("#modalBody").innerHTML = `
         <div class="modal-grid">
-          <label>Data planejada<input name="dataPlanejada" type="date" value="${dateText(demand.dataPlanejada || demand.vencimento)}" required /></label>
+          <label>Data planejada<input name="dataPlanejada" type="date" value="${dateText(demand.dataPlanejada) || todayText()}" required /></label>
           <label>Responsável<input name="responsavel" value="${escapeHtml(demand.usuarioResponsavel || state.currentUser.email)}" /></label>
           <label class="span-2">Comentário<textarea name="comentario" rows="4">${escapeHtml(demand.comentario || "")}</textarea></label>
         </div>
@@ -3429,7 +3429,7 @@
       $("#modalBody").innerHTML = `
         <div class="modal-grid">
           <label>Data anterior<input value="${formatDate(demand.dataReplanejadaAtual || demand.dataPlanejada || demand.vencimento)}" disabled /></label>
-          <label>Nova data<input name="novaData" type="date" value="${dateText(demand.dataReplanejadaAtual || demand.dataPlanejada || demand.vencimento)}" required /></label>
+          <label>Nova data<input name="novaData" type="date" value="${dateText(demand.dataReplanejadaAtual) || todayText()}" required /></label>
           <label>Motivo<select name="motivo" required>${optionsMarkup(configNames("motivos"))}</select></label>
           <label>Justificativa<select name="justificativa" required></select></label>
           <label class="span-2">Comentário<textarea name="comentario" rows="4">${escapeHtml(demand.comentario || "")}</textarea></label>
@@ -3439,23 +3439,60 @@
     }
 
     if (action === "realizado") {
-      const realizedOnlyLoss = primaryStatusOf(demand) === "Realizado";
-      $("#modalTitle").textContent = realizedOnlyLoss
-        ? "Complementar Perda"
-        : "Registrar Realizado/Perda";
+      $("#modalTitle").textContent = "Registrar Realizado/Perda";
+
       $("#modalBody").innerHTML = `
-        <div class="modal-grid">
-          <label class="${realizedOnlyLoss ? "hidden" : ""}">Data realizada<input name="dataRealizada" type="date" value="${dateText(demand.dataRealizada || todayText())}" ${realizedOnlyLoss ? "disabled" : ""} /></label>
-          <label>Perda<select name="perda"><option value="nao" ${!demand.perda ? "selected" : ""} ${realizedOnlyLoss ? "disabled" : ""}>Não</option><option value="sim" ${demand.perda || realizedOnlyLoss ? "selected" : ""}>Sim</option></select></label>
-          <label>Perfil da perda<select name="motivoPerda"><option value=""></option>${optionsMarkup(configNames("perfisPerda"), demand.motivoPerda)}</select></label>
-          <label>Justificativa perda<select name="justificativaPerda" data-selected="${escapeHtml(demand.justificativaPerda || "")}"></select></label>
-          <label class="span-2">Comentário<textarea name="comentario" rows="4">${escapeHtml(demand.comentario || "")}</textarea></label>
-          <label class="span-2">Evidência<input name="evidencia" placeholder="URL ou referência do anexo no SharePoint" /></label>
-        </div>
-      `;
+    <div class="modal-grid">
+      <label>
+        Data realizada
+        <input
+          name="dataRealizada"
+          type="date"
+          value="${dateText(demand.dataRealizada) || todayText()}"
+        />
+      </label>
+
+      <label>
+        Perda
+        <select name="perda">
+          <option value="nao" ${!demand.perda ? "selected" : ""}>Não</option>
+          <option value="sim" ${demand.perda ? "selected" : ""}>Sim</option>
+        </select>
+      </label>
+
+      <label>
+        Perfil da perda
+        <select name="motivoPerda">
+          <option value=""></option>
+          ${optionsMarkup(configNames("perfisPerda"), demand.motivoPerda)}
+        </select>
+      </label>
+
+      <label>
+        Justificativa perda
+        <select
+          name="justificativaPerda"
+          data-selected="${escapeHtml(demand.justificativaPerda || "")}"
+        ></select>
+      </label>
+
+      <label class="span-2">
+        Comentário
+        <textarea name="comentario" rows="4">${escapeHtml(demand.comentario || "")}</textarea>
+      </label>
+
+      <label class="span-2">
+        Evidência
+        <input
+          name="evidencia"
+          placeholder="URL ou referência do anexo no SharePoint"
+        />
+      </label>
+    </div>
+  `;
+
       $("#modalSave").classList.remove("hidden");
     }
-
     if (action === "historico") {
       $("#modalTitle").textContent = "Histórico da Demanda";
       const timeline = historiesFor(demand.id);
@@ -3592,7 +3629,11 @@
     <div class="modal-grid">
       <label>
         Data realizada
-        <input value="${formatDate(demand.dataRealizada)}" disabled />
+        <input
+          name="dataRealizada"
+          type="date"
+          value="${dateText(demand.dataRealizada) || ""}"
+        />
       </label>
 
       <label>
@@ -3706,6 +3747,8 @@
       }
 
       demand.perda = true;
+      demand.dataRealizada =
+        form.get("dataRealizada") || demand.dataRealizada || "";
       demand.motivoPerda = motivoPerda;
       demand.justificativaPerda = justificativaPerda;
       demand.comentario = form.get("comentario") || demand.comentario || "";
@@ -3825,24 +3868,35 @@
     }
 
     if (context.action === "realizado") {
-      const alreadyRealized = primaryStatusOf(demand) === "Realizado";
-      const lossSelected = alreadyRealized ? true : form.get("perda") === "sim";
+      const dataRealizadaInformada = form.get("dataRealizada") || "";
+      const lossSelected = form.get("perda") === "sim";
       const motivoPerda = form.get("motivoPerda") || "";
       const justificativaPerda = form.get("justificativaPerda") || "";
+
+      if (!dataRealizadaInformada && !lossSelected) {
+        showToast(
+          "Informe a data realizada ou marque perda para registrar a ocorrência.",
+          "error",
+        );
+        return;
+      }
+
       if (lossSelected && (!motivoPerda || !justificativaPerda)) {
         showToast("Perda exige perfil e justificativa.", "error");
         return;
       }
-      demand.dataRealizada = alreadyRealized
-        ? demand.dataRealizada
-        : form.get("dataRealizada") || "";
+
+      demand.dataRealizada = dataRealizadaInformada;
       demand.perda = lossSelected;
-      demand.motivoPerda = form.get("motivoPerda") || "";
-      demand.justificativaPerda = form.get("justificativaPerda") || "";
+      demand.motivoPerda = lossSelected ? motivoPerda : "";
+      demand.justificativaPerda = lossSelected ? justificativaPerda : "";
       demand.comentario = form.get("comentario") || "";
       demand.usuarioResponsavel = userEmail;
+
       Object.assign(demand, prepareDemandForSave(demand));
+
       await state.repo.upsertDemanda(demand);
+
       await state.repo.addHistory("realizadoPerda", {
         demandaId: demand.id,
         ordem: demand.ordem,
@@ -3859,13 +3913,14 @@
         evidencia: form.get("evidencia") || "",
         usuario: userEmail,
       });
+
       await state.repo.addLog({
         usuario: userEmail,
         acao: demand.perda ? "Perda" : "Realizado",
         lista: "Historico_Realizado_Perdas",
         referencia: demand.id,
         detalhe: demand.perda
-          ? demand.motivoPerda
+          ? `${demand.motivoPerda} | ${demand.justificativaPerda}`
           : `Realizado em ${demand.dataRealizada}`,
       });
     }

@@ -1334,9 +1334,11 @@
       baseSources.baseRealizados,
     ).map(normalizeDemandRecord);
 
-    const demandas = consolidateCarteiraByRealizedOrder(
-      demandasComRealizados,
-    ).map(normalizeDemandRecord);
+    const demandas = consolidateCarteiraByRealizedOrder(demandasComRealizados)
+      .map((demanda) =>
+        enrichDemandWithCentroTrabalho(demanda, mapaCentrosTrabalho),
+      )
+      .map(normalizeDemandRecord);
 
     state.db = {
       demandas,

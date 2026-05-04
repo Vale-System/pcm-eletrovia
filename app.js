@@ -155,6 +155,9 @@
     notifications: {
       typeFilter: "",
       search: "",
+      cache: [],
+      cacheKey: "",
+      byId: new Map(),
     },
 
     quality: {
@@ -1366,6 +1369,9 @@
     state.quality.selectedIssueId = "";
     state.quality.selectedPrimarySequence = "";
     state.quality.page = 1;
+    state.notifications.cache = [];
+    state.notifications.cacheKey = "";
+    state.notifications.byId = new Map();
 
     setCurrentUserFromEmail(previousUserEmail);
 
@@ -2846,139 +2852,195 @@
     };
   }
 
-  function buildNotifications() {
+  function notificationsCacheKey() {
+    return [
+      state.db?.demandas?.length || 0,
+      state.db?.historicoReplanejamento?.length || 0,
+      state.db?.historicoRealizadoPerdas?.length || 0,
+      state.lastDataUpdateAt || "",
+      state.currentUser?.email || "",
+      todayText(),
+    ].join("|");
+  }
+
+  function clearNotificationsCache() {
+    state.notifications.cache = [];
+    state.notifications.cacheKey = "";
+    state.notifications.byId = new Map();
+  }
+
+  function groupByDemandId(rows) {
+    const map = new Map();
+
+    (rows || []).forEach((row) => {
+      if (!row.demandaId) return;
+
+      if (!map.has(row.demandaId)) {
+        map.set(row.demandaId, []);
+      }
+
+      map.get(row.demandaId).push(row);
+    });
+
+    return map;
+  }
+
+  function getNotificationsCached() {
+    const key = notificationsCacheKey();
+
+    if (
+      state.notifications.cacheKey === key &&
+      Array.isArray(state.notifications.cache) &&
+      state.notifications.cache.length
+    ) {
+      return state.notifications.cache;
+    }
+
+    const notifications = buildNotificationsOptimized();
+
+    state.notifications.cache = notifications;
+    state.notifications.cacheKey = key;
+    state.notifications.byId = new Map(
+      notifications.map((item) => [item.id, item]),
+    );
+
+    return notifications;
+  }
+
+  function buildNotificationsOptimized() {
     const notifications = [];
+    const today = toDate(todayText());
 
-    (state.db.demandas || [])
-      .filter(demandIsVisibleForCurrentUserAlerts)
-      .forEach((demand) => {
-        const status = primaryStatusOf(demand);
-        const days = daysFromToday(demand.vencimento);
+    const replanByDemandId = groupByDemandId(
+      state.db.historicoReplanejamento || [],
+    );
 
-        if (
-          isDemandOpenForDueNotification(demand) &&
-          days !== null &&
-          days < 0
-        ) {
-          notifications.push(
-            makeNotification({
-              type: "vencida",
-              demand,
-              days,
-              action:
-                demand.dataPlanejada || demand.dataReplanejadaAtual
-                  ? "replanejar"
-                  : "planejar",
-              message: `Vencida há ${Math.abs(days)} dia(s).`,
-            }),
-          );
-        }
+    const visibleDemands = (state.db.demandas || []).filter(
+      demandIsVisibleForCurrentUserAlerts,
+    );
 
-        if (
-          isDemandOpenForDueNotification(demand) &&
-          days !== null &&
-          days >= 0 &&
-          days <= 7
-        ) {
-          notifications.push(
-            makeNotification({
-              type: "vencendo",
-              demand,
-              days,
-              action:
-                demand.dataPlanejada || demand.dataReplanejadaAtual
-                  ? "abrir"
-                  : "planejar",
-              message: `Vence em ${days} dia(s).`,
-            }),
-          );
-        }
+    visibleDemands.forEach((demand) => {
+      const status = primaryStatusOf(demand);
+      const due = toDate(demand.vencimento);
+      const days = due && today ? Math.ceil((due - today) / 86400000) : null;
 
-        (state.db.historicoReplanejamento || [])
-          .filter((item) => item.demandaId === demand.id)
-          .forEach((history) => {
-            if (!history.motivo || !history.justificativa) {
-              const missing = [
-                !history.motivo ? "motivo" : "",
-                !history.justificativa ? "justificativa" : "",
-              ]
-                .filter(Boolean)
-                .join(" e ");
+      if (isDemandOpenForDueNotification(demand) && days !== null && days < 0) {
+        notifications.push(
+          makeNotification({
+            type: "vencida",
+            demand,
+            days,
+            action:
+              demand.dataPlanejada || demand.dataReplanejadaAtual
+                ? "replanejar"
+                : "planejar",
+            message: `Vencida há ${Math.abs(days)} dia(s).`,
+          }),
+        );
+      }
 
-              notifications.push(
-                makeNotification({
-                  type: "replanejamento-incompleto",
-                  demand,
-                  historyId: history.id,
-                  action: "regularizar-replanejamento",
-                  source: "historico-replanejamento",
-                  message: `Replanejamento sem ${missing}.`,
-                }),
-              );
-            }
-          });
+      if (
+        isDemandOpenForDueNotification(demand) &&
+        days !== null &&
+        days >= 0 &&
+        days <= 7
+      ) {
+        notifications.push(
+          makeNotification({
+            type: "vencendo",
+            demand,
+            days,
+            action:
+              demand.dataPlanejada || demand.dataReplanejadaAtual
+                ? "abrir"
+                : "planejar",
+            message: `Vence em ${days} dia(s).`,
+          }),
+        );
+      }
 
-        const foraPrazo =
-          status === "Realizado" && dueClassOf(demand) === "Fora do Prazo";
+      const replanHistory = replanByDemandId.get(demand.id) || [];
 
-        if (foraPrazo && !demand.perda) {
-          notifications.push(
-            makeNotification({
-              type: "realizada-fora-prazo",
-              demand,
-              action: "regularizar-perda",
-              source: "fora-prazo-sem-perda",
-              message:
-                "Realizada fora da tolerância e ainda sem registro de perda.",
-            }),
-          );
-        }
-
-        if (
-          foraPrazo &&
-          demand.perda &&
-          (!demand.motivoPerda || !demand.justificativaPerda)
-        ) {
+      replanHistory.forEach((history) => {
+        if (!history.motivo || !history.justificativa) {
           const missing = [
-            !demand.motivoPerda ? "perfil de perda" : "",
-            !demand.justificativaPerda ? "justificativa de perda" : "",
+            !history.motivo ? "motivo" : "",
+            !history.justificativa ? "justificativa" : "",
           ]
             .filter(Boolean)
             .join(" e ");
 
           notifications.push(
             makeNotification({
-              type: "perda-incompleta",
+              type: "replanejamento-incompleto",
               demand,
-              action: "regularizar-perda",
-              source: "perda-incompleta-fora-prazo",
-              message: `Perda fora do prazo sem ${missing}.`,
-            }),
-          );
-        }
-
-        if (
-          demand.perda &&
-          (!demand.motivoPerda || !demand.justificativaPerda)
-        ) {
-          const missing = [
-            !demand.motivoPerda ? "perfil de perda" : "",
-            !demand.justificativaPerda ? "justificativa de perda" : "",
-          ]
-            .filter(Boolean)
-            .join(" e ");
-
-          notifications.push(
-            makeNotification({
-              type: "perda-incompleta",
-              demand,
-              action: "regularizar-perda",
-              source: "perda-incompleta",
-              message: `Perda sem ${missing}.`,
+              historyId: history.id,
+              action: "regularizar-replanejamento",
+              source: "historico-replanejamento",
+              message: `Replanejamento sem ${missing}.`,
             }),
           );
         }
       });
+
+      const foraPrazo =
+        status === "Realizado" && dueClassOf(demand) === "Fora do Prazo";
+
+      if (foraPrazo && !demand.perda) {
+        notifications.push(
+          makeNotification({
+            type: "realizada-fora-prazo",
+            demand,
+            action: "regularizar-perda",
+            source: "fora-prazo-sem-perda",
+            message:
+              "Realizada fora da tolerância e ainda sem registro de perda.",
+          }),
+        );
+      }
+
+      if (
+        foraPrazo &&
+        demand.perda &&
+        (!demand.motivoPerda || !demand.justificativaPerda)
+      ) {
+        const missing = [
+          !demand.motivoPerda ? "perfil de perda" : "",
+          !demand.justificativaPerda ? "justificativa de perda" : "",
+        ]
+          .filter(Boolean)
+          .join(" e ");
+
+        notifications.push(
+          makeNotification({
+            type: "perda-incompleta",
+            demand,
+            action: "regularizar-perda",
+            source: "perda-incompleta-fora-prazo",
+            message: `Perda fora do prazo sem ${missing}.`,
+          }),
+        );
+      }
+
+      if (demand.perda && (!demand.motivoPerda || !demand.justificativaPerda)) {
+        const missing = [
+          !demand.motivoPerda ? "perfil de perda" : "",
+          !demand.justificativaPerda ? "justificativa de perda" : "",
+        ]
+          .filter(Boolean)
+          .join(" e ");
+
+        notifications.push(
+          makeNotification({
+            type: "perda-incompleta",
+            demand,
+            action: "regularizar-perda",
+            source: "perda-incompleta",
+            message: `Perda sem ${missing}.`,
+          }),
+        );
+      }
+    });
 
     const unique = new Map();
 
@@ -3006,6 +3068,9 @@
     });
   }
 
+  function buildNotifications() {
+    return getNotificationsCached();
+  }
   function notificationStats(notifications) {
     const stats = {
       total: notifications.length,
@@ -3027,7 +3092,7 @@
     const typeFilter = state.notifications.typeFilter;
     const search = normalizeText(state.notifications.search);
 
-    return buildNotifications().filter((notification) => {
+    return getNotificationsCached().filter((notification) => {
       if (typeFilter && notification.group !== typeFilter) return false;
 
       if (!search) return true;
@@ -3064,11 +3129,16 @@
   }
 
   function findNotification(notificationId) {
-    return buildNotifications().find((item) => item.id === notificationId);
+    getNotificationsCached();
+
+    return (
+      state.notifications.byId.get(notificationId) ||
+      state.notifications.cache.find((item) => item.id === notificationId)
+    );
   }
 
   function renderAlerts() {
-    const notifications = buildNotifications();
+    const notifications = getNotificationsCached();
     const stats = notificationStats(notifications);
 
     $("#alertCount").textContent = String(stats.total);
@@ -3620,6 +3690,7 @@
       });
 
       $("#actionDialog").close();
+      clearNotificationsCache();
       await refreshAll();
       showToast("Replanejamento regularizado com sucesso.", "success");
       return;
@@ -3673,6 +3744,7 @@
       });
 
       $("#actionDialog").close();
+      clearNotificationsCache();
       await refreshAll();
       showToast("Perda regularizada com sucesso.", "success");
       return;
@@ -4955,8 +5027,9 @@
   }
 
   function renderNotifications() {
-    const all = buildNotifications();
+    const all = getNotificationsCached();
     const rows = filteredNotifications();
+    const visibleRows = rows.slice(0, 300);
 
     renderNotificationCards(all);
 
@@ -4964,12 +5037,14 @@
     $("#notificationSearch").value = state.notifications.search;
 
     $("#notificationCount").textContent =
-      `${rows.length} notificações encontradas`;
+      rows.length > visibleRows.length
+        ? `${rows.length} notificações encontradas • exibindo as primeiras ${visibleRows.length}`
+        : `${rows.length} notificações encontradas`;
 
     const tbody = $("#notificationTableBody");
 
-    tbody.innerHTML = rows.length
-      ? rows
+    tbody.innerHTML = visibleRows.length
+      ? visibleRows
           .map(
             (notification) => `
             <tr>

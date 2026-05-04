@@ -2017,7 +2017,7 @@ label {
     0 28px 80px rgba(6, 40, 30, 0.14),
     0 10px 24px rgba(6, 40, 30, 0.08);
   backdrop-filter: blur(16px);
-  padding: 42px 40px 36px;
+  padding: 42px 40px 42px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -3268,7 +3268,7 @@ body.is-login-required .app-shell {
 }
 
 .login-panel-left {
-  align-items: flex-start;
+  align-items: center;
   padding: 34px 48px 34px;
   overflow: hidden;
 }

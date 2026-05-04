@@ -4485,23 +4485,54 @@
     applyProfilePermissionDefaults($("#addUserForm"));
     $("#addUserForm").addEventListener("submit", async (event) => {
       event.preventDefault();
+
       const form = event.currentTarget;
       const payload = Object.fromEntries(new FormData(form).entries());
+
+      payload.email = String(payload.email || "")
+        .trim()
+        .toLowerCase();
+      payload.nome = String(payload.nome || "").trim();
+      payload.matricula = String(payload.matricula || "").trim();
+      payload.area = String(payload.area || "").trim();
+
       payload.permissaoPlanejar = form.permissaoPlanejar.checked;
       payload.permissaoReplanejar = form.permissaoReplanejar.checked;
       payload.permissaoRealizar = form.permissaoRealizar.checked;
       payload.permissaoConfigurar = form.permissaoConfigurar.checked;
       payload.permissaoExportar = form.permissaoExportar.checked;
       payload.permissaoCargaLote = form.permissaoCargaLote.checked;
-      await state.repo.addUser(payload);
-      await state.repo.addLog({
-        usuario: state.currentUser.email,
-        acao: "Cadastro Usuário",
-        lista: "Usuarios_Central_Eletrovia",
-        referencia: event.currentTarget.email.value,
-        detalhe: "Usuário incluído pela administração.",
-      });
-      await refreshAfterSave("Usuário salvo com sucesso.");
+
+      const usuarioLogado =
+        state.currentUser?.email ||
+        getStoredSessionEmail() ||
+        "usuario_nao_identificado";
+
+      try {
+        await state.repo.addUser(payload);
+
+        await state.repo.addLog?.({
+          usuario: usuarioLogado,
+          acao: "Cadastro Usuário",
+          lista: "usuarios_central_eletrovia",
+          referencia: payload.email,
+          detalhe: `Usuário salvo pela administração: ${payload.nome || payload.email}`,
+          modulo: "ADMINISTRACAO",
+          status: "SUCESSO",
+        });
+
+        form.reset();
+        applyProfilePermissionDefaults(form);
+
+        await refreshAfterSave("Usuário salvo com sucesso.");
+      } catch (error) {
+        console.error(error);
+
+        showToast(
+          `Erro ao salvar usuário: ${error.message || "falha inesperada."}`,
+          "error",
+        );
+      }
     });
     $("#adminContent").addEventListener("click", (event) => {
       const button = event.target.closest("[data-edit-user]");

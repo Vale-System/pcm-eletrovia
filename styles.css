@@ -3277,7 +3277,7 @@ body.is-login-required .app-shell {
   transform: translateY(-6px);
   max-height: calc(100vh - 48px);
   overflow: hidden;
-  padding: 30px 38px 30px;
+  padding: 36px 38px 36px;
   gap: 16px;
 }
 

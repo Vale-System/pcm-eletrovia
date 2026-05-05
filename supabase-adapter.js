@@ -1,10 +1,5 @@
 (function defineSupabaseRepository(global) {
-  const SUPABASE_URL = "https://vgtqolxlnljdrgtrsubz.supabase.co";
-
-  // Cole aqui a sua anon public key do Supabase.
-  // Nunca use service_role aqui.
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZndHFvbHhsbmxqZHJndHJzdWJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1ODYwODUsImV4cCI6MjA5MzE2MjA4NX0.BR6xVYREcQxunHp2E7sCQ3F9llcKTkMlvqJcCCXFBcQ";
+  const WORKER_API_URL = "https://pcm-eletrovia-api.weslley-santos.workers.dev";
 
   const PAGE_SIZE = 1000;
 
@@ -140,11 +135,9 @@
   }
 
   async function request(path, options = {}) {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    const response = await fetch(`${WORKER_API_URL}/rest/v1/${path}`, {
       ...options,
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         Accept: "application/json",
         ...(options.headers || {}),
       },
@@ -152,7 +145,7 @@
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Supabase ${response.status}: ${text}`);
+      throw new Error(`Worker/Supabase ${response.status}: ${text}`);
     }
 
     if (response.status === 204) return null;
@@ -1065,7 +1058,7 @@
   };
 
   global.CCESupabase = {
-    url: SUPABASE_URL,
+    url: WORKER_API_URL,
     tables: TABLES,
     selectAll,
     request,

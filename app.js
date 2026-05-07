@@ -6507,6 +6507,7 @@
   }
 
   async function init() {
+    clearSensitiveUrlParams();
     renderStaticIcons();
     $("#toggleAdvancedFilters").innerHTML =
       `${iconSvg("filter")} Filtros avançados`;

@@ -1461,6 +1461,30 @@
     });
   }
 
+  function clearSensitiveUrlParams() {
+    const url = new URL(global.location.href);
+
+    const sensitiveParams = ["email", "matricula", "user"];
+
+    let changed = false;
+
+    sensitiveParams.forEach((param) => {
+      if (url.searchParams.has(param)) {
+        url.searchParams.delete(param);
+        changed = true;
+      }
+    });
+
+    if (!changed) return;
+
+    const cleanUrl =
+      url.pathname +
+      (url.searchParams.toString() ? `?${url.searchParams.toString()}` : "") +
+      url.hash;
+
+    global.history.replaceState({}, document.title, cleanUrl);
+  }
+
   function getStoredSessionEmail() {
     try {
       const session = JSON.parse(
@@ -1617,6 +1641,7 @@
     }
 
     state.currentUser = user;
+
     global.localStorage.setItem(
       "cce.session",
       JSON.stringify({
@@ -1624,6 +1649,9 @@
         createdAt: new Date().toISOString(),
       }),
     );
+
+    clearSensitiveUrlParams();
+
     event.currentTarget.reset();
     renderLoginState();
     renderRole();

@@ -429,7 +429,7 @@
 
   class SupabaseRepository {
     constructor() {
-      this.mode = "Atualizado";
+      this.mode = "Banco de Dados";
     }
 
     async reset() {

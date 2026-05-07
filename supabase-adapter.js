@@ -429,7 +429,7 @@
 
   class SupabaseRepository {
     constructor() {
-      this.mode = "Supabase REST";
+      this.mode = "Atualizado";
     }
 
     async reset() {

@@ -3732,3 +3732,41 @@ body.is-login-required .app-shell {
     grid-template-columns: 1fr;
   }
 }
+.login-status {
+  display: block;
+  min-height: 18px;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #60756f;
+  text-align: center;
+}
+
+.login-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.login-submit.is-loading {
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.login-submit.is-loading::before {
+  content: "";
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-right: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  vertical-align: -2px;
+  animation: login-spin 0.75s linear infinite;
+}
+
+@keyframes login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

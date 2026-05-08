@@ -1667,82 +1667,203 @@
     $("#logoutButton")?.classList.toggle("hidden", !state.currentUser);
     applyPermissions();
   }
+  function setLoginUiState({
+    loading = false,
+    ready = false,
+    buttonText = "",
+    statusText = "",
+    errorText = "",
+  } = {}) {
+    const button = $("#loginSubmit");
+    const status = $("#loginStatus");
+    const error = $("#loginError");
+
+    if (button) {
+      button.disabled = loading || !ready;
+      button.textContent =
+        buttonText || (ready ? "Entrar na Central" : "Carregando acesso...");
+      button.classList.toggle("is-loading", loading);
+    }
+
+    if (status) {
+      status.textContent =
+        statusText ||
+        (ready
+          ? "Acesso pronto. Informe e-mail e matrícula."
+          : "Preparando tela de login...");
+    }
+
+    if (error) {
+      error.textContent = errorText || "";
+    }
+  }
+
+  async function loadLoginData() {
+    const loginData = state.repo.getLoginData
+      ? await state.repo.getLoginData()
+      : await state.repo.getAll();
+
+    state.db = loginData;
+
+    state.loginReady = true;
+
+    setLoginUiState({
+      ready: true,
+      loading: false,
+      buttonText: "Entrar na Central",
+      statusText: "Acesso pronto. Informe e-mail e matrícula.",
+    });
+  }
 
   function renderLoginState() {
     const loginScreen = $("#loginScreen");
     if (!loginScreen) return;
-    loginScreen.classList.toggle("hidden", Boolean(state.currentUser));
-    document.body.classList.toggle("is-login-required", !state.currentUser);
-    $("#loginError").textContent = "";
+
+    const isLogged = Boolean(state.currentUser);
+
+    loginScreen.classList.toggle("hidden", isLogged);
+    document.body.classList.toggle("is-login-required", !isLogged);
+
+    if (isLogged) return;
+
+    if (!state.loginReady) {
+      setLoginUiState({
+        ready: false,
+        loading: false,
+        buttonText: "Carregando acesso...",
+        statusText: "Preparando tela de login...",
+      });
+      return;
+    }
+
+    setLoginUiState({
+      ready: true,
+      loading: false,
+      buttonText: "Entrar na Central",
+      statusText: "Acesso pronto. Informe e-mail e matrícula.",
+    });
   }
 
   async function handleLogin(event) {
     event.preventDefault();
+
+    if (state.loginSubmitting) return;
+
+    const errorElement = $("#loginError");
+
+    if (!state.loginReady || !state.db?.usuarios?.length) {
+      setLoginUiState({
+        ready: false,
+        loading: false,
+        buttonText: "Carregando acesso...",
+        statusText: "Aguarde o carregamento da base de usuários.",
+        errorText:
+          "O sistema ainda está preparando o acesso. Tente novamente em alguns segundos.",
+      });
+      return;
+    }
+
+    state.loginSubmitting = true;
+
+    setLoginUiState({
+      ready: true,
+      loading: true,
+      buttonText: "Validando...",
+      statusText: "Conferindo usuário e matrícula...",
+    });
+
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") || "")
       .trim()
       .toLowerCase();
     const matricula = String(form.get("matricula") || "").trim();
+
     const user = state.db.usuarios.find(
       (item) => normalizeText(item.email) === normalizeText(email),
     );
-    const errorElement = $("#loginError");
 
-    if (!user || user.ativo === false) {
-      errorElement.textContent = "Usuario nao encontrado ou inativo.";
+    try {
+      if (!user || user.ativo === false) {
+        setLoginUiState({
+          ready: true,
+          loading: false,
+          buttonText: "Entrar na Central",
+          statusText: "Acesso pronto. Informe e-mail e matrícula.",
+          errorText: "Usuário não encontrado ou inativo.",
+        });
+
+        state.loginSubmitting = false;
+        return;
+      }
+
+      if (String(user.matricula || "").trim() !== matricula) {
+        setLoginUiState({
+          ready: true,
+          loading: false,
+          buttonText: "Entrar na Central",
+          statusText: "Acesso pronto. Informe e-mail e matrícula.",
+          errorText: "Matrícula inválida para o e-mail informado.",
+        });
+
+        state.loginSubmitting = false;
+        return;
+      }
+
+      state.currentUser = user;
+
+      global.localStorage.setItem(
+        "cce.session",
+        JSON.stringify({
+          email: user.email,
+          createdAt: new Date().toISOString(),
+        }),
+      );
+
+      clearSensitiveUrlParams();
+
+      setLoginUiState({
+        ready: true,
+        loading: true,
+        buttonText: "Carregando carteira...",
+        statusText: "Acesso validado. Carregando carteira operacional...",
+      });
+
+      await loadDatabase();
+      await autoSyncRealizadosFromSharePoint();
+
+      state.pageSize = Number(state.db.parametros?.pageSizeDefault || 12);
+
+      event.currentTarget.reset();
+
+      hydrateStaticUi();
+      renderLoginState();
+      renderRole();
+      renderCurrentView();
+
       await state.repo.addLog?.({
-        usuario: email,
+        usuario: user.email,
         acao: "Login",
         lista: "usuarios_central_eletrovia",
-        referencia: email,
-        detalhe: "Tentativa de login com usuario inexistente ou inativo.",
-        nivel: "AVISO",
+        referencia: user.email,
+        detalhe: "Login realizado com e-mail e matrícula.",
         modulo: "LOGIN",
-        status: "ERRO",
+        status: "SUCESSO",
       });
-      return;
-    }
+    } catch (error) {
+      console.error(error);
 
-    if (String(user.matricula || "").trim() !== matricula) {
-      errorElement.textContent = "Matricula invalida para o e-mail informado.";
-      await state.repo.addLog?.({
-        usuario: email,
-        acao: "Login",
-        lista: "usuarios_central_eletrovia",
-        referencia: email,
-        detalhe: "Tentativa de login com matricula invalida.",
-        nivel: "AVISO",
-        modulo: "LOGIN",
-        status: "ERRO",
+      state.currentUser = null;
+
+      setLoginUiState({
+        ready: true,
+        loading: false,
+        buttonText: "Entrar na Central",
+        statusText: "Acesso pronto. Informe e-mail e matrícula.",
+        errorText: `Erro ao carregar a carteira: ${error.message}`,
       });
-      return;
+    } finally {
+      state.loginSubmitting = false;
     }
-
-    state.currentUser = user;
-
-    global.localStorage.setItem(
-      "cce.session",
-      JSON.stringify({
-        email: user.email,
-        createdAt: new Date().toISOString(),
-      }),
-    );
-
-    clearSensitiveUrlParams();
-
-    event.currentTarget.reset();
-    renderLoginState();
-    renderRole();
-    renderCurrentView();
-    await state.repo.addLog?.({
-      usuario: user.email,
-      acao: "Login",
-      lista: "usuarios_central_eletrovia",
-      referencia: user.email,
-      detalhe: "Login realizado com e-mail e matricula.",
-      modulo: "LOGIN",
-      status: "SUCESSO",
-    });
   }
 
   async function logout() {
@@ -6744,18 +6865,30 @@
   }
 
   async function init() {
-    clearSensitiveUrlParams();
     renderStaticIcons();
+
     $("#toggleAdvancedFilters").innerHTML =
       `${iconSvg("filter")} Filtros avançados`;
+
     state.repo = global.CCEData.createRepository();
-    await loadDatabase();
-    await autoSyncRealizadosFromSharePoint();
-    state.pageSize = Number(state.db.parametros?.pageSizeDefault || 12);
-    hydrateStaticUi();
+
     bindEvents();
+
     renderLoginState();
-    renderCurrentView();
+
+    try {
+      await loadLoginData();
+    } catch (error) {
+      console.error(error);
+
+      setLoginUiState({
+        ready: false,
+        loading: false,
+        buttonText: "Falha no acesso",
+        statusText: "Não foi possível carregar a base de usuários.",
+        errorText: error.message,
+      });
+    }
   }
 
   document.addEventListener("DOMContentLoaded", init);

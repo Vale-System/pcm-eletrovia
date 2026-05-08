@@ -434,6 +434,32 @@
       this.mode = "Banco de Dados";
     }
 
+    async getLoginData() {
+      const usuarios = await selectAll(
+        TABLES.usuarios,
+        "select=*&ativo=eq.true",
+      );
+
+      return {
+        demandas: [],
+        usuarios: usuarios.map(mapUser),
+        centrosTrabalho: [],
+        feriasSubstituicoes: [],
+        configuracoes: {
+          motivos: [],
+          justificativas: [],
+          perfisPerda: [],
+          justificativasPerda: [],
+        },
+        parametros: {},
+        parametrosDisponiveis: false,
+        historicoPlanejamento: [],
+        historicoReplanejamento: [],
+        historicoRealizadoPerdas: [],
+        logs: [],
+      };
+    }
+
     async reset() {
       return this.getAll();
     }
@@ -453,7 +479,49 @@
         centrosTrabalho,
         feriasSubstituicoes,
       ] = await Promise.all([
-        selectAll(TABLES.controle, "select=*&ativo=eq.true"),
+        selectAll(
+          TABLES.controle,
+          [
+            "select=",
+            [
+              "id_demanda_controle",
+              "ordem_sap",
+              "tipo_demanda",
+              "descricao",
+              "gerencia",
+              "centro_trabalho",
+              "local_instalacao",
+              "vencimento",
+              "competencia",
+              "tipo_om",
+              "prioridade",
+              "critico",
+              "status_sistema",
+              "status_usuario",
+              "tolerancia_min",
+              "tolerancia_max",
+              "data_planejada",
+              "data_replanejada",
+              "data_realizada",
+              "status_operacional",
+              "substatus_operacional",
+              "perda",
+              "motivo_perda",
+              "justificativa_perda",
+              "comentario",
+              "usuario_responsavel",
+              "data_ultima_atualizacao",
+              "updated_at",
+              "origem_informacao",
+              "fonte_registro",
+              "quantidade_replanejamentos",
+              "frequencia",
+              "observacao",
+              "vinculada_em",
+            ].join(","),
+            "&ativo=eq.true",
+          ].join(""),
+        ),
         selectAll(TABLES.usuarios, "select=*&ativo=eq.true"),
         selectAll(
           TABLES.motivos,

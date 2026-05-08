@@ -1,4 +1,4 @@
-name: Receber base PCM por dispatch
+name: Receber Base PCM
 
 on:
   repository_dispatch:
@@ -8,299 +8,195 @@ on:
 
 permissions:
   contents: write
-  actions: read
+
+concurrency:
+  group: pcm-base-update
+  cancel-in-progress: false
 
 jobs:
-  importar-base:
+  receber-base:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Preparar chunk recebido
-        if: ${{ github.event.action == 'pcm_base_chunk' }}
-        id: preparar_chunk
-        shell: bash
-        run: |
-          python3 <<'PY'
-          import os
-          import json
-          import base64
-          import pathlib
-          import re
-
-          event_path = os.environ["GITHUB_EVENT_PATH"]
-
-          with open(event_path, "r", encoding="utf-8") as f:
-              event = json.load(f)
-
-          payload = event.get("client_payload", {})
-
-          base_name = payload.get("base_name", "base_ordens")
-          lote_id = payload.get("lote_id")
-          target_path = payload.get("target_path", "base/base_ordens.json")
-          part_index = int(payload.get("part_index", 0))
-          total_parts = int(payload.get("total_parts", 0))
-          chunk_b64 = payload.get("chunk_b64", "")
-
-          if not lote_id:
-              raise Exception("Payload sem lote_id.")
-
-          if not part_index:
-              raise Exception("Payload sem part_index.")
-
-          if not total_parts:
-              raise Exception("Payload sem total_parts.")
-
-          if not chunk_b64:
-              raise Exception("Payload sem chunk_b64.")
-
-          out = pathlib.Path("chunk_payload")
-          out.mkdir(exist_ok=True)
-
-          chunk_bytes = base64.b64decode(chunk_b64.encode("utf-8"))
-
-          meta = {
-              "base_name": base_name,
-              "lote_id": lote_id,
-              "target_path": target_path,
-              "part_index": part_index,
-              "total_parts": total_parts
-          }
-
-          (out / "meta.json").write_text(
-              json.dumps(meta, ensure_ascii=False, indent=2),
-              encoding="utf-8"
-          )
-
-          (out / "chunk.part").write_bytes(chunk_bytes)
-
-          def safe(value):
-              return re.sub(r"[^A-Za-z0-9_.-]", "-", str(value))
-
-          artifact_name = f"pcm-base-{safe(base_name)}-{safe(lote_id)}-{part_index}"
-
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
-              f.write(f"artifact_name={artifact_name}\n")
-
-          print(f"Chunk {part_index}/{total_parts} preparado.")
-          print(f"Artifact: {artifact_name}")
-          PY
-
-      - name: Salvar chunk como artifact
-        if: ${{ github.event.action == 'pcm_base_chunk' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.preparar_chunk.outputs.artifact_name }}
-          path: chunk_payload/
-          retention-days: 1
-          if-no-files-found: error
-
-      - name: Baixar repositório para finalizar
-        if: ${{ github.event.action == 'pcm_base_finalize' }}
+      - name: Baixar repositório
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Montar arquivo final pelos artifacts
-        if: ${{ github.event.action == 'pcm_base_finalize' }}
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python3 <<'PY'
-          import os
-          import json
-          import pathlib
-          import time
-          import urllib.request
-          import urllib.error
-          import zipfile
-          import io
-          import hashlib
-
-          event_path = os.environ["GITHUB_EVENT_PATH"]
-          repo = os.environ["GITHUB_REPOSITORY"]
-          token = os.environ["GITHUB_TOKEN"]
-
-          with open(event_path, "r", encoding="utf-8") as f:
-              event = json.load(f)
-
-          payload = event.get("client_payload", {})
-
-          base_name = payload.get("base_name", "base_ordens")
-          lote_id = payload.get("lote_id")
-          target_path = payload.get("target_path", "base/base_ordens.json")
-          total_parts = int(payload.get("total_parts", 0))
-
-          if not lote_id:
-              raise Exception("Payload sem lote_id.")
-
-          if not total_parts:
-              raise Exception("Payload sem total_parts.")
-
-          prefix = f"pcm-base-{base_name}-{lote_id}-"
-
-          headers = {
-              "Authorization": f"Bearer {token}",
-              "Accept": "application/vnd.github+json",
-              "X-GitHub-Api-Version": "2022-11-28",
-              "User-Agent": "pcm-base-importer"
-          }
-
-          def api_get_json(url):
-              req = urllib.request.Request(url, headers=headers)
-              with urllib.request.urlopen(req) as resp:
-                  return json.loads(resp.read().decode("utf-8"))
-
-          def api_get_bytes(url):
-              class NoRedirect(urllib.request.HTTPRedirectHandler):
-                  def redirect_request(self, req, fp, code, msg, headers_response, newurl):
-                      return None
-
-              opener = urllib.request.build_opener(NoRedirect)
-          
-              req = urllib.request.Request(url, headers=headers)
-          
-              try:
-                  with opener.open(req) as resp:
-                      return resp.read()
-          
-              except urllib.error.HTTPError as e:
-                  if e.code in (301, 302, 303, 307, 308):
-                      location = e.headers.get("Location")
-          
-                      if not location:
-                          raise Exception("GitHub retornou redirecionamento sem Location.")
-          
-                      print("Artifact gerou URL temporária. Baixando arquivo redirecionado sem Authorization.")
-          
-                      req2 = urllib.request.Request(
-                          location,
-                          headers={
-                              "User-Agent": "pcm-base-importer"
-                          }
-                      )
-          
-                      with urllib.request.urlopen(req2) as resp:
-                          return resp.read()
-          
-                  raise
-
-          def listar_artifacts():
-              artifacts = []
-              page = 1
-
-              while True:
-                  url = f"https://api.github.com/repos/{repo}/actions/artifacts?per_page=100&page={page}"
-                  data = api_get_json(url)
-                  batch = data.get("artifacts", [])
-
-                  if not batch:
-                      break
-
-                  artifacts.extend(batch)
-
-                  if len(batch) < 100:
-                      break
-
-                  page += 1
-
-              encontrados = {}
-
-              for artifact in artifacts:
-                  name = artifact.get("name", "")
-
-                  if not name.startswith(prefix):
-                      continue
-
-                  if artifact.get("expired"):
-                      continue
-
-                  try:
-                      index = int(name.replace(prefix, "").split("-")[0])
-                  except Exception:
-                      continue
-
-                  antigo = encontrados.get(index)
-
-                  if not antigo or artifact.get("created_at", "") > antigo.get("created_at", ""):
-                      encontrados[index] = artifact
-
-              return encontrados
-
-          max_attempts = 90
-          sleep_seconds = 10
-          encontrados = {}
-
-          print(f"Aguardando artifacts do lote {lote_id}.")
-          print(f"Prefixo: {prefix}")
-          print(f"Total esperado: {total_parts}")
-
-          for attempt in range(1, max_attempts + 1):
-              encontrados = listar_artifacts()
-              print(f"Tentativa {attempt}/{max_attempts}: {len(encontrados)}/{total_parts} artifacts encontrados.")
-
-              if len(encontrados) >= total_parts:
-                  break
-
-              time.sleep(sleep_seconds)
-
-          if len(encontrados) < total_parts:
-              faltantes = [str(i) for i in range(1, total_parts + 1) if i not in encontrados]
-              raise Exception(
-                  f"Tempo esgotado. Chegaram {len(encontrados)}/{total_parts}. "
-                  f"Faltantes: {', '.join(faltantes[:100])}"
-              )
-
-          parts = []
-
-          for index in range(1, total_parts + 1):
-              artifact = encontrados[index]
-              artifact_id = artifact["id"]
-              zip_url = f"https://api.github.com/repos/{repo}/actions/artifacts/{artifact_id}/zip"
-
-              zip_bytes = api_get_bytes(zip_url)
-
-              with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
-                  meta = json.loads(z.read("meta.json").decode("utf-8"))
-                  chunk = z.read("chunk.part")
-
-              if int(meta["part_index"]) != index:
-                  raise Exception(f"Artifact fora de ordem. Esperado {index}, veio {meta['part_index']}.")
-
-              parts.append(chunk)
-
-          content = b"".join(parts)
-
-          try:
-              json.loads(content.decode("utf-8-sig"))
-          except Exception as e:
-              raise Exception(f"Arquivo final não é JSON válido: {e}")
-
-          target = pathlib.Path(target_path)
-          target.parent.mkdir(parents=True, exist_ok=True)
-          target.write_bytes(content)
-
-          sha256 = hashlib.sha256(content).hexdigest()
-
-          print(f"Arquivo final salvo em: {target_path}")
-          print(f"Tamanho final: {len(content)} bytes")
-          print(f"SHA256: {sha256}")
-          PY
-
-      - name: Commitar arquivo final
-        if: ${{ github.event.action == 'pcm_base_finalize' }}
-        shell: bash
+      - name: Configurar Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git pull --rebase || true
+      - name: Validar payload recebido
+        run: |
+          echo "Evento recebido: ${{ github.event.action }}"
+          echo "Base name: ${{ github.event.client_payload.base_name }}"
+          echo "Target path: ${{ github.event.client_payload.target_path }}"
+          echo "Lote ID: ${{ github.event.client_payload.lote_id }}"
+          echo "Part index: ${{ github.event.client_payload.part_index }}"
+          echo "Total parts: ${{ github.event.client_payload.total_parts }}"
 
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "Nenhuma alteração para commit."
+      - name: Receber parte do arquivo
+        if: github.event.action == 'pcm_base_chunk'
+        env:
+          BASE_NAME: ${{ github.event.client_payload.base_name }}
+          TARGET_PATH: ${{ github.event.client_payload.target_path }}
+          LOTE_ID: ${{ github.event.client_payload.lote_id }}
+          PART_INDEX: ${{ github.event.client_payload.part_index }}
+          TOTAL_PARTS: ${{ github.event.client_payload.total_parts }}
+          CHUNK_B64: ${{ github.event.client_payload.chunk_b64 }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$BASE_NAME" ]; then
+            echo "base_name não informado."
+            exit 1
+          fi
+
+          if [ -z "$TARGET_PATH" ]; then
+            echo "target_path não informado."
+            exit 1
+          fi
+
+          if [ -z "$LOTE_ID" ]; then
+            echo "lote_id não informado."
+            exit 1
+          fi
+
+          if [ -z "$PART_INDEX" ]; then
+            echo "part_index não informado."
+            exit 1
+          fi
+
+          if [ -z "$TOTAL_PARTS" ]; then
+            echo "total_parts não informado."
+            exit 1
+          fi
+
+          if [ -z "$CHUNK_B64" ]; then
+            echo "chunk_b64 não informado."
+            exit 1
+          fi
+
+          SAFE_BASE=$(echo "$BASE_NAME" | tr -c 'A-Za-z0-9_.-' '_')
+          SAFE_LOTE=$(echo "$LOTE_ID" | tr -c 'A-Za-z0-9_.-' '_')
+
+          CHUNK_DIR=".github/pcm-chunks/${SAFE_BASE}/${SAFE_LOTE}"
+
+          mkdir -p "$CHUNK_DIR"
+
+          echo "$TARGET_PATH" > "$CHUNK_DIR/target_path.txt"
+          echo "$TOTAL_PARTS" > "$CHUNK_DIR/total_parts.txt"
+          echo "$BASE_NAME" > "$CHUNK_DIR/base_name.txt"
+
+          printf "%s" "$CHUNK_B64" > "$CHUNK_DIR/part_${PART_INDEX}.b64"
+
+          echo "Parte recebida com sucesso:"
+          echo "Base: $BASE_NAME"
+          echo "Lote: $LOTE_ID"
+          echo "Parte: $PART_INDEX de $TOTAL_PARTS"
+          echo "Diretório: $CHUNK_DIR"
+
+          git add "$CHUNK_DIR"
+
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração para commitar."
             exit 0
           fi
 
-          git add -A
-          git commit -m "Atualização automática base PCM finalizada"
-          git push
+          git commit -m "Recebe chunk ${PART_INDEX}/${TOTAL_PARTS} - ${BASE_NAME} - ${LOTE_ID}"
+
+          git pull --rebase origin main
+          git push origin main
+
+      - name: Finalizar arquivo JSON
+        if: github.event.action == 'pcm_base_finalize'
+        env:
+          BASE_NAME: ${{ github.event.client_payload.base_name }}
+          TARGET_PATH: ${{ github.event.client_payload.target_path }}
+          LOTE_ID: ${{ github.event.client_payload.lote_id }}
+          TOTAL_PARTS: ${{ github.event.client_payload.total_parts }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$BASE_NAME" ]; then
+            echo "base_name não informado no finalize."
+            exit 1
+          fi
+
+          if [ -z "$TARGET_PATH" ]; then
+            echo "target_path não informado no finalize."
+            exit 1
+          fi
+
+          if [ -z "$LOTE_ID" ]; then
+            echo "lote_id não informado no finalize."
+            exit 1
+          fi
+
+          if [ -z "$TOTAL_PARTS" ]; then
+            echo "total_parts não informado no finalize."
+            exit 1
+          fi
+
+          SAFE_BASE=$(echo "$BASE_NAME" | tr -c 'A-Za-z0-9_.-' '_')
+          SAFE_LOTE=$(echo "$LOTE_ID" | tr -c 'A-Za-z0-9_.-' '_')
+
+          CHUNK_DIR=".github/pcm-chunks/${SAFE_BASE}/${SAFE_LOTE}"
+          TEMP_FILE="${CHUNK_DIR}/arquivo_montado.json"
+
+          echo "Finalizando arquivo:"
+          echo "Base: $BASE_NAME"
+          echo "Lote: $LOTE_ID"
+          echo "Target: $TARGET_PATH"
+          echo "Total de partes: $TOTAL_PARTS"
+          echo "Diretório dos chunks: $CHUNK_DIR"
+
+          if [ ! -d "$CHUNK_DIR" ]; then
+            echo "Diretório de chunks não encontrado: $CHUNK_DIR"
+            exit 1
+          fi
+
+          : > "$TEMP_FILE"
+
+          LAST_INDEX=$((TOTAL_PARTS - 1))
+
+          for INDEX in $(seq 0 "$LAST_INDEX"); do
+            PART_FILE="$CHUNK_DIR/part_${INDEX}.b64"
+
+            if [ ! -f "$PART_FILE" ]; then
+              echo "Parte ausente: $PART_FILE"
+              echo "Não é seguro montar o JSON incompleto."
+              exit 1
+            fi
+
+            echo "Adicionando parte $INDEX..."
+            base64 -d "$PART_FILE" >> "$TEMP_FILE"
+          done
+
+          echo "Validando JSON montado..."
+
+          if ! jq empty "$TEMP_FILE"; then
+            echo "JSON final inválido. O arquivo não será publicado."
+            exit 1
+          fi
+
+          mkdir -p "$(dirname "$TARGET_PATH")"
+          cp "$TEMP_FILE" "$TARGET_PATH"
+
+          echo "Arquivo publicado em: $TARGET_PATH"
+
+          rm -rf "$CHUNK_DIR"
+
+          git add "$TARGET_PATH" ".github/pcm-chunks"
+
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração para commitar."
+            exit 0
+          fi
+
+          git commit -m "Atualiza ${BASE_NAME} - ${LOTE_ID}"
+
+          git pull --rebase origin main
+          git push origin main

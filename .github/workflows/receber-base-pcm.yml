@@ -290,33 +290,74 @@ jobs:
       - name: Commitar arquivo final
         if: ${{ github.event.action == 'pcm_base_finalize' }}
         shell: bash
+        env:
+          TARGET_PATH: ${{ github.event.client_payload.target_path }}
+          BASE_NAME: ${{ github.event.client_payload.base_name }}
+          LOTE_ID: ${{ github.event.client_payload.lote_id }}
         run: |
           set -e
-
+      
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git pull --rebase origin main || true
-
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "Nenhuma alteração para commit."
-            exit 0
+      
+          echo "Arquivo alvo recebido no payload: $TARGET_PATH"
+          echo "Base recebida no payload: $BASE_NAME"
+          echo "Lote recebido no payload: $LOTE_ID"
+      
+          if [ ! -f "$TARGET_PATH" ]; then
+            echo "ERRO: arquivo alvo não existe depois da montagem: $TARGET_PATH"
+            echo "Arquivos encontrados no repositório:"
+            find . -maxdepth 4 -type f | sort
+            exit 1
           fi
-
-          git add -A
-          git commit -m "Atualização automática base PCM finalizada"
-
+      
+          echo "SHA256 do JSON montado:"
+          sha256sum "$TARGET_PATH" || true
+      
+          echo "Tamanho do JSON montado:"
+          wc -c "$TARGET_PATH" || true
+      
+          META_DIR="base/_sync"
+          mkdir -p "$META_DIR"
+      
+          META_FILE="$META_DIR/${BASE_NAME}.json"
+      
+          cat > "$META_FILE" <<EOF
+          {
+            "base_name": "$BASE_NAME",
+            "target_path": "$TARGET_PATH",
+            "lote_id": "$LOTE_ID",
+            "updated_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "sha256": "$(sha256sum "$TARGET_PATH" | awk '{print $1}')",
+            "size_bytes": $(wc -c < "$TARGET_PATH")
+          }
+          EOF
+      
+          echo "Arquivo de controle criado em: $META_FILE"
+      
+          echo "Status antes do commit:"
+          git status --short
+      
+          git add "$TARGET_PATH" "$META_FILE"
+      
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Nenhuma diferença detectada no JSON nem no controle. Criando commit vazio para forçar rebuild."
+            git commit --allow-empty -m "Força atualização ${BASE_NAME} - ${LOTE_ID}"
+          else
+            git commit -m "Atualiza ${BASE_NAME} - ${LOTE_ID}"
+          fi
+      
           for tentativa in 1 2 3; do
             echo "Tentativa de push: $tentativa"
-
+      
             if git pull --rebase origin main && git push origin main; then
               echo "Push realizado com sucesso."
               exit 0
             fi
-
+      
             echo "Falha no push. Tentando novamente em 10 segundos..."
             sleep 10
           done
-
+      
           echo "Não foi possível realizar o push após 3 tentativas."
           exit 1

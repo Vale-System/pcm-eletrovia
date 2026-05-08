@@ -77,6 +77,7 @@
       special: "status",
     },
     { key: "prioridade", label: "Prioridade", field: "prioridade" },
+    { key: "critico", label: "Crítico", field: "critico" },
     { key: "planejadorOM", label: "Planejador OM", field: "planejadorOM" },
     { key: "programador", label: "Programador", field: "programador" },
     { key: "centroStatus", label: "Cadastro Centro", special: "centroStatus" },
@@ -380,6 +381,38 @@
       return "Medio";
     if (/^3($|[^0-9])/.test(normalized) || normalized.includes("BAIXO"))
       return "Baixo";
+    return text;
+  }
+
+  function normalizeCritico(value) {
+    const text = String(value ?? "").trim();
+
+    if (!text) return "Não informado";
+
+    const normalized = normalizeText(text);
+
+    if (
+      normalized === "SIM" ||
+      normalized === "S" ||
+      normalized === "TRUE" ||
+      normalized === "1" ||
+      normalized === "X" ||
+      normalized.includes("CRITICO") ||
+      normalized.includes("CRITICA")
+    ) {
+      return "Sim";
+    }
+
+    if (
+      normalized === "NAO" ||
+      normalized === "NÃO" ||
+      normalized === "N" ||
+      normalized === "FALSE" ||
+      normalized === "0"
+    ) {
+      return "Não";
+    }
+
     return text;
   }
 
@@ -764,6 +797,33 @@
         "",
     ).trim();
 
+    const vencimentoBase =
+      item.Vencimento ||
+      item.vencimento ||
+      item.DataVencimento ||
+      item.data_vencimento ||
+      "";
+
+    const competenciaInformada =
+      item.Competencia ||
+      item.competencia ||
+      item.COMPETENCIA ||
+      item.Competência ||
+      item.competência ||
+      "";
+
+    const origemNormalizada = normalizeText(origemPadrao);
+
+    const competenciaBase =
+      origemNormalizada.includes("ORDENS") ||
+      origemNormalizada.includes("REALIZADOS")
+        ? vencimentoBase
+        : competenciaInformada;
+
+    const competenciaNormalizada = normalizeCompetencia(competenciaBase);
+    const vencimentoNormalizado =
+      dateText(vencimentoBase) || vencimentoBase || "";
+
     const idDemanda =
       idDemandaInformado ||
       (ordem
@@ -774,8 +834,8 @@
             centroTrabalho: item.CentroTrabalho || item.centro_trabalho || "",
             localInstalacao:
               item.LocalInstalacao || item.local_instalacao || "",
-            competencia: item.Competencia || item.competencia || "",
-            vencimento: item.Vencimento || item.vencimento || "",
+            competencia: competenciaNormalizada,
+            vencimento: vencimentoNormalizado,
             origem: origemPadrao,
           }));
 
@@ -799,11 +859,22 @@
       statusSistema: item.StatusSistema || item.status_sistema || "",
       statusUsuario: item.StatusUsuario || item.status_usuario || "",
 
-      competencia: normalizeCompetencia(item.Competencia || item.competencia),
+      competencia: competenciaNormalizada,
       dataRealizada: item.DataRealizada || item.data_realizada || "",
-      vencimento: item.Vencimento || item.vencimento || "",
+      vencimento: vencimentoNormalizado,
 
       prioridade: normalizePrioridade(item.Prioridade || item.prioridade),
+
+      critico: normalizeCritico(
+        item.Critico ||
+          item.Crítico ||
+          item.critico ||
+          item.crítico ||
+          item.CRITICO ||
+          item.CRÍTICO ||
+          "",
+      ),
+
       toleranciaMin: item.ToleranciaMin || item.tolerancia_min || "",
       toleranciaMax: item.ToleranciaMax || item.tolerancia_max || "",
 
@@ -898,6 +969,7 @@
       "competencia",
       "tipoOM",
       "prioridade",
+      "critico",
       "vencimento",
       "toleranciaMin",
       "toleranciaMax",
@@ -1205,6 +1277,7 @@
       prioridade: normalizePrioridade(
         baseDemand.prioridade || delta.prioridade,
       ),
+      critico: delta.critico || baseDemand.critico || "Não informado",
       vencimento: baseDemand.vencimento || delta.vencimento,
       statusSistema: baseDemand.statusSistema || delta.statusSistema || "",
       statusUsuario: baseDemand.statusUsuario || delta.statusUsuario || "",
@@ -1389,6 +1462,7 @@
       ...demanda,
       competencia: normalizeCompetencia(demanda.competencia),
       prioridade: normalizePrioridade(demanda.prioridade),
+      critico: normalizeCritico(demanda.critico),
       centroTrabalhoChave:
         demanda.centroTrabalhoChave ||
         normalizeCentroTrabalho(demanda.centroTrabalho),
@@ -3281,6 +3355,7 @@
             <td>${escapeHtml(item.programador || "-")}</td>
             <td>${escapeHtml(item.localInstalacao || "-")}</td>
             <td>${escapeHtml(item.prioridade || "-")}</td>
+            <td>${escapeHtml(item.critico || "Não informado")}</td>
             <td>${formatDate(item.dataPlanejada)}</td>
             <td>${formatDate(item.dataReplanejadaAtual)}</td>
             <td>${formatDate(item.dataRealizada)}</td>
@@ -3338,6 +3413,7 @@
 
         <div class="detail-item"><span>Vencimento</span><strong>${formatDate(demand.vencimento)}</strong></div>
         <div class="detail-item"><span>Centro</span><strong>${escapeHtml(demand.centroTrabalho || "-")}</strong></div>
+        <div class="detail-item"><span>Crítico</span><strong>${statusChip(demand.critico || "Não informado")}</strong></div>
 
         <div class="detail-item"><span>Planejador OM</span><strong>${escapeHtml(demand.planejadorOM || "-")}</strong></div>
         <div class="detail-item"><span>Programador</span><strong>${escapeHtml(demand.programador || "-")}</strong></div>

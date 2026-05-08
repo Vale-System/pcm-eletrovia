@@ -11,6 +11,8 @@
     "Cancelado",
   ];
 
+  const LARGE_BATCH_REFRESH_LIMIT = 500;
+
   const PROFILE_RULES = {
     Administrador: {
       planejar: true,
@@ -1445,6 +1447,8 @@
     state.notifications.cache = [];
     state.notifications.cacheKey = "";
     state.notifications.byId = new Map();
+
+    clearBatchLookup();
 
     setCurrentUserFromEmail(previousUserEmail);
 
@@ -4351,16 +4355,150 @@
     return partial;
   }
 
-  function findDemandForBatch(record) {
-    if (record.id) {
-      const byId = state.db.demandas.find((item) => item.id === record.id);
-      if (byId) return byId;
+  function applySavedBatchLocally(records) {
+    if (!Array.isArray(records) || !records.length || !state.db?.demandas) {
+      return;
     }
-    if (record.ordem) {
-      return state.db.demandas.find(
-        (item) => String(item.ordem) === String(record.ordem),
+
+    const byId = new Map(
+      state.db.demandas.map((item) => [String(item.id || ""), item]),
+    );
+
+    const byOrdem = new Map(
+      state.db.demandas
+        .filter((item) => String(item.ordem || "").trim())
+        .map((item) => [String(item.ordem || "").trim(), item]),
+    );
+
+    records.forEach((record) => {
+      const id = String(record.id || "").trim();
+      const ordem = String(record.ordem || "").trim();
+
+      const existing = (id && byId.get(id)) || (ordem && byOrdem.get(ordem));
+
+      const normalized = normalizeDemandRecord(
+        prepareDemandForSave({
+          ...(existing || {}),
+          ...record,
+        }),
       );
+
+      if (existing) {
+        Object.assign(existing, normalized);
+        return;
+      }
+
+      state.db.demandas.unshift(normalized);
+    });
+
+    state.lastDataUpdateAt = new Date().toISOString();
+    state.quality.issuesCache = [];
+    state.quality.filteredCache = [];
+    clearNotificationsCache?.();
+    clearBatchLookup();
+  }
+
+  function finishBatchWithoutFullRefresh(records, resumoCarga) {
+    applySavedBatchLocally(records);
+
+    state.batch = {
+      rows: [],
+      valid: [],
+      warnings: [],
+      errors: [],
+      fileName: "",
+    };
+
+    const batchFile = $("#batchFile");
+    if (batchFile) {
+      batchFile.value = "";
     }
+
+    renderBatch();
+
+    if (state.currentView === "carteira") {
+      renderCarteira();
+    }
+
+    if (state.currentView === "notificacoes") {
+      clearNotificationsCache();
+      renderNotifications();
+    }
+
+    const time = new Date().toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const lastSync = $("#lastSync");
+    if (lastSync) {
+      lastSync.textContent = `Salvo ${time}`;
+    }
+
+    const lastUpdateSide = $("#lastUpdateSide");
+    if (lastUpdateSide) {
+      lastUpdateSide.textContent = formatDateTime(state.lastDataUpdateAt);
+    }
+
+    showBatchStatus(
+      "success",
+      "Carga em lote enviada com sucesso.",
+      `${resumoCarga.processados} registro(s) salvos. Como foi uma carga grande, o sistema atualizou a memória local e não recarregou todo o banco para evitar travamento. Use Atualizar somente se precisar recarregar tudo.`,
+    );
+
+    showToast(
+      `${resumoCarga.processados} registros salvos sem recarregar toda a base.`,
+      "success",
+    );
+  }
+  function getBatchLookupMaps() {
+    if (state.batchLookup?.sourceLength === state.db?.demandas?.length) {
+      return state.batchLookup;
+    }
+
+    const byId = new Map();
+    const byOrdem = new Map();
+
+    (state.db?.demandas || []).forEach((item) => {
+      const id = String(item.id || "").trim();
+      const ordem = String(item.ordem || "").trim();
+
+      if (id && !byId.has(id)) {
+        byId.set(id, item);
+      }
+
+      if (ordem && !byOrdem.has(ordem)) {
+        byOrdem.set(ordem, item);
+      }
+    });
+
+    state.batchLookup = {
+      byId,
+      byOrdem,
+      sourceLength: state.db?.demandas?.length || 0,
+    };
+
+    return state.batchLookup;
+  }
+
+  function clearBatchLookup() {
+    state.batchLookup = null;
+  }
+
+  function findDemandForBatch(record) {
+    const lookup = getBatchLookupMaps();
+
+    const id = String(record?.id || "").trim();
+    const ordem = String(record?.ordem || "").trim();
+
+    if (id && lookup.byId.has(id)) {
+      return lookup.byId.get(id);
+    }
+
+    if (ordem && lookup.byOrdem.has(ordem)) {
+      return lookup.byOrdem.get(ordem);
+    }
+
     return null;
   }
 
@@ -4537,25 +4675,42 @@
       const loteId = batchRun?.lote_id || batchRun?.id;
 
       if (loteId) {
-        const auditItems = [
-          ...state.batch.valid.map((item) => ({
-            ...item,
-            status: "VALIDO",
-            acao: "UPSERT_DEMANDA",
-          })),
-          ...state.batch.warnings.map((item) => ({
-            ...item,
-            status: "ALERTA",
-            acao: "UPSERT_DEMANDA_COM_ALERTA",
-          })),
-          ...state.batch.errors.map((item) => ({
-            ...item,
-            status: "ERRO",
-            acao: "VALIDACAO_ERRO",
-          })),
-        ];
+        const totalAuditItems =
+          state.batch.valid.length +
+          state.batch.warnings.length +
+          state.batch.errors.length;
 
-        await state.repo.addBatchItems?.(loteId, auditItems);
+        if (totalAuditItems <= 500) {
+          const auditItems = [
+            ...state.batch.valid.map((item) => ({
+              ...item,
+              status: "VALIDO",
+              acao: "UPSERT_DEMANDA",
+            })),
+            ...state.batch.warnings.map((item) => ({
+              ...item,
+              status: "ALERTA",
+              acao: "UPSERT_DEMANDA_COM_ALERTA",
+            })),
+            ...state.batch.errors.map((item) => ({
+              ...item,
+              status: "ERRO",
+              acao: "VALIDACAO_ERRO",
+            })),
+          ];
+
+          await state.repo.addBatchItems?.(loteId, auditItems);
+        } else {
+          await state.repo.addLog?.({
+            usuario: state.currentUser?.email || "",
+            acao: "Carga em Lote - Auditoria resumida",
+            lista: "cargas_lote_itens",
+            referencia: loteId,
+            detalhe: `Auditoria detalhada não gravada item a item para evitar travamento. Total de linhas: ${totalAuditItems}.`,
+            modulo: "CARGA_LOTE",
+            status: "SUCESSO",
+          });
+        }
       }
 
       await state.repo.addLog({
@@ -4578,6 +4733,11 @@
         loteId: loteId || "",
       };
 
+      if (records.length > LARGE_BATCH_REFRESH_LIMIT) {
+        finishBatchWithoutFullRefresh(records, resumoCarga);
+        return;
+      }
+
       await refreshAll();
 
       state.batch = {
@@ -4588,6 +4748,11 @@
         fileName: "",
       };
 
+      const batchFile = $("#batchFile");
+      if (batchFile) {
+        batchFile.value = "";
+      }
+
       renderBatch();
 
       showBatchStatus(
@@ -4595,11 +4760,7 @@
         "Carga em lote enviada com sucesso.",
         `${resumoCarga.processados} registro(s) processado(s). ${
           resumoCarga.loteId ? `Lote: ${resumoCarga.loteId}. ` : ""
-        }${
-          resumoCarga.alertas
-            ? `${resumoCarga.alertas} alerta(s) confirmado(s). `
-            : ""
-        }${
+        }${resumoCarga.alertas ? `${resumoCarga.alertas} alerta(s) confirmado(s). ` : ""}${
           resumoCarga.erros
             ? `${resumoCarga.erros} linha(s) ficaram com erro de validação.`
             : ""

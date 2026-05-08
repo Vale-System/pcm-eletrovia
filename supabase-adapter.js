@@ -473,17 +473,17 @@
         ),
         selectAll(
           TABLES.historicoPlanejamento,
-          "select=*&order=data_hora_alteracao.desc",
+          "select=*&order=data_hora_alteracao.desc&limit=2000",
         ),
         selectAll(
           TABLES.historicoReplanejamento,
-          "select=*&order=data_hora_alteracao.desc",
+          "select=*&order=data_hora_alteracao.desc&limit=2000",
         ),
         selectAll(
           TABLES.historicoRealizadoPerdas,
-          "select=*&order=data_hora_registro.desc",
+          "select=*&order=data_hora_registro.desc&limit=2000",
         ),
-        selectAll(TABLES.logs, "select=*&order=data_hora.desc"),
+        selectAll(TABLES.logs, "select=*&order=data_hora.desc&limit=500"),
         selectAll(TABLES.centrosTrabalho, "select=*&order=centro_trabalho.asc"),
         selectAllOptional(
           TABLES.feriasSubstituicoes,

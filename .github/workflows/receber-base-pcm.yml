@@ -10,10 +10,6 @@ permissions:
   contents: write
   actions: read
 
-concurrency:
-  group: pcm-base-update
-  cancel-in-progress: false
-
 jobs:
   importar-base:
     runs-on: ubuntu-latest

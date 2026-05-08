@@ -10,6 +10,10 @@ permissions:
   contents: write
   actions: read
 
+concurrency:
+  group: pcm-base-update
+  cancel-in-progress: false
+
 jobs:
   importar-base:
     runs-on: ubuntu-latest
@@ -44,11 +48,11 @@ jobs:
           if not lote_id:
               raise Exception("Payload sem lote_id.")
 
-          if not part_index:
-              raise Exception("Payload sem part_index.")
+          if part_index <= 0:
+              raise Exception("Payload sem part_index válido. O índice deve começar em 1.")
 
-          if not total_parts:
-              raise Exception("Payload sem total_parts.")
+          if total_parts <= 0:
+              raise Exception("Payload sem total_parts válido.")
 
           if not chunk_b64:
               raise Exception("Payload sem chunk_b64.")
@@ -157,32 +161,32 @@ jobs:
                       return None
 
               opener = urllib.request.build_opener(NoRedirect)
-          
+
               req = urllib.request.Request(url, headers=headers)
-          
+
               try:
                   with opener.open(req) as resp:
                       return resp.read()
-          
+
               except urllib.error.HTTPError as e:
                   if e.code in (301, 302, 303, 307, 308):
                       location = e.headers.get("Location")
-          
+
                       if not location:
                           raise Exception("GitHub retornou redirecionamento sem Location.")
-          
+
                       print("Artifact gerou URL temporária. Baixando arquivo redirecionado sem Authorization.")
-          
+
                       req2 = urllib.request.Request(
                           location,
                           headers={
                               "User-Agent": "pcm-base-importer"
                           }
                       )
-          
+
                       with urllib.request.urlopen(req2) as resp:
                           return resp.read()
-          
+
                   raise
 
           def listar_artifacts():
@@ -291,10 +295,12 @@ jobs:
         if: ${{ github.event.action == 'pcm_base_finalize' }}
         shell: bash
         run: |
+          set -e
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git pull --rebase || true
+          git pull --rebase origin main || true
 
           if [ -z "$(git status --porcelain)" ]; then
             echo "Nenhuma alteração para commit."
@@ -303,4 +309,18 @@ jobs:
 
           git add -A
           git commit -m "Atualização automática base PCM finalizada"
-          git push
+
+          for tentativa in 1 2 3; do
+            echo "Tentativa de push: $tentativa"
+
+            if git pull --rebase origin main && git push origin main; then
+              echo "Push realizado com sucesso."
+              exit 0
+            fi
+
+            echo "Falha no push. Tentando novamente em 10 segundos..."
+            sleep 10
+          done
+
+          echo "Não foi possível realizar o push após 3 tentativas."
+          exit 1

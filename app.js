@@ -171,7 +171,7 @@
       issuesCache: [],
       filteredCache: [],
       page: 1,
-      pageSize: 150,
+      pageSize: 80,
     },
     actionContext: null,
   };
@@ -1749,6 +1749,7 @@
 
     if (state.loginSubmitting) return;
 
+    const formElement = event.currentTarget;
     const errorElement = $("#loginError");
 
     if (!state.loginReady || !state.db?.usuarios?.length) {
@@ -1772,7 +1773,7 @@
       statusText: "Conferindo usuário e matrícula...",
     });
 
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const email = String(form.get("email") || "")
       .trim()
       .toLowerCase();
@@ -1833,7 +1834,7 @@
 
       state.pageSize = Number(state.db.parametros?.pageSizeDefault || 12);
 
-      event.currentTarget.reset();
+      formElement.reset();
 
       hydrateStaticUi();
       renderLoginState();
@@ -2170,7 +2171,7 @@
   }
 
   function makeQualityIssue(typeKey, key, records) {
-    return {
+    const issue = {
       typeKey,
       typeLabel: qualityTypeLabel(typeKey),
       key,
@@ -2185,6 +2186,28 @@
       supervisao: firstFilled(records, (item) => item.supervisao) || "-",
       competencia: firstFilled(records, (item) => item.competencia) || "-",
     };
+
+    issue.searchText = normalizeText(
+      [
+        issue.typeLabel,
+        issue.key,
+        issue.origem,
+        issue.descricao,
+        issue.centroTrabalho,
+        issue.gerencia,
+        issue.supervisao,
+        issue.competencia,
+        ...records.flatMap((record) => [
+          record.id,
+          record.ordem,
+          qualityExplicitId(record),
+          record.descricao,
+          record.localInstalacao,
+        ]),
+      ].join(" "),
+    );
+
+    return issue;
   }
 
   function buildQualityIssues() {
@@ -2262,26 +2285,7 @@
     return issues.filter((issue) => {
       if (typeFilter && issue.typeKey !== typeFilter) return false;
       if (!search) return true;
-      const haystack = normalizeText(
-        [
-          issue.typeLabel,
-          issue.key,
-          issue.origem,
-          issue.descricao,
-          issue.centroTrabalho,
-          issue.gerencia,
-          issue.supervisao,
-          issue.competencia,
-          ...issue.records.flatMap((record) => [
-            record.id,
-            record.ordem,
-            qualityExplicitId(record),
-            record.descricao,
-            record.localInstalacao,
-          ]),
-        ].join(" "),
-      );
-      return haystack.includes(search);
+      return (issue.searchText || "").includes(search);
     });
   }
 
@@ -2360,6 +2364,37 @@
     return (state.quality.filteredCache || getQualityIssuesCached()).find(
       (issue) => issue.id === state.quality.selectedIssueId,
     );
+  }
+
+  function updateQualityRowSelection() {
+    $$("#qualityIssueTableBody [data-quality-issue-id]").forEach((row) => {
+      row.classList.toggle(
+        "is-selected",
+        row.dataset.qualityIssueId === state.quality.selectedIssueId,
+      );
+    });
+  }
+
+  function focusQualityDetailPanel() {
+    const panel = $("#qualityDetailPanel");
+    if (!panel) return;
+    panel.classList.add("is-focused");
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    global.setTimeout(() => panel.classList.remove("is-focused"), 900);
+  }
+
+  function selectQualityIssue(issueId, scrollToDetail = false) {
+    if (!issueId || issueId === state.quality.selectedIssueId) {
+      if (scrollToDetail) focusQualityDetailPanel();
+      return;
+    }
+
+    state.quality.selectedIssueId = issueId;
+    state.quality.selectedPrimarySequence = "";
+    updateQualityRowSelection();
+    renderQualityDetail(selectedQualityIssue());
+
+    if (scrollToDetail) focusQualityDetailPanel();
   }
 
   function mergeQualityRecords(issue, primarySequence) {
@@ -2533,7 +2568,20 @@
     }
 
     try {
-      await state.repo.upsertDemanda(merged);
+      const saved = await state.repo.upsertDemanda(merged);
+      const savedRecord = normalizeDemandRecord(saved || merged);
+      const existingIndex = state.db.demandas.findIndex(
+        (item) => item.id === savedRecord.id,
+      );
+
+      if (existingIndex >= 0) {
+        state.db.demandas[existingIndex] = {
+          ...state.db.demandas[existingIndex],
+          ...savedRecord,
+        };
+      } else {
+        state.db.demandas.unshift(savedRecord);
+      }
 
       await state.repo.addLog?.({
         usuario: state.currentUser?.email || "",
@@ -2545,10 +2593,14 @@
         status: "SUCESSO",
       });
 
-      showToast("Ajuste salvo no controle de demandas.", "success");
+      state.lastDataUpdateAt = new Date().toISOString();
+      $("#lastUpdateSide").textContent = formatDateTime(state.lastDataUpdateAt);
 
-      await refreshAll();
-      switchView("qualidade");
+      state.quality.issuesCache = [];
+      state.quality.filteredCache = [];
+
+      showToast("Ajuste salvo no controle de demandas.", "success");
+      renderQuality();
     } catch (error) {
       console.error(error);
       showToast(`Erro ao salvar ajuste: ${error.message}`, "error");
@@ -2587,6 +2639,7 @@
       issue.records[0];
 
     const hiddenRecords = Math.max(0, issue.records.length - 40);
+    const canSaveQuality = canEdit() || canAdmin();
 
     panel.innerHTML = `
     <div class="detail-title">
@@ -2658,6 +2711,8 @@
         class="button"
         type="button"
         data-quality-action="save-merge"
+        ${canSaveQuality ? "" : "disabled"}
+        title="${canSaveQuality ? "Salvar ajuste no Supabase" : "Perfil sem permissÃ£o para salvar ajuste"}"
       >
         Salvar ajuste
       </button>
@@ -2678,7 +2733,7 @@
             selectedPrimarySequence === record.qualidadeSequencia;
 
           return `
-            <article class="quality-record ${isRecommended ? "is-recommended" : ""} ${isSelected ? "is-primary-selected" : ""}">
+            <article class="quality-record ${isRecommended ? "is-recommended" : ""} ${isSelected ? "is-primary-selected" : ""}" data-quality-primary="${escapeHtml(record.qualidadeSequencia)}">
               <header>
                 <label class="quality-primary-option">
                   <input
@@ -6724,7 +6779,8 @@
       state.quality.selectedIssueId = "";
       state.quality.selectedPrimarySequence = "";
       state.quality.page = 1;
-      renderQuality();
+      global.clearTimeout(state.quality.searchTimer);
+      state.quality.searchTimer = global.setTimeout(renderQuality, 180);
     });
 
     $("#qualityClearFilters").addEventListener("click", () => {
@@ -6743,6 +6799,8 @@
           ? ""
           : card.dataset.qualityCard;
       state.quality.selectedIssueId = "";
+      state.quality.selectedPrimarySequence = "";
+      state.quality.page = 1;
       renderQuality();
     });
     $("#qualityIssueTableBody").addEventListener("click", (event) => {
@@ -6752,17 +6810,10 @@
 
       if (!target) return;
 
-      state.quality.selectedIssueId =
-        target.dataset.qualityDetail || target.dataset.qualityIssueId;
-
-      state.quality.selectedPrimarySequence = "";
-
-      renderQuality();
-
-      $("#qualityDetailPanel")?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      });
+      selectQualityIssue(
+        target.dataset.qualityDetail || target.dataset.qualityIssueId,
+        Boolean(target.dataset.qualityDetail),
+      );
     });
     $("#qualityDetailPanel").addEventListener("change", (event) => {
       if (!event.target.matches('input[name="qualityPrimaryRecord"]')) return;
@@ -6772,6 +6823,14 @@
     });
 
     $("#qualityDetailPanel").addEventListener("click", async (event) => {
+      const primaryCard = event.target.closest("[data-quality-primary]");
+      if (primaryCard && !event.target.closest("[data-quality-action]")) {
+        state.quality.selectedPrimarySequence =
+          primaryCard.dataset.qualityPrimary || "";
+        renderQualityDetail(selectedQualityIssue());
+        return;
+      }
+
       const action = event.target.closest("[data-quality-action]")?.dataset
         .qualityAction;
 

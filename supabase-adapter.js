@@ -2,6 +2,7 @@
   const WORKER_API_URL = "https://pcm-eletrovia-api.weslley-santos.workers.dev";
 
   const PAGE_SIZE = 1000;
+  const MAX_SELECT_PAGES = 120;
 
   const TABLES = {
     controle: "controle_demandas_eletrovia",
@@ -154,28 +155,57 @@
     return text ? JSON.parse(text) : null;
   }
 
+  function hasExplicitPagination(query) {
+    return /(^|&)(limit|offset)=/i.test(query || "");
+  }
+
+  function withQueryPagination(query, from) {
+    if (hasExplicitPagination(query)) return query;
+    const separator = query ? "&" : "";
+    return `${query}${separator}limit=${PAGE_SIZE}&offset=${from}`;
+  }
+
   async function selectAll(table, query = "select=*") {
     const rows = [];
     let from = 0;
+    let previousSignature = "";
 
     while (true) {
-      const to = from + PAGE_SIZE - 1;
+      const pagedQuery = withQueryPagination(query, from);
 
-      const batch = await request(`${table}?${query}`, {
+      const batch = await request(`${table}?${pagedQuery}`, {
         method: "GET",
-        headers: {
-          Range: `${from}-${to}`,
-          Prefer: "count=exact",
-        },
       });
 
       if (!Array.isArray(batch) || !batch.length) break;
 
+      const first = batch[0]?.id_demanda_controle || batch[0]?.id || "";
+      const last =
+        batch[batch.length - 1]?.id_demanda_controle ||
+        batch[batch.length - 1]?.id ||
+        "";
+      const signature = `${batch.length}:${first}:${last}`;
+
+      if (signature === previousSignature) {
+        throw new Error(
+          `PaginaÃ§Ã£o repetida ao carregar ${table}. Verifique limit/offset no Worker.`,
+        );
+      }
+
+      previousSignature = signature;
+
       rows.push(...batch);
 
+      if (hasExplicitPagination(query)) break;
       if (batch.length < PAGE_SIZE) break;
 
       from += PAGE_SIZE;
+
+      if (rows.length >= PAGE_SIZE * MAX_SELECT_PAGES) {
+        throw new Error(
+          `Carga interrompida: ${table} excedeu ${PAGE_SIZE * MAX_SELECT_PAGES} registros.`,
+        );
+      }
     }
 
     return rows;
@@ -519,7 +549,7 @@
               "observacao",
               "vinculada_em",
             ].join(","),
-            "&ativo=eq.true",
+            "&ativo=eq.true&order=id_demanda_controle.asc",
           ].join(""),
         ),
         selectAll(TABLES.usuarios, "select=*&ativo=eq.true"),

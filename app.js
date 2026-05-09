@@ -537,8 +537,36 @@
 
   function isRealizedBySapStatus(demand) {
     const statusSistema = normalizeText(demand.statusSistema);
+    const statusUsuario = normalizeText(demand.statusUsuario);
 
-    return statusSistema.includes("ENTE") || statusSistema.includes("ENCE");
+    return (
+      statusSistema.includes("ENTE") ||
+      statusSistema.includes("ENCE") ||
+      statusUsuario.includes("ENCR") ||
+      statusUsuario.includes("ENTE") ||
+      statusUsuario.includes("ENCE")
+    );
+  }
+
+  function hasRealizedDate(demand) {
+    return Boolean(dateText(demand.dataRealizada));
+  }
+
+  function isWaitingTechnicalClosure(demand) {
+    if (isCanceledBySap(demand)) return false;
+    if (!hasRealizedDate(demand)) return false;
+    if (isRealizedBySapStatus(demand)) return false;
+
+    const statusSistema = normalizeText(demand.statusSistema);
+    const statusUsuario = normalizeText(demand.statusUsuario);
+
+    return (
+      statusSistema.includes("LIB") ||
+      statusSistema.includes("CONF") ||
+      statusUsuario.includes("LIB") ||
+      statusUsuario.includes("CONF") ||
+      true
+    );
   }
 
   function primaryStatusOf(demand) {
@@ -583,15 +611,20 @@
       return Array.from(new Set(substatuses));
     }
 
-    if (status === "Realizado" && !demand.dataRealizada) {
+    if (status === "Realizado" && !hasRealizedDate(demand)) {
       substatuses.push("Encerrado no SAP BO sem data realizada");
+    }
+
+    if (status === "Realizado" && isWaitingTechnicalClosure(demand)) {
+      substatuses.push("Falta encerramento");
     }
 
     if (demand.perda) substatuses.push("Perda");
 
-    const dueClass = dueClassOf(demand);
-    if (dueClass) substatuses.push(dueClass);
-
+    if (!isWaitingTechnicalClosure(demand)) {
+      const dueClass = dueClassOf(demand);
+      if (dueClass) substatuses.push(dueClass);
+    }
     if (pendingIssuesOf(demand).length) substatuses.push("Pendente");
 
     return Array.from(new Set(substatuses));

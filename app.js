@@ -248,6 +248,9 @@
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
       const [day, month, year] = text.split("/");
       normalized = `${year}-${month}-${day}`;
+    } else if (/^\d{2}\/\d{2}\/\d{2}$/.test(text)) {
+      const [day, month, year] = text.split("/");
+      normalized = `20${year}-${month}-${day}`;
     } else if (/^\d{4}-\d{2}$/.test(text)) {
       normalized = `${text}-01`;
     } else if (/^\d{6}$/.test(text) && text.startsWith("20")) {
@@ -535,6 +538,11 @@
     return hasSapStatusText(demand, "CANC");
   }
 
+  function hasSapSystemClosureStatus(demand) {
+    const statusSistema = normalizeText(demand.statusSistema);
+    return statusSistema.includes("ENTE") || statusSistema.includes("ENCE");
+  }
+
   function isRealizedBySapStatus(demand) {
     const statusSistema = normalizeText(demand.statusSistema);
     const statusUsuario = normalizeText(demand.statusUsuario);
@@ -555,25 +563,24 @@
   function isWaitingClosure(demand) {
     if (isCanceledBySap(demand)) return false;
     if (!hasRealizedDate(demand)) return false;
-    if (isRealizedBySapStatus(demand)) return false;
 
-    return true;
+    const statusSistema = normalizeText(demand.statusSistema);
+    const hasOpenSystemStatus =
+      statusSistema.includes("LIB") || statusSistema.includes("CONF");
+
+    return hasOpenSystemStatus && !hasSapSystemClosureStatus(demand);
   }
 
   function isWaitingTechnicalClosure(demand) {
     if (isCanceledBySap(demand)) return false;
     if (!hasRealizedDate(demand)) return false;
-    if (isRealizedBySapStatus(demand)) return false;
+    if (hasSapSystemClosureStatus(demand)) return false;
 
     const statusSistema = normalizeText(demand.statusSistema);
-    const statusUsuario = normalizeText(demand.statusUsuario);
 
     return (
       statusSistema.includes("LIB") ||
-      statusSistema.includes("CONF") ||
-      statusUsuario.includes("LIB") ||
-      statusUsuario.includes("CONF") ||
-      true
+      statusSistema.includes("CONF")
     );
   }
 
@@ -974,7 +981,6 @@
     const mergeOrdemComFutura = (ordemItem, futuraItem) => {
       const merged = {
         ...futuraItem,
-        ...ordemItem,
 
         // REGRA PRINCIPAL:
         // se a OM existe na futura e também na base ordens,
@@ -1027,6 +1033,11 @@
           futuraItem.quantidadeReplanejamentos ??
           ordemItem.quantidadeReplanejamentos ??
           0,
+
+        dataUltimaAtualizacao:
+          ordemItem.dataUltimaAtualizacao ||
+          futuraItem.dataUltimaAtualizacao ||
+          "",
 
         origem: "SAP BO - Ordens | SAP BO - Demandas Futuras",
 
@@ -1100,6 +1111,16 @@
     return primaryStatusOf(demanda) === "Realizado";
   }
 
+  function demandHasFutureSource(demanda) {
+    return normalizeText(
+      [
+        demanda?.origem,
+        demanda?.fontesConsolidadas,
+        demanda?.tipoDemanda,
+      ].join(" "),
+    ).includes("FUTUR");
+  }
+
   function mergeCarteiraDuplicateByOrder(principal, secundario) {
     const merged = { ...secundario, ...principal };
 
@@ -1168,6 +1189,11 @@
       }
     });
 
+    if (isCanceledBySap(secundario) && !isCanceledBySap(merged)) {
+      merged.statusSistema = secundario.statusSistema || merged.statusSistema;
+      merged.statusUsuario = secundario.statusUsuario || merged.statusUsuario;
+    }
+
     merged.fontesConsolidadas = Array.from(
       new Set(
         [
@@ -1213,11 +1239,27 @@
 
       const atualRealizada = demandIsRealizada(atual);
       const novaRealizada = demandIsRealizada(demanda);
+      const atualCancelada = isCanceledBySap(atual);
+      const novaCancelada = isCanceledBySap(demanda);
+      const atualVemDaFutura = demandHasFutureSource(atual);
+      const novaVemDaFutura = demandHasFutureSource(demanda);
 
       let principal = atual;
       let secundario = demanda;
 
-      if (novaRealizada && !atualRealizada) {
+      if (novaVemDaFutura && !atualVemDaFutura) {
+        principal = demanda;
+        secundario = atual;
+      } else if (!novaVemDaFutura && atualVemDaFutura) {
+        principal = atual;
+        secundario = demanda;
+      } else if (novaCancelada && !atualCancelada) {
+        principal = demanda;
+        secundario = atual;
+      } else if (!novaCancelada && atualCancelada) {
+        principal = atual;
+        secundario = demanda;
+      } else if (novaRealizada && !atualRealizada) {
         principal = demanda;
         secundario = atual;
       } else if (novaRealizada === atualRealizada) {
@@ -1287,23 +1329,12 @@
       const dataRealizada =
         realizado.dataRealizada || demanda.dataRealizada || "";
 
-      const realizadoTemEncerramento = isRealizedBySapStatus(realizado);
-      const demandaTemEncerramento = isRealizedBySapStatus(demanda);
-
-      const deveUsarStatusRealizado =
-        realizadoTemEncerramento ||
-        (!demandaTemEncerramento && realizado.statusSistema);
-
       const atualizado = {
         ...demanda,
 
-        statusSistema: deveUsarStatusRealizado
-          ? realizado.statusSistema || demanda.statusSistema || ""
-          : demanda.statusSistema || realizado.statusSistema || "",
+        statusSistema: realizado.statusSistema || demanda.statusSistema || "",
 
-        statusUsuario: deveUsarStatusRealizado
-          ? realizado.statusUsuario || demanda.statusUsuario || ""
-          : demanda.statusUsuario || realizado.statusUsuario || "",
+        statusUsuario: realizado.statusUsuario || demanda.statusUsuario || "",
 
         dataRealizada,
 
@@ -1459,7 +1490,7 @@
       // Data realizada pode vir do Supabase manualmente,
       // mas se a base_realizados existir, ela será aplicada depois
       // em applyBaseRealizadosToCarteira().
-      dataRealizada: delta.dataRealizada || baseDemand.dataRealizada || "",
+      dataRealizada: baseDemand.dataRealizada || delta.dataRealizada || "",
 
       perda: delta.perda ?? baseDemand.perda ?? false,
       motivoPerda: delta.motivoPerda || baseDemand.motivoPerda || "",

@@ -1007,6 +1007,14 @@
           futuraItem.dataReplanejadaAtual ||
           ordemItem.dataReplanejadaAtual ||
           "",
+        dataRealizada:
+          ordemItem.dataRealizada || futuraItem.dataRealizada || "",
+
+        statusSistema:
+          ordemItem.statusSistema || futuraItem.statusSistema || "",
+
+        statusUsuario:
+          ordemItem.statusUsuario || futuraItem.statusUsuario || "",
         perda: futuraItem.perda ?? ordemItem.perda ?? false,
         motivoPerda: futuraItem.motivoPerda || ordemItem.motivoPerda || "",
         justificativaPerda:
@@ -1111,6 +1119,12 @@
       "frequencia",
       "observacao",
       "vinculadaEm",
+
+      // campos SAP/realização que podem vir da base ordens ou realizados
+      "statusSistema",
+      "statusUsuario",
+      "dataRealizada",
+      "origemRealizacao",
     ];
 
     camposComplementares.forEach((campo) => {
@@ -1127,6 +1141,7 @@
     const camposControleSupabase = [
       "dataPlanejada",
       "dataReplanejadaAtual",
+      "dataRealizada",
       "perda",
       "motivoPerda",
       "justificativaPerda",
@@ -1171,7 +1186,10 @@
       ),
     ).join(" | ");
 
-    return merged;
+    merged.statusOperacional = primaryStatusOf(merged);
+    merged.substatusOperacional = substatusListOf(merged).join(" | ");
+
+    return normalizeDemandRecord(merged);
   }
 
   function consolidateCarteiraByRealizedOrder(carteira) {

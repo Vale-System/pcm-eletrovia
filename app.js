@@ -916,45 +916,127 @@
 
   function mergeBaseOrdensEFuturas(baseOrdens, baseFuturas) {
     const mapa = new Map();
+    const futurasPorOrdem = new Map();
 
-    // Primeiro entram as futuras.
-    // Depois as ordens entram por cima, caso tenham o mesmo ID.
+    const ordemKey = (item) => String(item?.ordem || "").trim();
+
+    const mergeOrdemComFutura = (ordemItem, futuraItem) => {
+      const merged = {
+        ...futuraItem,
+        ...ordemItem,
+
+        // REGRA PRINCIPAL:
+        // se a OM existe na futura e também na base ordens,
+        // o ID oficial fica sendo o ID da futura.
+        id: futuraItem.id || ordemItem.id,
+
+        idDemandaInformado:
+          futuraItem.idDemandaInformado ||
+          futuraItem.id ||
+          ordemItem.idDemandaInformado ||
+          "",
+
+        ordem: ordemItem.ordem || futuraItem.ordem || "",
+
+        // A futura continua sendo a origem conceitual da demanda,
+        // mas recebe os dados atualizados da ordem SAP.
+        tipoDemanda:
+          futuraItem.tipoDemanda || ordemItem.tipoDemanda || "Futura",
+
+        // Campos próprios da demanda futura não devem ser perdidos.
+        frequencia: futuraItem.frequencia || ordemItem.frequencia || "",
+        observacao: futuraItem.observacao || ordemItem.observacao || "",
+        vinculadaEm: futuraItem.vinculadaEm || ordemItem.vinculadaEm || "",
+
+        // Campos operacionais já existentes na futura também devem ser preservados
+        // quando a base ordens não trouxer valor.
+        dataPlanejada:
+          futuraItem.dataPlanejada || ordemItem.dataPlanejada || "",
+        dataReplanejadaAtual:
+          futuraItem.dataReplanejadaAtual ||
+          ordemItem.dataReplanejadaAtual ||
+          "",
+        perda: futuraItem.perda ?? ordemItem.perda ?? false,
+        motivoPerda: futuraItem.motivoPerda || ordemItem.motivoPerda || "",
+        justificativaPerda:
+          futuraItem.justificativaPerda || ordemItem.justificativaPerda || "",
+        comentario: futuraItem.comentario || ordemItem.comentario || "",
+        usuarioResponsavel:
+          futuraItem.usuarioResponsavel || ordemItem.usuarioResponsavel || "",
+
+        quantidadeReplanejamentos:
+          futuraItem.quantidadeReplanejamentos ??
+          ordemItem.quantidadeReplanejamentos ??
+          0,
+
+        origem: "SAP BO - Ordens | SAP BO - Demandas Futuras",
+
+        fontesConsolidadas: Array.from(
+          new Set(
+            [
+              futuraItem.fontesConsolidadas,
+              ordemItem.fontesConsolidadas,
+              futuraItem.origem,
+              ordemItem.origem,
+              "SAP BO - Demandas Futuras",
+              "SAP BO - Ordens",
+            ]
+              .filter(Boolean)
+              .flatMap((item) =>
+                String(item)
+                  .split("|")
+                  .map((value) => value.trim()),
+              )
+              .filter(Boolean),
+          ),
+        ).join(" | "),
+      };
+
+      return normalizeDemandRecord(merged);
+    };
+
+    // Primeiro entram as futuras, porque elas têm o ID de controle correto.
     baseFuturas.forEach((item) => {
       if (!item.id) return;
+
       mapa.set(item.id, item);
+
+      const ordem = ordemKey(item);
+      if (ordem && !futurasPorOrdem.has(ordem)) {
+        futurasPorOrdem.set(ordem, item);
+      }
     });
 
+    // Depois entram as ordens.
+    // Se a ordem tiver a mesma OM de uma futura, mantém o ID da futura.
     baseOrdens.forEach((item) => {
       if (!item.id) return;
 
-      const futura = mapa.get(item.id);
+      const ordem = ordemKey(item);
+      const futuraPorMesmaOrdem = ordem ? futurasPorOrdem.get(ordem) : null;
+      const futuraPorMesmoId = mapa.get(item.id);
 
-      if (!futura) {
-        mapa.set(item.id, item);
+      if (futuraPorMesmaOrdem) {
+        const merged = mergeOrdemComFutura(item, futuraPorMesmaOrdem);
+
+        // Garante que não fique um DEM-SAP duplicado para a mesma OM.
+        mapa.delete(item.id);
+
+        mapa.set(merged.id, merged);
         return;
       }
 
-      // Se existir nas duas, a ordem SAP/base ordens vence,
-      // mas preserva campos úteis da futura quando a ordem estiver vazia.
-      mapa.set(item.id, {
-        ...futura,
-        ...item,
+      if (futuraPorMesmoId) {
+        const merged = mergeOrdemComFutura(item, futuraPorMesmoId);
+        mapa.set(merged.id, merged);
+        return;
+      }
 
-        id: item.id,
-        ordem: item.ordem || futura.ordem || "",
-
-        tipoDemanda: item.tipoDemanda || futura.tipoDemanda || "",
-        frequencia: item.frequencia || futura.frequencia || "",
-        observacao: item.observacao || futura.observacao || "",
-        vinculadaEm: item.vinculadaEm || futura.vinculadaEm || "",
-
-        origem: item.origem || "SAP BO - Ordens",
-      });
+      mapa.set(item.id, item);
     });
 
     return Array.from(mapa.values());
   }
-
   function demandIsRealizada(demanda) {
     return primaryStatusOf(demanda) === "Realizado";
   }

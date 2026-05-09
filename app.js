@@ -552,6 +552,14 @@
     return Boolean(dateText(demand.dataRealizada));
   }
 
+  function isWaitingClosure(demand) {
+    if (isCanceledBySap(demand)) return false;
+    if (!hasRealizedDate(demand)) return false;
+    if (isRealizedBySapStatus(demand)) return false;
+
+    return true;
+  }
+
   function isWaitingTechnicalClosure(demand) {
     if (isCanceledBySap(demand)) return false;
     if (!hasRealizedDate(demand)) return false;
@@ -615,17 +623,27 @@
       substatuses.push("Encerrado no SAP BO sem data realizada");
     }
 
-    if (status === "Realizado" && isWaitingTechnicalClosure(demand)) {
-      substatuses.push("Falta encerramento");
+    if (status === "Realizado" && isWaitingClosure(demand)) {
+      substatuses.push("Ag Encerramento");
     }
 
-    if (demand.perda) substatuses.push("Perda");
+    if (demand.perda) {
+      substatuses.push("Perda");
+    }
 
-    if (!isWaitingTechnicalClosure(demand)) {
+    if (status === "Realizado" && !isWaitingClosure(demand)) {
       const dueClass = dueClassOf(demand);
       if (dueClass) substatuses.push(dueClass);
     }
-    if (pendingIssuesOf(demand).length) substatuses.push("Pendente");
+
+    if (status !== "Realizado") {
+      const dueClass = dueClassOf(demand);
+      if (dueClass) substatuses.push(dueClass);
+    }
+
+    if (pendingIssuesOf(demand).length) {
+      substatuses.push("Pendente");
+    }
 
     return Array.from(new Set(substatuses));
   }
@@ -1251,14 +1269,31 @@
       const dataRealizada =
         realizado.dataRealizada || demanda.dataRealizada || "";
 
+      const realizadoTemEncerramento = isRealizedBySapStatus(realizado);
+      const demandaTemEncerramento = isRealizedBySapStatus(demanda);
+
+      const deveUsarStatusRealizado =
+        realizadoTemEncerramento ||
+        (!demandaTemEncerramento && realizado.statusSistema);
+
       const atualizado = {
         ...demanda,
 
-        statusSistema: realizado.statusSistema || demanda.statusSistema || "",
-        statusUsuario: realizado.statusUsuario || demanda.statusUsuario || "",
+        statusSistema: deveUsarStatusRealizado
+          ? realizado.statusSistema || demanda.statusSistema || ""
+          : demanda.statusSistema || realizado.statusSistema || "",
+
+        statusUsuario: deveUsarStatusRealizado
+          ? realizado.statusUsuario || demanda.statusUsuario || ""
+          : demanda.statusUsuario || realizado.statusUsuario || "",
+
         dataRealizada,
 
-        origemRealizacao: "SAP BO - Realizados",
+        origemRealizacao: realizado.dataRealizada
+          ? "SAP BO - Realizados"
+          : demanda.dataRealizada
+            ? demanda.origemRealizacao || "SAP BO - Ordens/Futuras"
+            : "",
         dataUltimaAtualizacao:
           realizado.dataUltimaAtualizacao ||
           demanda.dataUltimaAtualizacao ||
@@ -1288,7 +1323,7 @@
       const novoRealizado = {
         ...realizado,
 
-        id: `DEM-SAP-${ordem}`,
+        id: realizado.id || `DEM-SAP-${ordem}`,
         idDemandaInformado:
           realizado.idDemandaInformado || realizado.id || `REAL-SAP-${ordem}`,
 

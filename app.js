@@ -81,6 +81,12 @@
     { key: "prioridade", label: "Prioridade", field: "prioridade" },
     { key: "critico", label: "Crítico", field: "critico" },
     { key: "planejadorOM", label: "Planejador OM", field: "planejadorOM" },
+    { key: "substatus", label: "Substatus", special: "substatus" },
+    {
+      key: "planejadorCurto",
+      label: "Planejador Curto",
+      field: "planejadorCurto",
+    },
     { key: "programador", label: "Programador", field: "programador" },
     { key: "centroStatus", label: "Cadastro Centro", special: "centroStatus" },
     {
@@ -127,11 +133,28 @@
     },
   ];
 
+  const NAV_GROUPS = {
+    carteira: ["carteira", "lote", "notificacoes", "historico-carteira"],
+    qualidade: [
+      "futuras",
+      "qualidade",
+      "qualidade-local",
+      "qualidade-centros",
+      "qualidade-divergencias",
+    ],
+    administracao: ["administracao", "logs", "saude-integracao"],
+  };
+
   const state = {
     repo: null,
     db: null,
     currentUser: null,
     currentView: "carteira",
+    navGroups: {
+      carteira: true,
+      qualidade: false,
+      administracao: false,
+    },
     adminTab: "usuarios",
     selectedDemandId: "",
     page: 1,
@@ -145,6 +168,12 @@
     identity: null,
     realizedAutoSynced: false,
     filters: {},
+    indicatorFilters: {},
+    indicatorFiltersReady: false,
+    indicatorFiltersVisible: false,
+    filterOptionsCache: null,
+    filterSearchTimer: null,
+    indicatorSearchTimer: null,
     lastDataUpdateAt: "",
     loginReady: false,
     batch: {
@@ -163,9 +192,26 @@
       byId: new Map(),
     },
 
+    portfolioHistory: {
+      search: "",
+      action: "",
+      user: "",
+      startDate: "",
+      endDate: "",
+    },
+
     quality: {
       typeFilter: "",
       search: "",
+      duplicateOmSearch: "",
+      localSearch: "",
+      localFilters: {},
+      localFiltersVisible: false,
+      localFiltersReady: false,
+      localGroupsCache: null,
+      selectedLocal: "",
+      centersSearch: "",
+      divergenceSearch: "",
       selectedIssueId: "",
       selectedPrimarySequence: "",
       issuesCache: [],
@@ -208,6 +254,34 @@
   function renderStaticIcons() {
     $$("[data-icon]").forEach((element) => {
       element.innerHTML = iconSvg(element.dataset.icon);
+    });
+  }
+
+  function navGroupForView(view) {
+    return Object.entries(NAV_GROUPS).find(([, views]) =>
+      views.includes(view),
+    )?.[0];
+  }
+
+  function syncNavigation(view) {
+    $$("[data-nav-group]").forEach((group) => {
+      const groupKey = group.dataset.navGroup;
+      const isOpen = Boolean(state.navGroups[groupKey]);
+      group.classList.toggle("is-open", Boolean(isOpen));
+      const toggle = group.querySelector("[data-nav-group-toggle]");
+      toggle?.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+
+    $$(".nav-item").forEach((item) => {
+      const groupKey = item.dataset.navGroupToggle;
+      const isActive = groupKey
+        ? NAV_GROUPS[groupKey]?.includes(view)
+        : item.dataset.view === view;
+      item.classList.toggle("is-active", Boolean(isActive));
+    });
+
+    $$(".nav-subitem").forEach((item) => {
+      item.classList.toggle("is-active", item.dataset.view === view);
     });
   }
 
@@ -584,6 +658,13 @@
     );
   }
 
+  function hasLibConfStatus(demand) {
+    const statusSistema = normalizeText(demand.statusSistema);
+    const statusUsuario = normalizeText(demand.statusUsuario);
+    const statusText = `${statusSistema} ${statusUsuario}`;
+    return statusText.includes("LIB") && statusText.includes("CONF");
+  }
+
   function primaryStatusOf(demand) {
     if (isCanceledBySap(demand)) {
       return "Cancelado";
@@ -593,7 +674,7 @@
       return "Realizado";
     }
 
-    if (demand.dataRealizada) {
+    if (demand.dataRealizada && hasLibConfStatus(demand)) {
       return "Realizado";
     }
 
@@ -632,6 +713,10 @@
 
     if (status === "Realizado" && isWaitingClosure(demand)) {
       substatuses.push("Ag Encerramento");
+    }
+
+    if (hasRealizedDate(demand) && !hasLibConfStatus(demand)) {
+      substatuses.push("Avaliar Status no SAP");
     }
 
     if (demand.perda) {
@@ -687,6 +772,7 @@
     if (status === "Nao cadastrado" || status === "Sem centro")
       return "status-perda";
     if (status === "Fora do Prazo") return "status-fora-prazo";
+    if (status === "Avaliar Status no SAP") return "status-fora-prazo";
     if (status === "Perda" || status === "Pendente") return "status-perda";
     return "status-planejado";
   }
@@ -1518,9 +1604,53 @@
       .trim();
   }
 
+  function normalizeScopeValue(value) {
+    return normalizeCentroTrabalho(value).replace(/\s+/g, " ");
+  }
+
+  function centroResponsabilidadeNivel(cadastro) {
+    const nivel = normalizeText(cadastro?.nivelResponsabilidade || "");
+    if (nivel.includes("GERENCIA")) return "gerencia";
+    if (nivel.includes("SUPERVISAO")) return "supervisao";
+    if (nivel.includes("CENTRO")) return "centro";
+    if (cadastro?.centroTrabalho || cadastro?.centroTrabalhoChave)
+      return "centro";
+    if (cadastro?.supervisao) return "supervisao";
+    return "gerencia";
+  }
+
+  function centroResponsabilidadeChave(cadastro) {
+    const chaveInformada = normalizeScopeValue(cadastro?.centroTrabalhoChave);
+    if (/^(CENTRO|SUPERVISAO|GERENCIA)::/.test(chaveInformada)) {
+      return chaveInformada;
+    }
+    const nivel = centroResponsabilidadeNivel(cadastro);
+    const gerencia = normalizeScopeValue(cadastro?.gerencia);
+    const supervisao = normalizeScopeValue(cadastro?.supervisao);
+    const centro = normalizeScopeValue(
+      chaveInformada || cadastro?.centroTrabalho,
+    );
+
+    if (nivel === "centro") return `CENTRO::${centro}`;
+    if (nivel === "supervisao") return `SUPERVISAO::${gerencia}::${supervisao}`;
+    return `GERENCIA::${gerencia}`;
+  }
+
+  function findResponsabilidadeForDemand(demanda, cadastros) {
+    const gerencia = normalizeScopeValue(demanda.gerencia);
+    const supervisao = normalizeScopeValue(demanda.supervisao);
+    const centro = normalizeScopeValue(demanda.centroTrabalho);
+    const candidates = [
+      `CENTRO::${centro}`,
+      `SUPERVISAO::${gerencia}::${supervisao}`,
+      `GERENCIA::${gerencia}`,
+    ];
+    return candidates.map((key) => cadastros.get(key)).find(Boolean);
+  }
+
   function enrichDemandWithCentroTrabalho(demanda, mapaCentros) {
     const chaveCentro = normalizeCentroTrabalho(demanda.centroTrabalho);
-    const cadastro = mapaCentros.get(chaveCentro);
+    const cadastro = findResponsabilidadeForDemand(demanda, mapaCentros);
 
     if (!cadastro) {
       return {
@@ -1539,6 +1669,10 @@
       gerencia: cadastro.gerencia || demanda.gerencia || "",
       supervisao: cadastro.supervisao || demanda.supervisao || "",
 
+      planejadorCurto: cadastro.planejadorCurto || "",
+      planejadorCurtoEmail: cadastro.planejadorCurtoEmail || "",
+      planejadorCurtoMatricula: cadastro.planejadorCurtoMatricula || "",
+
       planejadorOM: cadastro.planejadorOM || "",
       planejadorOMEmail: cadastro.planejadorOMEmail || "",
       planejadorOMMatricula: cadastro.planejadorOMMatricula || "",
@@ -1550,6 +1684,7 @@
       centroTrabalhoChave: cadastro.centroTrabalhoChave || chaveCentro,
       centroTrabalhoCadastrado: true,
       centroTrabalhoStatus: "Cadastrado",
+      centroResponsabilidadeNivel: centroResponsabilidadeNivel(cadastro),
     };
   }
 
@@ -1570,11 +1705,7 @@
     const mapaCentrosTrabalho = new Map(
       (supabaseData.centrosTrabalho || [])
         .filter((item) => item.ativo !== false)
-        .map((item) => [
-          item.centroTrabalhoChave ||
-            normalizeCentroTrabalho(item.centroTrabalho),
-          item,
-        ]),
+        .map((item) => [centroResponsabilidadeChave(item), item]),
     );
 
     const baseEnriquecida = base.map((demanda) =>
@@ -1626,6 +1757,7 @@
     state.db = {
       demandas,
       qualitySourceRecords,
+      qualityBaseRealizados: baseSources.baseRealizados || [],
       usuarios: supabaseData.usuarios || [],
       centrosTrabalho: supabaseData.centrosTrabalho || [],
       feriasSubstituicoes: supabaseData.feriasSubstituicoes || [],
@@ -1643,9 +1775,13 @@
     state.quality.selectedIssueId = "";
     state.quality.selectedPrimarySequence = "";
     state.quality.page = 1;
+    state.quality.localGroupsCache = null;
+    state.quality.localFiltersReady = false;
     state.notifications.cache = [];
     state.notifications.cacheKey = "";
     state.notifications.byId = new Map();
+    state.filterOptionsCache = null;
+    state.indicatorFiltersReady = false;
 
     clearBatchLookup();
 
@@ -1666,6 +1802,9 @@
       competencia: normalizeCompetencia(demanda.competencia),
       prioridade: normalizePrioridade(demanda.prioridade),
       critico: normalizeCritico(demanda.critico),
+      planejadorCurto: demanda.planejadorCurto || "",
+      planejadorCurtoEmail: demanda.planejadorCurtoEmail || "",
+      planejadorCurtoMatricula: demanda.planejadorCurtoMatricula || "",
       centroTrabalhoChave:
         demanda.centroTrabalhoChave ||
         normalizeCentroTrabalho(demanda.centroTrabalho),
@@ -1831,6 +1970,153 @@
     );
   }
 
+  function buildPortfolioHistoryRows() {
+    const demandMap = new Map(
+      (state.db?.demandas || []).map((demanda) => [demanda.id, demanda]),
+    );
+
+    const rowFor = (item, action, title, detail) => {
+      const demand = demandMap.get(item.demandaId) || {};
+      return {
+        id: item.id || `${action}-${item.demandaId}-${item.dataHora}`,
+        demandId: item.demandaId || "",
+        ordem: demand.ordem || item.ordem || "",
+        descricao: demand.descricao || item.descricao || "",
+        usuario: item.usuario || demand.usuarioResponsavel || "",
+        action,
+        date: item.dataHora || item.data || "",
+        title,
+        detail,
+      };
+    };
+
+    const planejamento = (state.db?.historicoPlanejamento || []).map((item) =>
+      rowFor(
+        item,
+        "Planejamento",
+        `Planejado para ${formatDate(item.novaData)}`,
+        item.comentario || "Planejamento registrado",
+      ),
+    );
+
+    const replanejamento = (state.db?.historicoReplanejamento || []).map(
+      (item) =>
+        rowFor(
+          item,
+          "Replanejamento",
+          `${formatDate(item.dataAnterior)} para ${formatDate(item.novaData)}`,
+          [item.motivo, item.justificativa].filter(Boolean).join(" | ") ||
+            "Replanejamento registrado",
+        ),
+    );
+
+    const realizados = (state.db?.historicoRealizadoPerdas || []).map((item) =>
+      rowFor(
+        item,
+        item.perda ? "Perda" : "Realizado",
+        item.perda
+          ? item.motivoPerda || "Perda registrada"
+          : `Realizado em ${formatDate(item.dataRealizada)}`,
+        item.comentario || item.justificativaPerda || "Registro operacional",
+      ),
+    );
+
+    return [...planejamento, ...replanejamento, ...realizados].sort(
+      (a, b) => new Date(b.date || 0) - new Date(a.date || 0),
+    );
+  }
+
+  function filteredPortfolioHistoryRows() {
+    const filters = state.portfolioHistory;
+    const search = normalizeText(filters.search);
+    const user = normalizeText(filters.user);
+
+    return buildPortfolioHistoryRows().filter((row) => {
+      const rowDate = toDate(row.date)?.toISOString().slice(0, 10) || "";
+
+      if (filters.action && row.action !== filters.action) return false;
+      if (filters.startDate && rowDate && rowDate < filters.startDate)
+        return false;
+      if (filters.endDate && rowDate && rowDate > filters.endDate)
+        return false;
+      if (user && !normalizeText(row.usuario).includes(user)) return false;
+
+      if (search) {
+        const haystack = normalizeText(
+          [
+            row.demandId,
+            row.ordem,
+            row.descricao,
+            row.usuario,
+            row.action,
+            row.title,
+            row.detail,
+          ].join(" "),
+        );
+        if (!haystack.includes(search)) return false;
+      }
+
+      return true;
+    });
+  }
+
+  function renderPortfolioHistory() {
+    const filters = state.portfolioHistory;
+    const rows = filteredPortfolioHistoryRows();
+    const visibleRows = rows.slice(0, 500);
+
+    $("#portfolioHistorySearch").value = filters.search;
+    $("#portfolioHistoryAction").value = filters.action;
+    $("#portfolioHistoryUser").value = filters.user;
+    $("#portfolioHistoryStartDate").value = filters.startDate;
+    $("#portfolioHistoryEndDate").value = filters.endDate;
+
+    $("#portfolioHistoryCount").textContent =
+      rows.length > visibleRows.length
+        ? `${rows.length} registros encontrados - exibindo os primeiros ${visibleRows.length}`
+        : `${rows.length} registros encontrados`;
+
+    $("#portfolioHistoryTableBody").innerHTML = visibleRows.length
+      ? visibleRows
+          .map(
+            (row) => `
+              <tr>
+                <td>${formatDateTime(row.date)}</td>
+                <td>${escapeHtml(row.action)}</td>
+                <td>
+                  <strong>${escapeHtml(row.ordem || row.demandId || "-")}</strong>
+                  <div class="muted">${escapeHtml(row.demandId || "-")}</div>
+                </td>
+                <td class="description-cell">
+                  ${escapeHtml(row.descricao || "-")}
+                  <div class="muted">${escapeHtml(row.title || "-")}</div>
+                </td>
+                <td>${escapeHtml(row.usuario || "-")}</td>
+                <td>${escapeHtml(row.detail || "-")}</td>
+                <td>
+                  <button
+                    class="button secondary"
+                    type="button"
+                    data-history-demand="${escapeHtml(row.demandId)}"
+                    ${row.demandId ? "" : "disabled"}
+                  >
+                    Abrir
+                  </button>
+                </td>
+              </tr>
+            `,
+          )
+          .join("")
+      : `<tr>
+          <td colspan="7">
+            <div class="empty-detail">
+              <strong>Nenhum histórico encontrado</strong>
+              <span>Ajuste os filtros para consultar alterações da carteira.</span>
+            </div>
+          </td>
+        </tr>`;
+  }
+
   function hydrateStaticUi() {
     $("#storageMode").textContent = state.repo.mode;
     $("#pageSize").value = String(state.pageSize);
@@ -1856,6 +2142,7 @@
     renderRole();
     collectFilters();
     buildFilterOptions();
+    state.indicatorFiltersReady = false;
     renderAlerts();
   }
 
@@ -2103,7 +2390,9 @@
     $$(".realizer-only").forEach((element) => {
       element.disabled = !canRealizar();
     });
-    $$('[data-view="administracao"]').forEach((element) => {
+    $$(
+      '[data-view="administracao"], [data-view="logs"], [data-view="saude-integracao"]',
+    ).forEach((element) => {
       element.disabled = !rules.configurar;
       element.title = rules.configurar ? "" : "Disponivel para Administrador";
     });
@@ -2114,21 +2403,114 @@
     $("#exportCsv").disabled = !canExport();
   }
 
-  function buildFilterOptions() {
+  function filterOptionsFor(definition) {
+    if (!state.filterOptionsCache) state.filterOptionsCache = {};
+    if (state.filterOptionsCache[definition.key]) {
+      return state.filterOptionsCache[definition.key];
+    }
+
+    const rows = state.db?.demandas || [];
+    const values =
+      definition.special === "substatus"
+        ? rows.flatMap((item) =>
+            String(filterValueFor(item, definition))
+              .split(" | ")
+              .map((option) => option.trim())
+              .filter(Boolean),
+          )
+        : rows.map((item) => filterValueFor(item, definition));
+
+    state.filterOptionsCache[definition.key] = uniqueOptions(values);
+    return state.filterOptionsCache[definition.key];
+  }
+
+  function buildFilterOptions({ includeHidden = false } = {}) {
     const filters = state.filters || {};
     FILTER_DEFINITIONS.forEach((definition) => {
       const host = $(`[data-multi-filter="${definition.key}"]`);
       if (!host) return;
-      const scopedRows = state.db.demandas.filter((item) =>
-        demandMatchesFilters(item, filters, definition.key),
-      );
+      if (
+        !includeHidden &&
+        host.classList.contains("advanced-filter") &&
+        host.classList.contains("hidden")
+      ) {
+        return;
+      }
       const selected = filters[definition.key] || [];
       const options = uniqueOptions([
-        ...scopedRows.map((item) => filterValueFor(item, definition)),
+        ...filterOptionsFor(definition),
         ...selected,
       ]);
       renderMultiFilter(host, definition, options, selected);
     });
+  }
+
+  function buildIndicatorFilterOptions() {
+    const filters = state.indicatorFilters || {};
+    FILTER_DEFINITIONS.forEach((definition) => {
+      const host = $(`[data-indicator-multi-filter="${definition.key}"]`);
+      if (!host) return;
+      const scopedRows = (state.db?.demandas || []).filter((item) =>
+        demandMatchesFilters(item, filters, definition.key),
+      );
+      const rowOptions =
+        definition.special === "substatus"
+          ? scopedRows.flatMap((item) =>
+              String(filterValueFor(item, definition))
+                .split(" | ")
+                .map((option) => option.trim())
+                .filter(Boolean),
+            )
+          : scopedRows.map((item) => filterValueFor(item, definition));
+      const availableOptions = uniqueOptions(rowOptions);
+      const selected = (filters[definition.key] || []).filter((option) =>
+        availableOptions.includes(option),
+      );
+      filters[definition.key] = selected;
+      const options = uniqueOptions([
+        ...availableOptions,
+        ...selected,
+      ]);
+      renderMultiFilter(host, definition, options, selected);
+    });
+    state.indicatorFilters = filters;
+    state.indicatorFiltersReady = true;
+  }
+
+  function buildQualityLocalFilterOptions() {
+    const filters = state.quality.localFilters || {};
+    FILTER_DEFINITIONS.forEach((definition) => {
+      const host = $(`[data-quality-local-multi-filter="${definition.key}"]`);
+      if (!host) return;
+
+      const scopedRows = (state.db?.demandas || []).filter((item) =>
+        demandMatchesFilters(item, filters, definition.key),
+      );
+      const rowOptions =
+        definition.special === "substatus"
+          ? scopedRows.flatMap((item) =>
+              String(filterValueFor(item, definition))
+                .split(" | ")
+                .map((option) => option.trim())
+                .filter(Boolean),
+            )
+          : scopedRows.map((item) => filterValueFor(item, definition));
+      const availableOptions = uniqueOptions(rowOptions);
+      const selected = (filters[definition.key] || []).filter((option) =>
+        availableOptions.includes(option),
+      );
+
+      filters[definition.key] = selected;
+      renderMultiFilter(
+        host,
+        definition,
+        uniqueOptions([...availableOptions, ...selected]),
+        selected,
+      );
+    });
+
+    state.quality.localFilters = filters;
+    state.quality.localFiltersReady = true;
   }
 
   function collectFilters() {
@@ -2147,26 +2529,108 @@
     return filters;
   }
 
+  function collectIndicatorFilters() {
+    const filters = {};
+    $$("[data-indicator-multi-filter]").forEach((field) => {
+      filters[field.dataset.indicatorMultiFilter] = $$(
+        "[data-multi-option]:checked",
+        field,
+      ).map((input) => input.value);
+    });
+    filters.quickSearch = $("#indicatorQuickSearch")?.value.trim() || "";
+    state.indicatorFilters = filters;
+    return filters;
+  }
+
+  function collectQualityLocalFilters() {
+    const filters = {};
+    $$("[data-quality-local-multi-filter]").forEach((field) => {
+      filters[field.dataset.qualityLocalMultiFilter] = $$(
+        "[data-multi-option]:checked",
+        field,
+      ).map((input) => input.value);
+    });
+    filters.quickSearch = $("#qualityLocalQuickSearch")?.value.trim() || "";
+    state.quality.localFilters = filters;
+    state.quality.localGroupsCache = null;
+    return filters;
+  }
+
+  function updateMultiFilterSummary(host) {
+    if (!host) return;
+    const checked = $$("[data-multi-option]:checked", host).map(
+      (input) => input.value,
+    );
+    const summary =
+      checked.length === 0
+        ? "Todos"
+        : checked.length === 1
+          ? checked[0]
+          : `${checked.length} selecionados`;
+    const summaryText = $(".multi-summary-text", host);
+    const summaryElement = $("summary", host);
+    if (summaryText) summaryText.textContent = summary;
+    if (summaryElement) summaryElement.title = summary;
+  }
+
+  function updateAllMultiFilterSummaries(root) {
+    $$("[data-multi-filter], [data-indicator-multi-filter]", root || document)
+      .forEach(updateMultiFilterSummary);
+  }
+
   function filterValueFor(item, definition) {
-    if (definition.special === "status") return primaryStatusOf(item);
+    if (!item.__filterCache) {
+      Object.defineProperty(item, "__filterCache", {
+        value: {},
+        enumerable: false,
+        configurable: true,
+      });
+    }
+    if (Object.prototype.hasOwnProperty.call(item.__filterCache, definition.key))
+      return item.__filterCache[definition.key];
 
-    if (definition.special === "centroStatus")
-      return item.centroTrabalhoStatus || "Nao cadastrado";
+    let result = "";
 
-    if (definition.special === "anoVencimento")
-      return item.vencimento?.slice(0, 4) || "";
+    if (definition.special === "status") {
+      result = primaryStatusOf(item);
+      item.__filterCache[definition.key] = result;
+      return result;
+    }
+
+    if (definition.special === "centroStatus") {
+      result = item.centroTrabalhoStatus || "Nao cadastrado";
+      item.__filterCache[definition.key] = result;
+      return result;
+    }
+
+    if (definition.special === "substatus") {
+      result = substatusListOf(item).join(" | ") || "Sem substatus";
+      item.__filterCache[definition.key] = result;
+      return result;
+    }
+
+    if (definition.special === "anoVencimento") {
+      result = dateText(item.vencimento).slice(0, 4) || "";
+      item.__filterCache[definition.key] = result;
+      return result;
+    }
 
     if (definition.special === "mesVencimento") {
-      const month = item.vencimento?.slice(5, 7) || "";
-      return month ? `${month} - ${monthName(month)}` : "";
+      const month = dateText(item.vencimento).slice(5, 7) || "";
+      result = month ? `${month} - ${monthName(month)}` : "";
+      item.__filterCache[definition.key] = result;
+      return result;
     }
 
     const value = item[definition.field] || "";
 
     if (definition.formatter === "sapStatus") {
-      return formatSapStatusFilter(value);
+      result = formatSapStatusFilter(value);
+      item.__filterCache[definition.key] = result;
+      return result;
     }
 
+    item.__filterCache[definition.key] = value;
     return value;
   }
 
@@ -2251,11 +2715,19 @@
     for (const definition of FILTER_DEFINITIONS) {
       if (definition.key === ignoredKey) continue;
       const selected = filters[definition.key] || [];
-      if (
-        selected.length &&
-        !selected.includes(String(filterValueFor(item, definition)))
-      )
-        return false;
+      if (selected.length) {
+        const value = String(filterValueFor(item, definition));
+        if (definition.special === "substatus") {
+          const substatuses = value
+            .split(" | ")
+            .map((option) => option.trim())
+            .filter(Boolean);
+          if (!selected.some((option) => substatuses.includes(option)))
+            return false;
+        } else if (!selected.includes(value)) {
+          return false;
+        }
+      }
     }
 
     if (filters.perda === "sim" && !item.perda) return false;
@@ -2275,15 +2747,28 @@
     if (filters.realizado === "nao" && item.dataRealizada) return false;
 
     if (search) {
-      const haystack = normalizeText(
-        [
-          item.id,
-          item.ordem,
-          item.descricao,
-          item.centroTrabalho,
-          item.localInstalacao,
-        ].join(" "),
-      );
+      if (!item.__filterSearchText) {
+        Object.defineProperty(item, "__filterSearchText", {
+          value: normalizeText(
+            [
+              item.id,
+              item.ordem,
+              item.descricao,
+              item.centroTrabalho,
+              item.localInstalacao,
+              item.gerencia,
+              item.supervisao,
+              item.usuarioResponsavel,
+              item.planejadorCurto,
+              item.planejadorOM,
+              item.programador,
+            ].join(" "),
+          ),
+          enumerable: false,
+          configurable: true,
+        });
+      }
+      const haystack = item.__filterSearchText;
       if (!haystack.includes(search)) return false;
     }
 
@@ -3165,6 +3650,523 @@
     });
   }
 
+  function distinctValues(records, selector) {
+    return uniqueOptions(
+      records
+        .map(selector)
+        .map((value) => String(value || "").trim())
+        .filter(Boolean),
+    );
+  }
+
+  function mostFrequentValue(records, selector) {
+    const counts = new Map();
+    records.forEach((record) => {
+      const value = String(selector(record) || "").trim();
+      if (!value) return;
+      counts.set(value, (counts.get(value) || 0) + 1);
+    });
+
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
+  }
+
+  function qualityDivergentFields(records) {
+    const fields = [
+      ["ID", (record) => qualityExplicitId(record) || record.id],
+      ["Origem", qualitySourceLabel],
+      ["Descricao", (record) => record.descricao],
+      ["Centro", (record) => record.centroTrabalho],
+      ["Local", (record) => record.localInstalacao],
+      ["Competencia", (record) => record.competencia],
+      ["Vencimento", (record) => record.vencimento],
+      ["Status SAP", (record) => record.statusSistema],
+      ["Status usuario", (record) => record.statusUsuario],
+      ["Realizado", (record) => record.dataRealizada],
+    ];
+
+    return fields
+      .filter(([, selector]) => distinctValues(records, selector).length > 1)
+      .map(([label]) => label);
+  }
+
+  function qualityPrimaryRecommendation(records) {
+    const realizedSource = records.find((record) =>
+      normalizeText(qualitySourceLabel(record)).includes("REALIZADOS"),
+    );
+    if (realizedSource) {
+      return `${qualityExplicitId(realizedSource) || realizedSource.id || realizedSource.ordem} | realizados`;
+    }
+
+    const futureSource = records.find((record) =>
+      normalizeText(qualitySourceLabel(record)).includes("FUTURAS"),
+    );
+    const orderSource = records.find((record) =>
+      normalizeText(qualitySourceLabel(record)).includes("ORDENS"),
+    );
+
+    if (futureSource && orderSource) {
+      return `${qualityExplicitId(futureSource) || futureSource.id || futureSource.ordem} | manter ID futura e status da ordem`;
+    }
+
+    const richer = [...records].sort((a, b) => {
+      const score = (record) =>
+        [
+          record.id,
+          qualityExplicitId(record),
+          record.ordem,
+          record.descricao,
+          record.centroTrabalho,
+          record.localInstalacao,
+          record.statusSistema,
+          record.statusUsuario,
+          record.dataRealizada,
+          record.vencimento,
+          record.competencia,
+        ].filter((value) => String(value || "").trim()).length;
+      return score(b) - score(a);
+    })[0];
+
+    return `${qualityExplicitId(richer) || richer?.id || richer?.ordem || "-"} | mais completo`;
+  }
+
+  function filteredDuplicateOmIssues() {
+    const search = normalizeText(state.quality.duplicateOmSearch);
+    return getQualityIssuesCached().filter((issue) => {
+      if (issue.typeKey !== "om-duplicada") return false;
+      if (!search) return true;
+      return issue.searchText.includes(search);
+    });
+  }
+
+  function openQualityIssueFromFocusedView(issueId) {
+    state.quality.typeFilter = "";
+    state.quality.search = "";
+    state.quality.selectedIssueId = issueId;
+    state.quality.selectedPrimarySequence = "";
+    switchView("qualidade");
+  }
+
+  function renderDuplicateOms() {
+    const rows = filteredDuplicateOmIssues();
+    const involved = rows.reduce((total, issue) => total + issue.quantidade, 0);
+    const withDivergence = rows.filter(
+      (issue) => qualityDivergentFields(issue.records).length,
+    ).length;
+
+    $("#duplicateOmSearch").value = state.quality.duplicateOmSearch;
+    $("#duplicateOmSummary").innerHTML = [
+      ["OMs duplicadas", rows.length, "grupos encontrados"],
+      ["Registros envolvidos", involved, "linhas nas fontes"],
+      ["Com divergência", withDivergence, "campos conflitantes"],
+    ]
+      .map(
+        ([label, value, hint]) => `
+          <div class="quality-insight-card">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(value)}</strong>
+            <small>${escapeHtml(hint)}</small>
+          </div>
+        `,
+      )
+      .join("");
+
+    $("#duplicateOmCount").textContent = `${rows.length} OMs duplicadas`;
+
+    $("#duplicateOmTableBody").innerHTML = rows.length
+      ? rows
+          .map((issue) => {
+            const divergent = qualityDivergentFields(issue.records);
+            return `
+              <tr data-duplicate-om="${escapeHtml(issue.id)}">
+                <td><strong>${escapeHtml(issue.key)}</strong></td>
+                <td>${issue.quantidade}</td>
+                <td>${escapeHtml(issue.origem)}</td>
+                <td>${escapeHtml(divergent.join(", ") || "Sem divergencia visivel")}</td>
+                <td>${escapeHtml(qualityPrimaryRecommendation(issue.records))}</td>
+                <td class="description-cell">${escapeHtml(issue.descricao)}</td>
+                <td>${escapeHtml(issue.centroTrabalho)}</td>
+                <td>${escapeHtml(firstFilled(issue.records, (item) => item.localInstalacao) || "-")}</td>
+                <td>
+                  <button
+                    class="button secondary compact-button"
+                    data-open-quality-issue="${escapeHtml(issue.id)}"
+                    type="button"
+                  >
+                    Ver saneamento
+                  </button>
+                </td>
+              </tr>
+            `;
+          })
+          .join("")
+      : `<tr>
+          <td colspan="9">
+            <div class="empty-detail">
+              <strong>Nenhuma OM duplicada no recorte</strong>
+              <span>Ajuste a busca para consultar outros grupos.</span>
+            </div>
+          </td>
+        </tr>`;
+  }
+
+  function buildQualityLocalGroups() {
+    const filters = state.quality.localFilters || {};
+    const cacheKey = JSON.stringify({
+      filters,
+      total: state.db?.demandas?.length || 0,
+      lastUpdate: state.lastDataUpdateAt || "",
+    });
+
+    if (state.quality.localGroupsCache?.key === cacheKey) {
+      return state.quality.localGroupsCache.groups;
+    }
+
+    const groups = new Map();
+    const rows = (state.db?.demandas || []).filter((demand) =>
+      demandMatchesFilters(demand, filters),
+    );
+
+    rows.forEach((demand) => {
+      const key = String(demand.localInstalacao || "").trim();
+      if (!key) return;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(demand);
+    });
+
+    const result = [...groups.entries()]
+      .map(([local, demandas]) => {
+        const ordens = distinctValues(demandas, (item) => item.ordem);
+        return {
+          local,
+          demandas,
+          quantidade: demandas.length,
+          ordens: ordens.length,
+          semOm: demandas.filter((item) => !String(item.ordem || "").trim())
+            .length,
+          centroPrincipal: mostFrequentValue(
+            demandas,
+            (item) => item.centroTrabalho,
+          ),
+          searchText: normalizeText(
+            [
+              local,
+              ...demandas.flatMap((item) => [
+                item.id,
+                item.ordem,
+                item.descricao,
+                item.centroTrabalho,
+                item.gerencia,
+                item.supervisao,
+              ]),
+            ].join(" "),
+          ),
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.quantidade - a.quantidade || a.local.localeCompare(b.local),
+      );
+
+    state.quality.localGroupsCache = {
+      key: cacheKey,
+      groups: result,
+    };
+
+    return result;
+  }
+
+  function filteredQualityLocalGroups() {
+    const search = normalizeText(state.quality.localSearch);
+    return buildQualityLocalGroups().filter(
+      (group) => !search || group.searchText.includes(search),
+    );
+  }
+
+  function renderQualityByLocal() {
+    renderQualityLocalFilterVisibility();
+
+    if (state.quality.localFiltersVisible && !state.quality.localFiltersReady) {
+      buildQualityLocalFilterOptions();
+    }
+
+    const groups = filteredQualityLocalGroups();
+    const selectedExists = groups.some(
+      (group) => group.local === state.quality.selectedLocal,
+    );
+
+    if (!selectedExists) {
+      state.quality.selectedLocal = groups[0]?.local || "";
+    }
+
+    const selected = groups.find(
+      (group) => group.local === state.quality.selectedLocal,
+    );
+
+    $("#qualityLocalSearch").value = state.quality.localSearch;
+    $("#qualityLocalQuickSearch").value =
+      state.quality.localFilters?.quickSearch || "";
+    $("#qualityLocalCount").textContent = `${groups.length} locais encontrados`;
+    $("#qualityLocalDemandCount").textContent = selected
+      ? `${selected.quantidade} demandas em ${selected.local}`
+      : "Selecione um local";
+    $("#qualityLocalSelection").innerHTML = selected
+      ? `
+        <div>
+          <span>Local selecionado</span>
+          <strong>${escapeHtml(selected.local)}</strong>
+        </div>
+        <div>
+          <span>Demandas</span>
+          <strong>${selected.quantidade}</strong>
+        </div>
+        <div>
+          <span>OMs</span>
+          <strong>${selected.ordens}</strong>
+        </div>
+        <div>
+          <span>Sem OM</span>
+          <strong>${selected.semOm}</strong>
+        </div>
+        <div>
+          <span>Centro</span>
+          <strong>${escapeHtml(selected.centroPrincipal)}</strong>
+        </div>
+      `
+      : "";
+
+    $("#qualityLocalGroupTableBody").innerHTML = groups.length
+      ? groups
+          .slice(0, 500)
+          .map(
+            (group) => `
+              <tr
+                class="${group.local === state.quality.selectedLocal ? "is-selected" : ""}"
+                data-quality-local="${escapeHtml(group.local)}"
+              >
+                <td><strong>${escapeHtml(group.local)}</strong></td>
+                <td class="metric-cell">${group.quantidade}</td>
+                <td class="metric-cell">${group.ordens}</td>
+                <td class="metric-cell">${group.semOm}</td>
+                <td class="metric-cell">${escapeHtml(group.centroPrincipal)}</td>
+                <td>
+                  <button
+                    class="button secondary compact-button"
+                    data-select-quality-local="${escapeHtml(group.local)}"
+                    type="button"
+                  >
+                    Ver demandas
+                  </button>
+                </td>
+              </tr>
+            `,
+          )
+          .join("")
+      : `<tr>
+          <td colspan="6">
+            <div class="empty-detail">
+              <strong>Nenhum local encontrado</strong>
+              <span>Ajuste a busca ou os filtros ocultos para consultar outros locais.</span>
+            </div>
+          </td>
+        </tr>`;
+
+    $("#qualityLocalDemandTableBody").innerHTML = selected?.demandas?.length
+      ? selected.demandas
+          .slice()
+          .sort((a, b) =>
+            String(a.vencimento || "").localeCompare(String(b.vencimento || "")),
+          )
+          .map(
+            (demand) => `
+              <tr data-local-demand="${escapeHtml(demand.id)}">
+                <td><strong>${escapeHtml(demand.id)}</strong></td>
+                <td>${escapeHtml(demand.ordem || "-")}</td>
+                <td class="description-cell">${escapeHtml(demand.descricao || "-")}</td>
+                <td>${statusChip(primaryStatusOf(demand))}</td>
+                <td>${escapeHtml(demand.centroTrabalho || "-")}</td>
+                <td>${escapeHtml(demand.competencia || "-")}</td>
+                <td>${formatDate(demand.vencimento)}</td>
+                <td>${formatDate(demand.dataPlanejada)}</td>
+                <td>${formatDate(demand.dataReplanejadaAtual)}</td>
+              </tr>
+            `,
+          )
+          .join("")
+      : `<tr>
+          <td colspan="9">
+            <div class="empty-detail">
+              <strong>Nenhuma demanda selecionada</strong>
+              <span>Escolha um local para aplicar o filtro interno.</span>
+            </div>
+          </td>
+        </tr>`;
+  }
+
+  function filteredMissingCenterIssues() {
+    const search = normalizeText(state.quality.centersSearch);
+    return getQualityIssuesCached().filter((issue) => {
+      if (issue.typeKey !== "centro-sem-cadastro") return false;
+      if (!search) return true;
+      return issue.searchText.includes(search);
+    });
+  }
+
+  function renderQualityCenters() {
+    const rows = filteredMissingCenterIssues();
+    $("#qualityCentersSearch").value = state.quality.centersSearch;
+    $("#qualityCentersCount").textContent = `${rows.length} centros encontrados`;
+
+    $("#qualityCentersTableBody").innerHTML = rows.length
+      ? rows
+          .map(
+            (issue) => `
+              <tr>
+                <td><strong>${escapeHtml(issue.key)}</strong></td>
+                <td>${issue.quantidade}</td>
+                <td>${escapeHtml(issue.gerencia)}</td>
+                <td>${escapeHtml(issue.supervisao)}</td>
+                <td class="description-cell">${escapeHtml(issue.descricao)}</td>
+                <td>
+                  <button
+                    class="button secondary compact-button admin-only"
+                    data-open-center-admin="${escapeHtml(issue.key)}"
+                    type="button"
+                  >
+                    Cadastrar
+                  </button>
+                </td>
+              </tr>
+            `,
+          )
+          .join("")
+      : `<tr>
+          <td colspan="6">
+            <div class="empty-detail">
+              <strong>Nenhum centro pendente no recorte</strong>
+              <span>Os centros cadastrados pela Administração saem daqui.</span>
+            </div>
+          </td>
+        </tr>`;
+  }
+
+  function buildQualityDivergenceRows() {
+    const records = [
+      ...(state.db?.qualitySourceRecords || []),
+      ...(state.db?.qualityBaseRealizados || []).map((record, index) => ({
+        ...record,
+        fonteQualidade: "SAP BO - Realizados",
+        qualidadeSequencia: `realizados-${index + 1}`,
+      })),
+    ];
+
+    const groups = new Map();
+    records.forEach((record) => {
+      const key =
+        String(record.ordem || "").trim() ||
+        qualityExplicitId(record) ||
+        String(record.id || "").trim();
+      if (!key) return;
+      addQualityGroup(groups, key, record);
+    });
+
+    return [...groups.entries()]
+      .map(([key, group]) => {
+        const fontes = distinctValues(group, qualitySourceLabel);
+        if (fontes.length < 2) return null;
+
+        const statusSistema = distinctValues(group, (item) =>
+          formatSapStatusFilter(item.statusSistema),
+        );
+        const statusUsuario = distinctValues(group, (item) =>
+          formatSapStatusFilter(item.statusUsuario),
+        );
+        const dataRealizada = distinctValues(group, (item) =>
+          formatDate(item.dataRealizada),
+        );
+        const statusOperacional = distinctValues(group, primaryStatusOf);
+
+        const divergencias = [];
+        if (statusSistema.length > 1) divergencias.push("Status sistema");
+        if (statusUsuario.length > 1) divergencias.push("Status usuario");
+        if (dataRealizada.length > 1) divergencias.push("Data realizada");
+        if (statusOperacional.length > 1) divergencias.push("Status operacional");
+
+        if (!divergencias.length) return null;
+
+        return {
+          key,
+          fontes,
+          divergencias,
+          statusPorFonte: group
+            .map(
+              (item) =>
+                `${qualitySourceLabel(item)}: ${formatSapStatusFilter(item.statusSistema) || "-"} / ${formatSapStatusFilter(item.statusUsuario) || "-"}`,
+            )
+            .join(" | "),
+          dataRealizada: dataRealizada.join(" | ") || "-",
+          recommendation: group.some((item) =>
+            normalizeText(qualitySourceLabel(item)).includes("REALIZADOS"),
+          )
+            ? "Usar base_realizados como fonte oficial de baixa."
+            : "Comparar fonte operacional antes de salvar saneamento.",
+          searchText: normalizeText(
+            [
+              key,
+              fontes.join(" "),
+              divergencias.join(" "),
+              ...group.flatMap((item) => [
+                item.id,
+                qualityExplicitId(item),
+                item.descricao,
+                item.centroTrabalho,
+                item.localInstalacao,
+                item.statusSistema,
+                item.statusUsuario,
+              ]),
+            ].join(" "),
+          ),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.key.localeCompare(b.key, "pt-BR"));
+  }
+
+  function renderQualityDivergences() {
+    const search = normalizeText(state.quality.divergenceSearch);
+    const rows = buildQualityDivergenceRows().filter(
+      (row) => !search || row.searchText.includes(search),
+    );
+
+    $("#qualityDivergenceSearch").value = state.quality.divergenceSearch;
+    $("#qualityDivergenceCount").textContent =
+      `${rows.length} divergências encontradas`;
+
+    $("#qualityDivergenceTableBody").innerHTML = rows.length
+      ? rows
+          .slice(0, 500)
+          .map(
+            (row) => `
+              <tr>
+                <td><strong>${escapeHtml(row.key)}</strong></td>
+                <td>${escapeHtml(row.fontes.join(" | "))}</td>
+                <td>${escapeHtml(row.divergencias.join(", "))}</td>
+                <td class="description-cell">${escapeHtml(row.statusPorFonte)}</td>
+                <td>${escapeHtml(row.dataRealizada)}</td>
+                <td>${escapeHtml(row.recommendation)}</td>
+              </tr>
+            `,
+          )
+          .join("")
+      : `<tr>
+          <td colspan="6">
+            <div class="empty-detail">
+              <strong>Nenhuma divergência no recorte</strong>
+              <span>Quando as bases discordarem, o conflito aparecerá aqui.</span>
+            </div>
+          </td>
+        </tr>`;
+  }
+
   function activeVacationSubstitutionsForCurrentUser() {
     const email = normalizeText(state.currentUser?.email || "");
     const today = toDate(todayText());
@@ -3187,6 +4189,7 @@
   function responsibleEmailsForDemand(demand) {
     return [
       demand.usuarioResponsavel,
+      demand.planejadorCurtoEmail,
       demand.planejadorOMEmail,
       demand.programadorEmail,
     ]
@@ -3662,7 +4665,7 @@
           class="alert-menu-open-panel"
           data-alert-open-panel
         >
-          Abrir Central de Notificações
+          Abrir Tratamento Operacional
         </button>
       `
         : "<p>Sem alertas críticos no momento.</p>");
@@ -3677,7 +4680,6 @@
       ["Replanejadas", stats.replanejadas, "alteradas"],
       ["Realizadas", stats.realizadas, "com baixa"],
       ["Perdas", stats.perdas, `${stats.pendentesPerda} pendentes`],
-      ["Aderência", `${stats.aderencia}%`, "realizado no prazo"],
     ];
     $("#kpiStrip").innerHTML = kpis
       .map(
@@ -3730,6 +4732,7 @@
             <td>${escapeHtml(item.tipoOM || "-")}</td>
             <td>${escapeHtml(item.centroTrabalho || "-")}</td>
             <td>${statusChip(item.centroTrabalhoStatus || "Nao cadastrado")}</td>
+            <td>${escapeHtml(item.planejadorCurto || "-")}</td>
             <td>${escapeHtml(item.planejadorOM || "-")}</td>
             <td>${escapeHtml(item.programador || "-")}</td>
             <td>${escapeHtml(item.localInstalacao || "-")}</td>
@@ -3794,6 +4797,7 @@
         <div class="detail-item"><span>Centro</span><strong>${escapeHtml(demand.centroTrabalho || "-")}</strong></div>
         <div class="detail-item"><span>Crítico</span><strong>${statusChip(demand.critico || "Não informado")}</strong></div>
 
+        <div class="detail-item"><span>Planejador Curto</span><strong>${escapeHtml(demand.planejadorCurto || "-")}</strong></div>
         <div class="detail-item"><span>Planejador OM</span><strong>${escapeHtml(demand.planejadorOM || "-")}</strong></div>
         <div class="detail-item"><span>Programador</span><strong>${escapeHtml(demand.programador || "-")}</strong></div>
 
@@ -4413,14 +5417,28 @@
   }
 
   function renderCurrentView() {
+    syncNavigation(state.currentView);
     if (state.currentView === "carteira") renderCarteira();
     if (state.currentView === "lote") renderBatch();
     if (state.currentView === "futuras") renderFutureDemandas();
     if (state.currentView === "qualidade") renderQuality();
+    if (state.currentView === "qualidade-local") renderQualityByLocal();
+    if (state.currentView === "qualidade-centros") renderQualityCenters();
+    if (state.currentView === "qualidade-divergencias")
+      renderQualityDivergences();
     if (state.currentView === "notificacoes") renderNotifications();
-    if (state.currentView === "indicadores") renderIndicators();
+    if (state.currentView === "historico-carteira") renderPortfolioHistory();
+    if (state.currentView === "indicadores") {
+      renderIndicatorFilterVisibility();
+      if (state.indicatorFiltersVisible && !state.indicatorFiltersReady) {
+        collectIndicatorFilters();
+        buildIndicatorFilterOptions();
+      }
+      renderIndicators();
+    }
     if (state.currentView === "administracao") renderAdmin();
     if (state.currentView === "logs") renderLogs();
+    if (state.currentView === "saude-integracao") renderIntegrationHealth();
     applyPermissions();
   }
 
@@ -4445,7 +5463,7 @@
   }
 
   function switchView(view) {
-    if (view === "administracao" && !canAdmin()) {
+    if (navGroupForView(view) === "administracao" && !canAdmin()) {
       showToast(
         "Administração disponível somente para Administrador.",
         "error",
@@ -4457,9 +5475,11 @@
       return;
     }
     state.currentView = view;
-    $$(".nav-item").forEach((item) =>
-      item.classList.toggle("is-active", item.dataset.view === view),
-    );
+    const groupKey = navGroupForView(view);
+    Object.keys(state.navGroups).forEach((key) => {
+      state.navGroups[key] = key === groupKey;
+    });
+    syncNavigation(view);
     $$("[data-view-panel]").forEach((panel) =>
       panel.classList.toggle("is-active", panel.dataset.viewPanel === view),
     );
@@ -4469,10 +5489,39 @@
   function renderBatch() {
     const summary = $("#validationSummary");
     const groups = $("#validationGroups");
+    const saveValidButton = $("#saveValidBatch");
+    const saveConfirmedButton = $("#saveConfirmedBatch");
+    const confirmWarningsLabel = $("#confirmWarnings")?.closest(
+      ".confirm-alerts",
+    );
+
+    const updateSaveActions = () => {
+      const hasRows = state.batch.rows.length > 0;
+      const hasValid = state.batch.valid.length > 0;
+      const hasWarnings = state.batch.warnings.length > 0;
+
+      saveValidButton?.classList.toggle(
+        "hidden",
+        !hasRows || !hasValid || hasWarnings,
+      );
+      saveConfirmedButton?.classList.toggle(
+        "hidden",
+        !hasRows || !hasValid || !hasWarnings,
+      );
+      confirmWarningsLabel?.classList.toggle(
+        "hidden",
+        !hasRows || !hasValid || !hasWarnings,
+      );
+
+      if (!hasWarnings && $("#confirmWarnings")) {
+        $("#confirmWarnings").checked = false;
+      }
+    };
     if (!state.batch.rows.length) {
       summary.innerHTML = "";
       groups.innerHTML =
         '<div class="empty-detail"><strong>Nenhum arquivo validado</strong><span>Selecione um arquivo para iniciar a validação.</span></div>';
+      updateSaveActions();
       return;
     }
 
@@ -4517,6 +5566,29 @@
       renderGroup("Registros Válidos", state.batch.valid, "valid") +
       renderGroup("Registros com Alerta", state.batch.warnings, "warning") +
       renderGroup("Registros com Erro", state.batch.errors, "error");
+    updateSaveActions();
+  }
+
+  function renderIndicatorFilterVisibility() {
+    const panel = $("#indicatorFilterPanel");
+    const button = $("#toggleIndicatorFilters");
+    if (!panel || !button) return;
+
+    panel.classList.toggle("hidden", !state.indicatorFiltersVisible);
+    button.textContent = state.indicatorFiltersVisible
+      ? "Ocultar filtros"
+      : "Mostrar filtros";
+  }
+
+  function renderQualityLocalFilterVisibility() {
+    const panel = $("#qualityLocalFilterPanel");
+    const button = $("#toggleQualityLocalFilters");
+    if (!panel || !button) return;
+
+    panel.classList.toggle("hidden", !state.quality.localFiltersVisible);
+    button.textContent = state.quality.localFiltersVisible
+      ? "Ocultar filtros"
+      : "Mostrar filtros";
   }
 
   function parseCsv(text) {
@@ -5612,15 +6684,20 @@
     record.id = idManual || global.CCEData.stableDemandId(record);
 
     record.tipoOM = record.tipoDemanda;
-    const centro = (state.db.centrosTrabalho || []).find(
-      (item) =>
-        normalizeCentroTrabalho(item.centroTrabalho) ===
-        normalizeCentroTrabalho(record.centroTrabalho),
+    const mapaCentros = new Map(
+      (state.db.centrosTrabalho || [])
+        .filter((item) => item.ativo !== false)
+        .map((item) => [centroResponsabilidadeChave(item), item]),
     );
+    const centro = findResponsabilidadeForDemand(record, mapaCentros);
     record.gerencia = centro?.gerencia || "";
     record.supervisao = centro?.supervisao || "";
+    record.planejadorCurto = centro?.planejadorCurto || "";
+    record.planejadorCurtoEmail = centro?.planejadorCurtoEmail || "";
     record.planejadorOM = centro?.planejadorOM || "";
+    record.planejadorOMEmail = centro?.planejadorOMEmail || "";
     record.programador = centro?.programador || "";
+    record.programadorEmail = centro?.programadorEmail || "";
     record.prioridade = "Nao informado";
     record.statusSistema = "PREV";
     record.toleranciaMin = record.vencimento;
@@ -5656,7 +6733,7 @@
   function renderBars(element, counts) {
     const entries = Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 8);
+      .slice(0, 6);
     const max = Math.max(1, ...entries.map(([, count]) => count));
     element.innerHTML =
       entries
@@ -5676,7 +6753,7 @@
     const stats = notificationStats(notifications);
 
     const cards = [
-      ["Todas", "total", stats.total, "notificações abertas"],
+      ["Todas", "total", stats.total, "pendências abertas"],
       ["Vencidas", "vencida", stats.vencida || 0, "prazo estourado"],
       ["Vencendo", "vencendo", stats.vencendo || 0, "até 7 dias"],
       [
@@ -5733,8 +6810,8 @@
 
     $("#notificationCount").textContent =
       rows.length > visibleRows.length
-        ? `${rows.length} notificações encontradas • exibindo as primeiras ${visibleRows.length}`
-        : `${rows.length} notificações encontradas`;
+        ? `${rows.length} pendências encontradas • exibindo as primeiras ${visibleRows.length}`
+        : `${rows.length} pendências encontradas`;
 
     const tbody = $("#notificationTableBody");
 
@@ -5787,7 +6864,7 @@
       <tr>
         <td colspan="11">
           <div class="empty-detail">
-            <strong>Nenhuma notificação no recorte</strong>
+            <strong>Nenhuma pendência no recorte</strong>
             <span>Altere os filtros ou verifique se as pendências já foram tratadas.</span>
           </div>
         </td>
@@ -5845,7 +6922,10 @@
   }
 
   function renderIndicators() {
-    const demands = filteredDemandas();
+    const indicatorFilters = collectIndicatorFilters();
+    const demands = state.db.demandas.filter((item) =>
+      demandMatchesFilters(item, indicatorFilters),
+    );
     const stats = dashboardStats(demands);
     const dueSoon = demands
       .filter((item) => {
@@ -5860,31 +6940,14 @@
       (item) =>
         toDate(item.vencimento) < toDate(todayText()) && !item.dataRealizada,
     ).length;
-    const futureNoOrder = demands.filter((item) => !item.ordem).length;
-    const sapDemands = demands.filter((item) => item.ordem).length;
-    const futureDemands = demands.filter(
-      (item) =>
-        !item.ordem ||
-        normalizeText(item.origem).includes("DEMANDAS FUTURAS") ||
-        normalizeText(item.tipoDemanda).includes("FUTURA"),
-    ).length;
-    const missingCenters = demands.filter(
-      (item) => item.centroTrabalhoCadastrado === false,
-    ).length;
     const cards = [
       ["Total de Demandas", stats.total, "recorte filtrado"],
-      ["Demandas SAP", sapDemands, "com ordem"],
-      ["Demandas Futuras", futureDemands, "JSON ou sistema"],
       ["Total a Planejar", stats.aPlanejar, "sem data"],
       ["Planejadas", stats.planejadas, "ativas"],
       ["Replanejadas", stats.replanejadas, "com histórico"],
       ["Realizadas", stats.realizadas, "baixadas"],
-      ["Perdas", stats.perdas, "registradas"],
-      ["Aderência", `${stats.aderencia}%`, "no prazo"],
       ["Ordens Vencidas", overdue, "sem realização"],
       ["Próximas do Vencimento", dueSoon.length, "20 dias"],
-      ["Futuras sem Ordem", futureNoOrder, "aguardando vínculo"],
-      ["Centros sem Cadastro", missingCenters, "alerta mestre"],
     ];
     $("#indicatorGrid").innerHTML = cards
       .map(
@@ -5906,7 +6969,7 @@
     );
     $("#dueSoonList").innerHTML =
       dueSoon
-        .slice(0, 8)
+        .slice(0, 6)
         .map(
           (item) => `
         <div class="due-item">
@@ -6188,8 +7251,17 @@
     <div class="admin-grid admin-grid-wide">
       <form class="admin-form" id="centroTrabalhoForm">
         <label>
+          Nivel de Responsabilidade
+          <select name="nivelResponsabilidade">
+            <option value="centro" selected>Centro de Trabalho</option>
+            <option value="supervisao">Supervisao</option>
+            <option value="gerencia">Gerencia</option>
+          </select>
+        </label>
+
+        <label>
           Centro de Trabalho
-          <input name="centroTrabalho" required placeholder="Ex.: EVT-PCM-01" />
+          <input name="centroTrabalho" placeholder="Ex.: EVT-PCM-01" />
         </label>
 
         <label>
@@ -6200,6 +7272,21 @@
         <label>
           Supervisão
           <input name="supervisao" required placeholder="Ex.: Supervisão PCM Eletrovia" />
+        </label>
+
+        <label>
+          Planejador de Curto
+          <input name="planejadorCurto" placeholder="Nome do planejador de curto" />
+        </label>
+
+        <label>
+          E-mail Planejador Curto
+          <input name="planejadorCurtoEmail" type="email" placeholder="planejador.curto@vale.com" />
+        </label>
+
+        <label>
+          Matricula Planejador Curto
+          <input name="planejadorCurtoMatricula" placeholder="000000" />
         </label>
 
         <label>
@@ -6250,9 +7337,18 @@
           </select>
         </label>
 
-        <button class="button" type="submit">
-          Salvar Centro de Trabalho
-        </button>
+        <div class="admin-form-actions span-2">
+          <button class="button" type="submit">
+            Salvar Centro de Trabalho
+          </button>
+          <button
+            class="button secondary"
+            id="clearCentroTrabalhoForm"
+            type="button"
+          >
+            Limpar
+          </button>
+        </div>
       </form>
 
       <div class="admin-list admin-list-scroll">
@@ -6291,6 +7387,10 @@
                           ${escapeHtml(item.supervisao || "-")}
                         </div>
                         <div class="muted">
+                          Nivel: ${escapeHtml(centroResponsabilidadeNivel(item))}
+                          |
+                          Planejador Curto: ${escapeHtml(item.planejadorCurto || "-")}
+                          |
                           Planejador OM: ${escapeHtml(item.planejadorOM || "-")}
                           |
                           Programador: ${escapeHtml(item.programador || "-")}
@@ -6302,7 +7402,7 @@
                       <button
                         class="button secondary"
                         type="button"
-                        data-edit-centro="${escapeHtml(item.centroTrabalhoChave || normalizeCentroTrabalho(item.centroTrabalho))}"
+                        data-edit-centro="${escapeHtml(centroResponsabilidadeChave(item))}"
                       >
                         Editar
                       </button>
@@ -6322,6 +7422,14 @@
       const form = new FormData(event.currentTarget);
       const record = Object.fromEntries(form.entries());
 
+      if (
+        record.nivelResponsabilidade === "centro" &&
+        !String(record.centroTrabalho || "").trim()
+      ) {
+        showToast("Informe o Centro de Trabalho para cadastro por centro.", "error");
+        return;
+      }
+
       record.ativo = record.ativo === "true";
       record.usuario = state.currentUser.email;
 
@@ -6331,12 +7439,20 @@
         usuario: state.currentUser.email,
         acao: "Cadastro Centro de Trabalho",
         lista: "cadastro_centros_trabalho",
-        referencia: record.centroTrabalho,
-        detalhe: `${record.gerencia || "-"} | ${record.supervisao || "-"}`,
+        referencia: record.centroTrabalho || record.supervisao || record.gerencia,
+        detalhe: `${record.nivelResponsabilidade || "centro"} | ${record.gerencia || "-"} | ${record.supervisao || "-"}`,
         modulo: "CONFIGURACOES",
       });
 
       await refreshAfterSave("Centro de trabalho salvo com sucesso.");
+    });
+
+    $("#clearCentroTrabalhoForm").addEventListener("click", () => {
+      const form = $("#centroTrabalhoForm");
+      form.reset();
+      form.nivelResponsabilidade.value = "centro";
+      form.ativo.value = "true";
+      form.centroTrabalho.focus();
     });
 
     $("#adminContent").addEventListener("click", (event) => {
@@ -6347,6 +7463,7 @@
       if (newButton) {
         const form = $("#centroTrabalhoForm");
         form.reset();
+        form.nivelResponsabilidade.value = "centro";
         form.centroTrabalho.value = newButton.dataset.newCentro || "";
         form.ativo.value = "true";
         form.gerencia.focus();
@@ -6354,19 +7471,20 @@
       }
 
       const centro = centros.find(
-        (item) =>
-          (item.centroTrabalhoChave ||
-            normalizeCentroTrabalho(item.centroTrabalho)) ===
-          button.dataset.editCentro,
+        (item) => centroResponsabilidadeChave(item) === button.dataset.editCentro,
       );
 
       if (!centro) return;
 
       const form = $("#centroTrabalhoForm");
 
+      form.nivelResponsabilidade.value = centroResponsabilidadeNivel(centro);
       form.centroTrabalho.value = centro.centroTrabalho || "";
       form.gerencia.value = centro.gerencia || "";
       form.supervisao.value = centro.supervisao || "";
+      form.planejadorCurto.value = centro.planejadorCurto || "";
+      form.planejadorCurtoEmail.value = centro.planejadorCurtoEmail || "";
+      form.planejadorCurtoMatricula.value = centro.planejadorCurtoMatricula || "";
       form.planejadorOM.value = centro.planejadorOM || "";
       form.planejadorOMEmail.value = centro.planejadorOMEmail || "";
       form.planejadorOMMatricula.value = centro.planejadorOMMatricula || "";
@@ -6628,6 +7746,183 @@
       .join("");
   }
 
+  function integrationStatusChip(status) {
+    const normalized = normalizeText(status);
+    const className = normalized.includes("FALHA")
+      ? "status-perda"
+      : normalized.includes("ALERTA")
+        ? "status-planejar"
+        : "status-realizado";
+    return `<span class="status-chip ${className}">${escapeHtml(status)}</span>`;
+  }
+
+  function integrationFailureLogs() {
+    const failTerms = [
+      "ERRO",
+      "FALHA",
+      "API",
+      "SUPABASE",
+      "JSON",
+      "BASE",
+      "PARAMETRO",
+      "SINCRONIZACAO",
+      "WORKER",
+      "CLOUDFLARE",
+    ];
+
+    return (state.db?.logs || [])
+      .filter((log) => {
+        const text = normalizeText(
+          [log.acao, log.lista, log.referencia, log.detalhe, log.status].join(
+            " ",
+          ),
+        );
+        return failTerms.some((term) => text.includes(term));
+      })
+      .sort((a, b) => new Date(b.dataHora || 0) - new Date(a.dataHora || 0));
+  }
+
+  function integrationSourceRows() {
+    const qualityRecords = state.db?.qualitySourceRecords || [];
+    const ordens = qualityRecords.filter((record) =>
+      normalizeText(qualitySourceLabel(record)).includes("ORDENS"),
+    ).length;
+    const futuras = qualityRecords.filter((record) =>
+      normalizeText(qualitySourceLabel(record)).includes("FUTURAS"),
+    ).length;
+    const realizados = state.db?.qualityBaseRealizados?.length || 0;
+    const supabaseDemandas = (state.db?.demandas || []).filter((record) =>
+      normalizeText(record.origem).includes("SUPABASE"),
+    ).length;
+    const centros = state.db?.centrosTrabalho?.length || 0;
+    const cloudflareUrl = global.CCESupabase?.url || "";
+    const lastUpdate = state.lastDataUpdateAt || latestDataUpdateAt();
+    const failures = integrationFailureLogs();
+
+    return [
+      {
+        component: "base_ordens.json",
+        status: ordens ? "OK" : "Alerta",
+        updatedAt: lastUpdate,
+        detail: `${ordens} registros carregados da base de ordens.`,
+      },
+      {
+        component: "base_futuras.json",
+        status: futuras ? "OK" : "Alerta",
+        updatedAt: lastUpdate,
+        detail: `${futuras} registros carregados da base futura.`,
+      },
+      {
+        component: "base_realizados.json",
+        status: realizados ? "OK" : "Alerta",
+        updatedAt: lastUpdate,
+        detail: `${realizados} registros carregados da base de realizados.`,
+      },
+      {
+        component: "Supabase",
+        status: state.repo?.mode ? "OK" : "Falha",
+        updatedAt: lastUpdate,
+        detail: `${state.repo?.mode || "Repositorio indisponivel"} | ${supabaseDemandas} demandas somente Supabase.`,
+      },
+      {
+        component: "Cloudflare Worker",
+        status: cloudflareUrl ? "OK" : "Alerta",
+        updatedAt: lastUpdate,
+        detail: cloudflareUrl || "Worker nao informado no adaptador.",
+      },
+      {
+        component: "cadastro_centros_trabalho",
+        status: centros ? "OK" : "Alerta",
+        updatedAt: lastUpdate,
+        detail: `${centros} centros/responsabilidades cadastrados.`,
+      },
+      {
+        component: "Fluxo de carga",
+        status: failures.length ? "Alerta" : "OK",
+        updatedAt: lastUpdate,
+        detail: failures.length
+          ? `${failures.length} falhas ou alertas recentes nos logs.`
+          : "Sem falhas recentes registradas em logs.",
+      },
+      {
+        component: "Parametros do sistema",
+        status: state.db?.parametrosDisponiveis ? "OK" : "Alerta",
+        updatedAt: lastUpdate,
+        detail: state.db?.parametrosDisponiveis
+          ? "Tabela de parametros disponivel."
+          : "Parametros ainda nao migrados ou indisponiveis.",
+      },
+    ];
+  }
+
+  function renderIntegrationHealth() {
+    const rows = integrationSourceRows();
+    const failures = integrationFailureLogs();
+    const okCount = rows.filter((row) => row.status === "OK").length;
+    const alertCount = rows.filter((row) => row.status === "Alerta").length;
+    const failCount = rows.filter((row) => row.status === "Falha").length;
+    const lastUpdate = state.lastDataUpdateAt || latestDataUpdateAt();
+
+    $("#integrationHealthSummary").textContent =
+      `${okCount} OK | ${alertCount} alertas | ${failCount} falhas`;
+
+    $("#integrationHealthCards").innerHTML = [
+      ["Status geral", failCount ? "Falha" : alertCount ? "Alerta" : "OK", "Bases e integrações"],
+      ["Última atualização", formatDateTime(lastUpdate), "Dados carregados"],
+      ["Supabase", state.repo?.mode || "-", "Repositório ativo"],
+      ["Falhas recentes", failures.length, "logs técnicos"],
+    ]
+      .map(
+        ([label, value, hint]) => `
+          <div class="integration-health-card">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(value)}</strong>
+            <small>${escapeHtml(hint)}</small>
+          </div>
+        `,
+      )
+      .join("");
+
+    $("#integrationHealthTableBody").innerHTML = rows
+      .map(
+        (row) => `
+          <tr>
+            <td><strong>${escapeHtml(row.component)}</strong></td>
+            <td>${integrationStatusChip(row.status)}</td>
+            <td>${formatDateTime(row.updatedAt)}</td>
+            <td class="description-cell">${escapeHtml(row.detail)}</td>
+          </tr>
+        `,
+      )
+      .join("");
+
+    $("#integrationFailureCount").textContent =
+      `${failures.length} falhas encontradas`;
+
+    $("#integrationFailureTableBody").innerHTML = failures.length
+      ? failures
+          .slice(0, 80)
+          .map(
+            (log) => `
+              <tr>
+                <td>${formatDateTime(log.dataHora)}</td>
+                <td>${escapeHtml(log.acao || "-")}</td>
+                <td>${escapeHtml(log.referencia || log.lista || "-")}</td>
+                <td class="description-cell">${escapeHtml(log.detalhe || "-")}</td>
+              </tr>
+            `,
+          )
+          .join("")
+      : `<tr>
+          <td colspan="4">
+            <div class="empty-detail">
+              <strong>Sem falhas recentes</strong>
+              <span>Os logs não indicam erro técnico ou falha de integração.</span>
+            </div>
+          </td>
+        </tr>`;
+  }
+
   function exportCurrentCarteira() {
     const rows = filteredDemandas();
     const header = [
@@ -6642,6 +7937,7 @@
       "Tipo OM",
       "Centro Trabalho",
       "Cadastro Centro",
+      "Planejador Curto",
       "Planejador OM",
       "Programador",
       "Local Instalação",
@@ -6667,6 +7963,7 @@
       item.tipoOM,
       item.centroTrabalho,
       item.centroTrabalhoStatus,
+      item.planejadorCurto,
       item.planejadorOM,
       item.programador,
       item.localInstalacao,
@@ -6782,6 +8079,24 @@
     });
 
     $("#mainNav").addEventListener("click", (event) => {
+      const groupToggle = event.target.closest("[data-nav-group-toggle]");
+      if (groupToggle?.dataset.navGroupToggle) {
+        const groupKey = groupToggle.dataset.navGroupToggle;
+        const nextOpen = !state.navGroups[groupKey];
+
+        Object.keys(state.navGroups).forEach((key) => {
+          state.navGroups[key] = key === groupKey ? nextOpen : false;
+        });
+
+        if (nextOpen && navGroupForView(state.currentView) !== groupKey) {
+          switchView(groupToggle.dataset.view || NAV_GROUPS[groupKey]?.[0]);
+          return;
+        }
+
+        syncNavigation(state.currentView);
+        return;
+      }
+
       const button = event.target.closest("[data-view]");
       if (button) switchView(button.dataset.view);
     });
@@ -6812,7 +8127,7 @@
 
       state.page = 1;
       collectFilters();
-      buildFilterOptions();
+      updateMultiFilterSummary(event.target.closest("[data-multi-filter]"));
       renderCarteira();
     });
 
@@ -6834,7 +8149,8 @@
 
       if (event.target.id === "quickSearch") {
         state.page = 1;
-        renderCarteira();
+        global.clearTimeout(state.filterSearchTimer);
+        state.filterSearchTimer = global.setTimeout(renderCarteira, 160);
       }
     });
 
@@ -6871,7 +8187,7 @@
 
       state.page = 1;
       collectFilters();
-      buildFilterOptions();
+      updateMultiFilterSummary(event.target.closest("[data-multi-filter]"));
       renderCarteira();
     });
     $("#clearFilters").addEventListener("click", () => {
@@ -6885,6 +8201,7 @@
       state.page = 1;
       collectFilters();
       buildFilterOptions();
+      updateAllMultiFilterSummaries($(".filter-panel"));
       renderCarteira();
     });
     $("#toggleAdvancedFilters").addEventListener("click", () => {
@@ -6892,6 +8209,10 @@
       $$(".advanced-filter").forEach((element) =>
         element.classList.toggle("hidden", !state.advancedFilters),
       );
+      if (state.advancedFilters) {
+        collectFilters();
+        buildFilterOptions({ includeHidden: true });
+      }
       $("#toggleAdvancedFilters").innerHTML =
         `${iconSvg("filter")} ${state.advancedFilters ? "Ocultar avançados" : "Filtros avançados"}`;
     });
@@ -7059,6 +8380,194 @@
         await saveQualityMerge();
       }
     });
+    $("#duplicateOmSearch")?.addEventListener("input", (event) => {
+      state.quality.duplicateOmSearch = event.target.value;
+      global.clearTimeout(state.quality.duplicateOmSearchTimer);
+      state.quality.duplicateOmSearchTimer = global.setTimeout(
+        renderDuplicateOms,
+        160,
+      );
+    });
+
+    $("#duplicateOmClearSearch")?.addEventListener("click", () => {
+      state.quality.duplicateOmSearch = "";
+      renderDuplicateOms();
+    });
+
+    $("#duplicateOmTableBody")?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-open-quality-issue]");
+      if (!button) return;
+      openQualityIssueFromFocusedView(button.dataset.openQualityIssue);
+    });
+
+    $("#qualityLocalSearch")?.addEventListener("input", (event) => {
+      state.quality.localSearch = event.target.value;
+      global.clearTimeout(state.quality.localSearchTimer);
+      state.quality.localSearchTimer = global.setTimeout(
+        renderQualityByLocal,
+        160,
+      );
+    });
+
+    $("#qualityLocalClearSearch")?.addEventListener("click", () => {
+      state.quality.localSearch = "";
+      state.quality.selectedLocal = "";
+      renderQualityByLocal();
+    });
+
+    $("#toggleQualityLocalFilters")?.addEventListener("click", () => {
+      state.quality.localFiltersVisible = !state.quality.localFiltersVisible;
+      if (state.quality.localFiltersVisible && !state.quality.localFiltersReady) {
+        collectQualityLocalFilters();
+        buildQualityLocalFilterOptions();
+      }
+      renderQualityLocalFilterVisibility();
+    });
+
+    $("#qualityLocalFilterPanel")?.addEventListener("change", (event) => {
+      if (!event.target.matches("[data-multi-option]")) return;
+      collectQualityLocalFilters();
+      buildQualityLocalFilterOptions();
+      state.quality.selectedLocal = "";
+      renderQualityByLocal();
+    });
+
+    $("#qualityLocalFilterPanel")?.addEventListener("input", (event) => {
+      if (event.target.matches("[data-multi-search]")) {
+        const query = normalizeText(event.target.value);
+        const menu = event.target.closest(".multi-menu");
+
+        $$(".multi-option", menu).forEach((option) => {
+          option.classList.toggle(
+            "hidden",
+            Boolean(query) &&
+              !normalizeText(option.textContent).includes(query),
+          );
+        });
+        return;
+      }
+
+      if (event.target.id === "qualityLocalQuickSearch") {
+        collectQualityLocalFilters();
+        state.quality.selectedLocal = "";
+        global.clearTimeout(state.quality.localFilterSearchTimer);
+        state.quality.localFilterSearchTimer = global.setTimeout(
+          renderQualityByLocal,
+          160,
+        );
+      }
+    });
+
+    $("#qualityLocalFilterPanel")?.addEventListener("click", (event) => {
+      const selectVisibleButton = event.target.closest(
+        "[data-multi-select-visible]",
+      );
+      const clearButton = event.target.closest("[data-multi-clear]");
+
+      if (!selectVisibleButton && !clearButton) return;
+
+      const menu = event.target.closest(".multi-menu");
+      if (!menu) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const visibleOptions = $$("[data-multi-option]", menu).filter(
+        (option) =>
+          !option.closest(".multi-option")?.classList.contains("hidden"),
+      );
+
+      if (selectVisibleButton) {
+        visibleOptions.forEach((option) => {
+          option.checked = true;
+        });
+      }
+
+      if (clearButton) {
+        $$("[data-multi-option]", menu).forEach((option) => {
+          option.checked = false;
+        });
+      }
+
+      collectQualityLocalFilters();
+      buildQualityLocalFilterOptions();
+      state.quality.selectedLocal = "";
+      renderQualityByLocal();
+    });
+
+    $("#qualityLocalClearFilters")?.addEventListener("click", () => {
+      $$("[data-multi-option]", $("#qualityLocalFilterPanel")).forEach(
+        (field) => {
+          field.checked = false;
+        },
+      );
+      $("#qualityLocalQuickSearch").value = "";
+      state.quality.localFilters = {};
+      state.quality.localGroupsCache = null;
+      state.quality.localFiltersReady = false;
+      state.quality.selectedLocal = "";
+      buildQualityLocalFilterOptions();
+      renderQualityByLocal();
+    });
+
+    $("#qualityLocalGroupTableBody")?.addEventListener("click", (event) => {
+      const target =
+        event.target.closest("[data-select-quality-local]") ||
+        event.target.closest("[data-quality-local]");
+      const local =
+        target?.dataset.selectQualityLocal || target?.dataset.qualityLocal;
+      if (!local) return;
+      state.quality.selectedLocal = local;
+      renderQualityByLocal();
+      $("#qualityLocalDemandPanel")?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+
+    $("#qualityLocalDemandTableBody")?.addEventListener("click", (event) => {
+      const row = event.target.closest("[data-local-demand]");
+      if (!row) return;
+      state.selectedDemandId = row.dataset.localDemand;
+      switchView("carteira");
+      renderCarteira();
+    });
+
+    $("#qualityCentersSearch")?.addEventListener("input", (event) => {
+      state.quality.centersSearch = event.target.value;
+      global.clearTimeout(state.quality.centersSearchTimer);
+      state.quality.centersSearchTimer = global.setTimeout(
+        renderQualityCenters,
+        160,
+      );
+    });
+
+    $("#qualityCentersClearSearch")?.addEventListener("click", () => {
+      state.quality.centersSearch = "";
+      renderQualityCenters();
+    });
+
+    $("#qualityCentersTableBody")?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-open-center-admin]");
+      if (!button) return;
+      state.adminTab = "centrosTrabalho";
+      switchView("administracao");
+      renderAdmin();
+    });
+
+    $("#qualityDivergenceSearch")?.addEventListener("input", (event) => {
+      state.quality.divergenceSearch = event.target.value;
+      global.clearTimeout(state.quality.divergenceSearchTimer);
+      state.quality.divergenceSearchTimer = global.setTimeout(
+        renderQualityDivergences,
+        160,
+      );
+    });
+
+    $("#qualityDivergenceClearSearch")?.addEventListener("click", () => {
+      state.quality.divergenceSearch = "";
+      renderQualityDivergences();
+    });
     $("#notificationTypeFilter")?.addEventListener("change", (event) => {
       state.notifications.typeFilter = event.target.value;
       renderNotifications();
@@ -7096,6 +8605,136 @@
       if (openButton) {
         openDemandFromNotification(openButton.dataset.notificationOpen);
       }
+    });
+    $("#portfolioHistorySearch")?.addEventListener("input", (event) => {
+      state.portfolioHistory.search = event.target.value;
+      global.clearTimeout(state.portfolioHistory.searchTimer);
+      state.portfolioHistory.searchTimer = global.setTimeout(
+        renderPortfolioHistory,
+        160,
+      );
+    });
+
+    $("#portfolioHistoryAction")?.addEventListener("change", (event) => {
+      state.portfolioHistory.action = event.target.value;
+      renderPortfolioHistory();
+    });
+
+    $("#portfolioHistoryUser")?.addEventListener("input", (event) => {
+      state.portfolioHistory.user = event.target.value;
+      global.clearTimeout(state.portfolioHistory.userTimer);
+      state.portfolioHistory.userTimer = global.setTimeout(
+        renderPortfolioHistory,
+        160,
+      );
+    });
+
+    $("#portfolioHistoryStartDate")?.addEventListener("change", (event) => {
+      state.portfolioHistory.startDate = event.target.value;
+      renderPortfolioHistory();
+    });
+
+    $("#portfolioHistoryEndDate")?.addEventListener("change", (event) => {
+      state.portfolioHistory.endDate = event.target.value;
+      renderPortfolioHistory();
+    });
+
+    $("#portfolioHistoryClearFilters")?.addEventListener("click", () => {
+      state.portfolioHistory.search = "";
+      state.portfolioHistory.action = "";
+      state.portfolioHistory.user = "";
+      state.portfolioHistory.startDate = "";
+      state.portfolioHistory.endDate = "";
+      renderPortfolioHistory();
+    });
+
+    $("#portfolioHistoryTableBody")?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-history-demand]");
+      if (!button?.dataset.historyDemand) return;
+
+      state.selectedDemandId = button.dataset.historyDemand;
+      switchView("carteira");
+      renderCarteira();
+    });
+    $("#toggleIndicatorFilters")?.addEventListener("click", () => {
+      state.indicatorFiltersVisible = !state.indicatorFiltersVisible;
+      if (state.indicatorFiltersVisible && !state.indicatorFiltersReady) {
+        collectIndicatorFilters();
+        buildIndicatorFilterOptions();
+      }
+      renderIndicatorFilterVisibility();
+    });
+    $("#indicatorFilterPanel")?.addEventListener("change", (event) => {
+      if (!event.target.matches("[data-multi-option]")) return;
+      collectIndicatorFilters();
+      buildIndicatorFilterOptions();
+      renderIndicators();
+    });
+    $("#indicatorFilterPanel")?.addEventListener("input", (event) => {
+      if (event.target.matches("[data-multi-search]")) {
+        const query = normalizeText(event.target.value);
+        const menu = event.target.closest(".multi-menu");
+
+        $$(".multi-option", menu).forEach((option) => {
+          option.classList.toggle(
+            "hidden",
+            Boolean(query) &&
+              !normalizeText(option.textContent).includes(query),
+          );
+        });
+        return;
+      }
+
+      if (event.target.id === "indicatorQuickSearch") {
+        collectIndicatorFilters();
+        global.clearTimeout(state.indicatorSearchTimer);
+        state.indicatorSearchTimer = global.setTimeout(renderIndicators, 160);
+      }
+    });
+    $("#indicatorFilterPanel")?.addEventListener("click", (event) => {
+      const selectVisibleButton = event.target.closest(
+        "[data-multi-select-visible]",
+      );
+      const clearButton = event.target.closest("[data-multi-clear]");
+
+      if (!selectVisibleButton && !clearButton) return;
+
+      const menu = event.target.closest(".multi-menu");
+      if (!menu) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const visibleOptions = $$("[data-multi-option]", menu).filter(
+        (option) =>
+          !option.closest(".multi-option")?.classList.contains("hidden"),
+      );
+
+      if (selectVisibleButton) {
+        visibleOptions.forEach((option) => {
+          option.checked = true;
+        });
+      }
+
+      if (clearButton) {
+        $$("[data-multi-option]", menu).forEach((option) => {
+          option.checked = false;
+        });
+      }
+
+      collectIndicatorFilters();
+      buildIndicatorFilterOptions();
+      renderIndicators();
+    });
+    $("#indicatorClearFilters")?.addEventListener("click", () => {
+      $$("[data-multi-option]", $("#indicatorFilterPanel")).forEach((field) => {
+        field.checked = false;
+      });
+      $("#indicatorQuickSearch").value = "";
+      state.indicatorFilters = {};
+      collectIndicatorFilters();
+      buildIndicatorFilterOptions();
+      renderIndicators();
     });
     $("#adminTabs").addEventListener("click", (event) => {
       const button = event.target.closest("[data-admin-tab]");

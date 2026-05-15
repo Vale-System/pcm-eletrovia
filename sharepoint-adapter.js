@@ -88,6 +88,8 @@
       demandas: clone(sample.demands || []),
       usuarios: clone(sample.users || []),
       configuracoes: clone(sample.configs || {}),
+      centrosTrabalho: clone(sample.centrosTrabalho || []),
+      feriasSubstituicoes: clone(sample.feriasSubstituicoes || []),
       parametros: clone(sample.parameters || {}),
       historicoPlanejamento: clone(sample.historicoPlanejamento || []),
       historicoReplanejamento: clone(sample.historicoReplanejamento || []),
@@ -233,6 +235,41 @@
         ...user,
       };
       this.database.usuarios.push(next);
+      this.persist();
+      return clone(next);
+    }
+
+    async upsertCentroTrabalho(record) {
+      const nivel = normalizeText(record.nivelResponsabilidade || "centro");
+      const gerencia = normalizeText(record.gerencia || "");
+      const supervisao = normalizeText(record.supervisao || "");
+      const centro = normalizeText(record.centroTrabalho || "");
+      const scopeKey =
+        nivel === "GERENCIA"
+          ? `GERENCIA::${gerencia}`
+          : nivel === "SUPERVISAO"
+            ? `SUPERVISAO::${gerencia}::${supervisao}`
+            : `CENTRO::${centro}`;
+      const next = {
+        ativo: true,
+        ...record,
+        centroTrabalhoChave:
+          record.centroTrabalhoChave ||
+          record.centro_trabalho_chave ||
+          scopeKey,
+      };
+      this.database.centrosTrabalho = this.database.centrosTrabalho || [];
+      const index = this.database.centrosTrabalho.findIndex(
+        (item) => item.centroTrabalhoChave === next.centroTrabalhoChave,
+      );
+      if (index >= 0) {
+        this.database.centrosTrabalho[index] = {
+          ...this.database.centrosTrabalho[index],
+          ...next,
+        };
+      } else {
+        this.database.centrosTrabalho.push(next);
+      }
       this.persist();
       return clone(next);
     }

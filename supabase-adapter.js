@@ -412,8 +412,12 @@
       id: row.id,
       centroTrabalho: row.centro_trabalho || "",
       centroTrabalhoChave: row.centro_trabalho_chave || "",
+      nivelResponsabilidade: row.nivel_responsabilidade || "",
       gerencia: row.gerencia || "",
       supervisao: row.supervisao || "",
+      planejadorCurto: row.planejador_curto || "",
+      planejadorCurtoEmail: row.planejador_curto_email || "",
+      planejadorCurtoMatricula: row.planejador_curto_matricula || "",
       planejadorOM: row.planejador_om || "",
       planejadorOMEmail: row.planejador_om_email || "",
       planejadorOMMatricula: row.planejador_om_matricula || "",
@@ -1105,17 +1109,36 @@
       };
     }
     async upsertCentroTrabalho(record) {
+      const nivelResponsabilidade = String(
+        record.nivelResponsabilidade || record.nivel_responsabilidade || "centro",
+      )
+        .trim()
+        .toLowerCase();
       const centroTrabalho = String(record.centroTrabalho || "").trim();
+      const gerencia = String(record.gerencia || "").trim();
+      const supervisao = String(record.supervisao || "").trim();
 
-      if (!centroTrabalho) {
+      if (nivelResponsabilidade === "centro" && !centroTrabalho) {
         throw new Error("Centro de trabalho é obrigatório.");
       }
 
+      const scopeKey =
+        nivelResponsabilidade === "gerencia"
+          ? `GERENCIA::${normalizeCentroTrabalho(gerencia)}`
+          : nivelResponsabilidade === "supervisao"
+            ? `SUPERVISAO::${normalizeCentroTrabalho(gerencia)}::${normalizeCentroTrabalho(supervisao)}`
+            : `CENTRO::${normalizeCentroTrabalho(centroTrabalho)}`;
+
       const payload = {
-        centro_trabalho: centroTrabalho,
-        centro_trabalho_chave: normalizeCentroTrabalho(centroTrabalho),
-        gerencia: record.gerencia || "",
-        supervisao: record.supervisao || "",
+        centro_trabalho: centroTrabalho || supervisao || gerencia,
+        centro_trabalho_chave: scopeKey,
+        nivel_responsabilidade: nivelResponsabilidade,
+        gerencia,
+        supervisao,
+
+        planejador_curto: record.planejadorCurto || "",
+        planejador_curto_email: record.planejadorCurtoEmail || "",
+        planejador_curto_matricula: record.planejadorCurtoMatricula || "",
 
         planejador_om: record.planejadorOM || "",
         planejador_om_email: record.planejadorOMEmail || "",

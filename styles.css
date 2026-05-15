@@ -22,7 +22,7 @@
   --shadow: 0 18px 40px rgba(14, 45, 35, 0.1);
   --radius: 8px;
   --radius-sm: 6px;
-  --sidebar-width: 106px;
+  --sidebar-width: 156px;
   --topbar-height: 66px;
   --font: "Segoe UI", Roboto, Arial, sans-serif;
 }
@@ -123,11 +123,12 @@ body.sidebar-collapsed .app-shell {
   align-items: center;
   background: rgba(0, 0, 0, 0.12);
   display: grid;
-  gap: 4px;
-  justify-items: center;
-  min-height: 78px;
-  padding: 13px 8px 10px;
-  text-align: center;
+  gap: 10px;
+  grid-template-columns: 32px minmax(0, 1fr);
+  justify-items: start;
+  min-height: 68px;
+  padding: 12px 14px;
+  text-align: left;
 }
 
 .brand strong,
@@ -163,7 +164,14 @@ body.sidebar-collapsed .app-shell {
 
 .nav-stack {
   display: grid;
-  gap: 0;
+  align-content: start;
+  gap: 4px;
+  overflow-y: auto;
+  padding: 4px 8px;
+}
+
+.nav-group {
+  display: grid;
 }
 
 .nav-item {
@@ -171,14 +179,113 @@ body.sidebar-collapsed .app-shell {
   background: transparent;
   border: 0;
   border-left: 3px solid transparent;
-  border-radius: 0;
+  border-radius: 7px;
   color: rgba(255, 255, 255, 0.82);
   display: grid;
+  gap: 8px;
+  grid-template-columns: 22px minmax(0, 1fr) 14px;
+  justify-items: start;
+  min-height: 44px;
+  padding: 9px 10px 9px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.nav-group-toggle {
+  position: relative;
+}
+
+.nav-item-stacked {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
   gap: 5px;
   justify-items: center;
-  min-height: 76px;
-  padding: 8px 7px;
+  min-height: 64px;
+  padding: 9px 8px;
   text-align: center;
+}
+
+.nav-item-stacked .nav-icon {
+  justify-self: center;
+}
+
+.nav-item-stacked .nav-text {
+  max-width: 100%;
+  overflow-wrap: normal;
+  text-align: center;
+  word-break: normal;
+}
+
+.nav-item-stacked .nav-caret {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+}
+
+.nav-caret {
+  color: rgba(255, 255, 255, 0.72);
+  height: 14px;
+  justify-self: end;
+  position: static;
+  transition: transform 0.16s ease;
+  width: 14px;
+}
+
+.nav-group.is-open .nav-caret {
+  transform: rotate(180deg);
+}
+
+.nav-submenu {
+  background: transparent;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+  display: none;
+  gap: 2px;
+  margin: 0 0 4px 19px;
+  padding: 2px 0 4px 9px;
+}
+
+.nav-group.is-open .nav-submenu {
+  display: grid;
+}
+
+.nav-subitem {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.82);
+  display: flex;
+  font-size: 11px;
+  font-weight: 750;
+  gap: 8px;
+  justify-content: flex-start;
+  line-height: 1.15;
+  min-height: 30px;
+  padding: 6px 8px;
+  position: relative;
+  text-align: left;
+  width: 100%;
+}
+
+.nav-subitem::before {
+  background: rgba(255, 255, 255, 0.44);
+  border-radius: 999px;
+  content: "";
+  flex: 0 0 5px;
+  height: 5px;
+  width: 5px;
+}
+
+.nav-subitem:hover,
+.nav-subitem:focus-visible,
+.nav-subitem.is-active {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--white);
+  outline: none;
+}
+
+.nav-subitem.is-active::before {
+  background: var(--white);
 }
 
 .nav-item:hover,
@@ -200,9 +307,10 @@ body.sidebar-collapsed .app-shell {
 }
 
 .nav-text {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .sidebar svg,
@@ -274,7 +382,48 @@ body.sidebar-collapsed .storage-mode small {
 }
 
 body.sidebar-collapsed .nav-item {
-  min-height: 56px;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  min-height: 52px;
+  padding: 8px;
+}
+
+body.sidebar-collapsed .brand {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+body.sidebar-collapsed .nav-stack {
+  padding: 4px;
+}
+
+body.sidebar-collapsed .nav-caret {
+  display: none;
+}
+
+body.sidebar-collapsed .nav-submenu {
+  display: none !important;
+}
+
+body.sidebar-collapsed .nav-subitem {
+  font-size: 0;
+  min-height: 28px;
+  padding: 0;
+}
+
+body.sidebar-collapsed .nav-subitem::before {
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 999px;
+  content: "";
+  display: block;
+  height: 7px;
+  width: 7px;
+}
+
+body.sidebar-collapsed .nav-subitem.is-active::before {
+  background: var(--white);
 }
 
 body.sidebar-collapsed .collapse-button svg {
@@ -696,6 +845,7 @@ label {
 
 .button:disabled,
 .nav-item:disabled,
+.nav-subitem:disabled,
 .icon-action:disabled,
 .detail-action-button:disabled {
   cursor: not-allowed;
@@ -1634,6 +1784,12 @@ label {
   gap: 14px;
 }
 
+.admin-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .admin-list {
   display: grid;
   gap: 8px;
@@ -2015,36 +2171,42 @@ label {
     content: "Cad. centro";
   }
   .portfolio-table td:nth-child(16)::before {
-    content: "Planejador";
+    content: "Plan. curto";
   }
   .portfolio-table td:nth-child(17)::before {
-    content: "Programador";
+    content: "Plan. OM";
   }
   .portfolio-table td:nth-child(18)::before {
-    content: "Local";
+    content: "Programador";
   }
   .portfolio-table td:nth-child(19)::before {
-    content: "Prioridade";
+    content: "Local";
   }
   .portfolio-table td:nth-child(20)::before {
-    content: "Planejada";
+    content: "Prioridade";
   }
   .portfolio-table td:nth-child(21)::before {
-    content: "Replanejada";
+    content: "Critico";
   }
   .portfolio-table td:nth-child(22)::before {
-    content: "Realizada";
+    content: "Planejada";
   }
   .portfolio-table td:nth-child(23)::before {
-    content: "Perda";
+    content: "Replanejada";
   }
   .portfolio-table td:nth-child(24)::before {
-    content: "Motivo";
+    content: "Realizada";
   }
   .portfolio-table td:nth-child(25)::before {
-    content: "Atualizacao";
+    content: "Perda";
   }
   .portfolio-table td:nth-child(26)::before {
+    content: "Motivo";
+  }
+  .portfolio-table td:nth-child(27)::before {
+    content: "Atualizacao";
+  }
+  .portfolio-table td:nth-child(28)::before {
     content: "Acoes";
   }
 
@@ -2406,6 +2568,10 @@ body.is-login-required .app-shell {
   user-select: none;
 }
 
+body.is-login-required {
+  overflow: hidden;
+}
+
 @media (max-width: 1100px) {
   .login-shell-premium {
     grid-template-columns: 1fr;
@@ -2693,6 +2859,153 @@ body.is-login-required .app-shell {
   border-color: rgba(8, 76, 54, 0.14);
 }
 
+.quality-insight-cards {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  margin-bottom: 12px;
+}
+
+.quality-insight-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  min-height: 78px;
+  padding: 12px;
+}
+
+.quality-insight-card span,
+.quality-insight-card small {
+  color: var(--gray-600);
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.quality-insight-card strong {
+  color: var(--gray-950);
+  display: block;
+  font-size: 24px;
+  line-height: 1.1;
+  margin: 5px 0;
+}
+
+.quality-focus-filters {
+  align-items: end;
+  background: var(--surface);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(280px, 1fr) auto;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.quality-focus-filters label {
+  color: var(--gray-700);
+  display: grid;
+  font-size: 11px;
+  font-weight: 900;
+  gap: 6px;
+  text-transform: uppercase;
+}
+
+.quality-focus-filters input {
+  background: var(--white);
+  border: 1px solid #cfd9d4;
+  border-radius: var(--radius-sm);
+  color: var(--gray-950);
+  font-size: 13px;
+  font-weight: 650;
+  min-height: 42px;
+  padding: 9px 12px;
+  width: 100%;
+}
+
+.quality-focus-filters input:focus {
+  border-color: var(--green-700);
+  box-shadow: 0 0 0 3px rgba(29, 118, 85, 0.12);
+  outline: none;
+}
+
+.quality-focus-filters .button {
+  min-height: 42px;
+  padding: 9px 16px;
+}
+
+.quality-focus-table {
+  min-width: 1320px;
+}
+
+.quality-focus-table-scroll {
+  max-height: calc(100vh - 300px);
+}
+
+.quality-local-layout {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+.quality-local-selection {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(260px, 1fr) repeat(4, minmax(96px, 0.35fr));
+  margin-bottom: 12px;
+  padding: 10px 12px;
+}
+
+.quality-local-selection:empty {
+  display: none;
+}
+
+.quality-local-selection div {
+  display: grid;
+  gap: 2px;
+}
+
+.quality-local-selection span {
+  color: var(--gray-600);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.quality-local-selection strong {
+  color: var(--gray-950);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.quality-local-group-table {
+  min-width: 760px;
+}
+
+.quality-local-demand-table {
+  min-width: 1180px;
+}
+
+.quality-local-group-scroll,
+.quality-local-demand-scroll {
+  max-height: min(46vh, 460px);
+}
+
+.quality-local-demand-table tbody tr,
+.quality-local-group-table tbody tr {
+  cursor: pointer;
+}
+
+.quality-local-group-table th:nth-child(n + 2):nth-child(-n + 5),
+.quality-local-group-table td:nth-child(n + 2):nth-child(-n + 5),
+.quality-local-group-table .metric-cell {
+  text-align: center;
+}
+
 .quality-pager {
   align-items: center;
   display: flex;
@@ -2808,6 +3121,16 @@ body.is-login-required .app-shell {
 
 @media (max-width: 1180px) {
   .quality-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .quality-insight-cards,
+  .quality-local-layout,
+  .quality-local-selection {
+    grid-template-columns: 1fr;
+  }
+
+  .quality-focus-filters {
     grid-template-columns: 1fr;
   }
 
@@ -3151,8 +3474,8 @@ body.is-login-required .app-shell {
 
 .brand-logo {
   display: block;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   border-radius: 4px;
 }
@@ -3362,44 +3685,61 @@ body.is-login-required .app-shell {
   max-height: calc(100vh - 16px);
 }
 
-/* LOGIN: remove rolagem e sobe o card levemente */
+/* LOGIN: responsivo por viewport real, sem simular zoom */
 .login-screen-premium {
-  height: 100vh;
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
   overflow: hidden;
 }
 
 .login-shell-premium {
-  height: 100vh;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
+  width: 100%;
 }
 
 .login-panel-left {
   align-items: center;
-  padding: 40px 48px 40px;
+  padding: clamp(18px, 3vh, 32px) clamp(28px, 4vw, 48px);
   overflow: hidden;
 }
 
 .login-card-premium {
-  transform: translateY(-6px);
-  max-height: calc(100vh - 48px);
+  gap: clamp(10px, 1.45vh, 15px);
+  max-height: calc(100dvh - clamp(32px, 5vh, 48px));
+  max-width: 466px;
+  min-height: min(810px, calc(100dvh - 40px));
   overflow: hidden;
-  padding: 36px 38px 36px;
-  gap: 16px;
+  padding: clamp(24px, 3.5vh, 34px) clamp(30px, 3vw, 40px);
+  transform: none;
+  width: min(466px, calc(100vw - 56px));
 }
 
-/* Corrige a logo que estava com 414px e causando rolagem */
 .login-logo {
-  width: 132px;
-  height: 132px;
-  max-height: 132px;
+  height: clamp(88px, 12vh, 110px);
+  max-height: none;
   object-fit: contain;
+  width: clamp(88px, 12vh, 110px);
+}
+
+.login-eyebrow {
+  margin-bottom: clamp(7px, 1vh, 10px);
+  padding: 5px 12px;
+}
+
+.login-card-heading h1 {
+  font-size: clamp(28px, 4vh, 34px);
+  line-height: 1.05;
+  margin-inline: auto;
+  max-width: 360px;
 }
 
 .login-card-heading p {
-  margin-top: 9px;
+  font-size: clamp(13px, 1.65vh, 14px);
   line-height: 1.42;
+  margin-top: clamp(8px, 1.2vh, 10px);
+  max-width: 390px;
 }
 
 .login-field {
@@ -3407,41 +3747,126 @@ body.is-login-required .app-shell {
 }
 
 .login-field input {
-  height: 48px;
+  height: clamp(43px, 5.5vh, 50px);
 }
 
 .login-submit {
-  height: 50px;
+  height: clamp(45px, 5.8vh, 52px);
+}
+
+.login-card-premium .login-status {
+  font-size: 11px;
+  margin-top: 0;
+  min-height: 15px;
+}
+
+.login-card-premium .login-error:empty {
+  display: none;
+  min-height: 0;
 }
 
 .login-security-note {
-  padding: 11px 14px;
+  margin-top: auto;
+  padding: clamp(10px, 1.45vh, 12px) 14px;
 }
 
 .login-panel-right {
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
+  padding: clamp(42px, 7vh, 72px) clamp(52px, 5.8vw, 86px);
 }
 
-/* Se a tela for baixa, aí sim libera rolagem controlada */
+.login-hero-content {
+  max-width: min(640px, 100%);
+  transform: translateY(8px);
+}
+
+.login-badge {
+  font-size: clamp(12px, 1.6vh, 13px);
+  padding: 7px 16px;
+}
+
+.login-hero-content h2 {
+  font-size: clamp(50px, 8.2vh, 74px);
+  margin: clamp(24px, 4vh, 34px) 0 clamp(16px, 2.6vh, 22px);
+  max-width: 540px;
+}
+
+.login-hero-content > p {
+  font-size: clamp(16px, 2.1vh, 19px);
+  line-height: 1.6;
+  max-width: 660px;
+}
+
+.login-hero-grid {
+  gap: clamp(14px, 1.3vw, 22px);
+  margin-top: clamp(34px, 5.8vh, 50px);
+}
+
+.login-hero-grid div {
+  min-height: clamp(122px, 15.5vh, 150px);
+  padding: clamp(16px, 2.2vh, 20px);
+}
+
+.login-footer-signature {
+  bottom: clamp(22px, 4vh, 36px);
+}
+
+/* Telas baixas ou zoom alto: compacta, sem cortar o conteúdo principal. */
 @media (max-height: 760px) {
   .login-screen-premium {
-    overflow: auto;
+    overflow: hidden;
   }
 
   .login-shell-premium {
-    height: auto;
-    min-height: 100vh;
+    height: 100%;
+    min-height: 0;
   }
 
   .login-panel-left {
-    overflow: visible;
-    padding: 24px;
+    overflow: hidden;
+    padding: 14px 24px;
   }
 
   .login-card-premium {
-    transform: none;
-    max-height: none;
+    gap: 8px;
+    max-height: calc(100dvh - 24px);
+    min-height: calc(100dvh - 24px);
+    padding: 18px 26px;
+  }
+
+  .login-logo {
+    height: 76px;
+    width: 76px;
+  }
+
+  .login-card-heading p {
+    line-height: 1.32;
+  }
+
+  .login-field input {
+    height: 40px;
+  }
+
+  .login-submit {
+    height: 42px;
+  }
+
+  .login-security-note {
+    padding: 8px 12px;
+  }
+
+  .login-panel-right {
+    padding-block: 28px;
+  }
+
+  .login-hero-content h2 {
+    font-size: clamp(42px, 7vh, 56px);
+    max-width: 440px;
+  }
+
+  .login-hero-grid div {
+    min-height: 112px;
   }
 }
 /* ============================================================
@@ -3450,7 +3875,7 @@ body.is-login-required .app-shell {
 
 @media (max-width: 1440px) {
   :root {
-    --sidebar-width: 88px;
+    --sidebar-width: 138px;
     --topbar-height: 56px;
   }
 
@@ -3477,7 +3902,7 @@ body.is-login-required .app-shell {
 
   .brand {
     min-height: 66px;
-    padding: 8px 6px;
+    padding: 9px 10px;
   }
 
   .brand-logo {
@@ -3494,9 +3919,9 @@ body.is-login-required .app-shell {
   }
 
   .nav-item {
-    min-height: 58px;
-    padding: 6px 5px;
-    gap: 3px;
+    gap: 7px;
+    min-height: 40px;
+    padding: 8px;
   }
 
   .nav-icon {
@@ -3505,8 +3930,19 @@ body.is-login-required .app-shell {
   }
 
   .nav-text {
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.1;
+  }
+
+  .nav-submenu {
+    margin-left: 17px;
+    padding-left: 8px;
+  }
+
+  .nav-subitem {
+    font-size: 10px;
+    min-height: 28px;
+    padding: 5px 7px;
   }
 
   .storage-mode {
@@ -3784,6 +4220,108 @@ body.is-login-required .app-shell {
   min-width: 220px;
 }
 
+.portfolio-history-filters {
+  align-items: end;
+  background: var(--surface);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 12px;
+  grid-template-columns:
+    minmax(280px, 1.4fr) minmax(150px, 0.7fr) minmax(180px, 0.8fr)
+    140px 140px auto;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.portfolio-history-filters label {
+  color: var(--gray-700);
+  display: grid;
+  font-size: 11px;
+  font-weight: 900;
+  gap: 6px;
+  text-transform: uppercase;
+}
+
+.portfolio-history-filters select,
+.portfolio-history-filters input {
+  background: var(--white);
+  border: 1px solid #cfd9d4;
+  border-radius: var(--radius-sm);
+  color: var(--gray-950);
+  font-size: 13px;
+  font-weight: 650;
+  min-height: 42px;
+  padding: 9px 12px;
+  width: 100%;
+}
+
+.portfolio-history-filters select:focus,
+.portfolio-history-filters input:focus {
+  border-color: var(--green-700);
+  box-shadow: 0 0 0 3px rgba(29, 118, 85, 0.12);
+  outline: none;
+}
+
+.portfolio-history-filters .button {
+  min-height: 42px;
+  padding: 9px 16px;
+}
+
+.portfolio-history-table {
+  min-width: 1320px;
+}
+
+.portfolio-history-table-scroll {
+  max-height: calc(100vh - 270px);
+}
+
+.integration-health-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  margin-bottom: 12px;
+}
+
+.integration-health-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  min-height: 82px;
+  padding: 12px;
+}
+
+.integration-health-card span,
+.integration-health-card small {
+  color: var(--gray-600);
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.integration-health-card strong {
+  color: var(--gray-950);
+  display: block;
+  font-size: 20px;
+  line-height: 1.15;
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+
+.integration-health-layout {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(520px, 1.1fr) minmax(420px, 0.9fr);
+}
+
+.integration-health-table {
+  min-width: 760px;
+}
+
+.integration-health-table-scroll {
+  max-height: calc(100vh - 300px);
+}
+
 .alert-button.has-critical-alerts strong {
   background: #ff4d3d;
   color: #ffffff;
@@ -3833,10 +4371,30 @@ body.is-login-required .app-shell {
   .notification-filters {
     grid-template-columns: 1fr;
   }
+
+  .portfolio-history-filters {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+
+  .integration-health-grid {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+
+  .integration-health-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
   .notification-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-history-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .integration-health-grid {
     grid-template-columns: 1fr;
   }
 }

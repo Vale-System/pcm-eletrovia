@@ -7,12 +7,12 @@
     <link rel="icon" type="image/png" href="assets/favicon.png?v=2" />
     <link rel="shortcut icon" type="image/png" href="assets/favicon.png?v=2" />
     <link rel="apple-touch-icon" href="assets/favicon.png?v=2" />
-    <link rel="stylesheet" href="styles.css?v=20260508-quality-fast-01" />
+    <link rel="stylesheet" href="styles.css?v=20260515-login-responsive-02" />
     <script defer src="assets/vendor/xlsx.full.min.js?v=20260507-01"></script>
-    <script defer src="data/sample-data.js?v=20260503-16"></script>
-    <script defer src="sharepoint-adapter.js?v=20260503-16"></script>
-    <script defer src="supabase-adapter.js?v=20260508-id-futura-01"></script>
-    <script defer src="app.js?v=20260509-futura-operacional-01"></script>
+    <script defer src="data/sample-data.js?v=20260515-carteira-grupo-01"></script>
+    <script defer src="sharepoint-adapter.js?v=20260515-carteira-grupo-01"></script>
+    <script defer src="supabase-adapter.js?v=20260515-carteira-grupo-01"></script>
+    <script defer src="app.js?v=20260515-login-responsive-02"></script>
   </head>
   <body>
     <section
@@ -150,46 +150,146 @@
         </div>
 
         <nav class="nav-stack" id="mainNav">
-          <button class="nav-item is-active" data-view="carteira" type="button">
-            <span class="nav-icon" data-icon="target" aria-hidden="true"></span>
-            <span class="nav-text">Carteira</span>
-          </button>
-          <button class="nav-item" data-view="lote" type="button">
-            <span class="nav-icon" data-icon="sync" aria-hidden="true"></span>
-            <span class="nav-text">Carga em Lote</span>
-          </button>
-          <button class="nav-item" data-view="futuras" type="button">
-            <span
-              class="nav-icon"
-              data-icon="calendar"
-              aria-hidden="true"
-            ></span>
-            <span class="nav-text">Demandas Futuras</span>
-          </button>
-          <button class="nav-item" data-view="qualidade" type="button">
-            <span class="nav-icon" data-icon="shield" aria-hidden="true"></span>
-            <span class="nav-text">Qualidade da Base</span>
-          </button>
-          <button class="nav-item" data-view="notificacoes" type="button">
-            <span class="nav-icon" data-icon="bell" aria-hidden="true"></span>
-            <span class="nav-text">Notificações</span>
-          </button>
-          <button class="nav-item" data-view="indicadores" type="button">
+          <div class="nav-group is-open" data-nav-group="carteira">
+            <button
+              class="nav-item nav-group-toggle nav-item-stacked is-active"
+              data-nav-group-toggle="carteira"
+              data-view="carteira"
+              type="button"
+              aria-expanded="true"
+              aria-controls="navCarteiraSubmenu"
+            >
+              <span
+                class="nav-icon"
+                data-icon="target"
+                aria-hidden="true"
+              ></span>
+              <span class="nav-text">Carteira</span>
+              <span
+                class="nav-caret"
+                data-icon="chevron-down"
+                aria-hidden="true"
+              ></span>
+            </button>
+            <div class="nav-submenu" id="navCarteiraSubmenu">
+              <button
+                class="nav-subitem is-active"
+                data-view="carteira"
+                type="button"
+              >
+                Visão Geral
+              </button>
+              <button class="nav-subitem" data-view="lote" type="button">
+                Carga em Lote
+              </button>
+              <button
+                class="nav-subitem"
+                data-view="notificacoes"
+                type="button"
+              >
+                Tratamento
+              </button>
+              <button
+                class="nav-subitem"
+                data-view="historico-carteira"
+                type="button"
+              >
+                Histórico
+              </button>
+            </div>
+          </div>
+          <div class="nav-group" data-nav-group="qualidade">
+            <button
+              class="nav-item nav-group-toggle nav-item-stacked"
+              data-nav-group-toggle="qualidade"
+              data-view="qualidade"
+              type="button"
+              aria-expanded="false"
+              aria-controls="navQualidadeSubmenu"
+            >
+              <span class="nav-icon" data-icon="shield" aria-hidden="true"></span>
+              <span class="nav-text">Qualidade</span>
+              <span
+                class="nav-caret"
+                data-icon="chevron-down"
+                aria-hidden="true"
+              ></span>
+            </button>
+            <div class="nav-submenu" id="navQualidadeSubmenu">
+              <button class="nav-subitem" data-view="futuras" type="button">
+                Demandas Futuras
+              </button>
+              <button class="nav-subitem" data-view="qualidade" type="button">
+                Qualidade da Base
+              </button>
+              <button
+                class="nav-subitem"
+                data-view="qualidade-local"
+                type="button"
+              >
+                Demanda Local
+              </button>
+              <button
+                class="nav-subitem"
+                data-view="qualidade-centros"
+                type="button"
+              >
+                Centros sem Cadastro
+              </button>
+              <button
+                class="nav-subitem"
+                data-view="qualidade-divergencias"
+                type="button"
+              >
+                Divergências
+              </button>
+            </div>
+          </div>
+          <button class="nav-item nav-item-stacked" data-view="indicadores" type="button">
             <span class="nav-icon" data-icon="chart" aria-hidden="true"></span>
             <span class="nav-text">Indicadores</span>
           </button>
-          <button class="nav-item" data-view="administracao" type="button">
-            <span
-              class="nav-icon"
-              data-icon="settings"
-              aria-hidden="true"
-            ></span>
-            <span class="nav-text">Administração</span>
-          </button>
-          <button class="nav-item" data-view="logs" type="button">
-            <span class="nav-icon" data-icon="logs" aria-hidden="true"></span>
-            <span class="nav-text">Logs</span>
-          </button>
+          <div class="nav-group" data-nav-group="administracao">
+            <button
+              class="nav-item nav-group-toggle nav-item-stacked"
+              data-nav-group-toggle="administracao"
+              data-view="administracao"
+              type="button"
+              aria-expanded="false"
+              aria-controls="navAdministracaoSubmenu"
+            >
+              <span
+                class="nav-icon"
+                data-icon="settings"
+                aria-hidden="true"
+              ></span>
+              <span class="nav-text">Administração</span>
+              <span
+                class="nav-caret"
+                data-icon="chevron-down"
+                aria-hidden="true"
+              ></span>
+            </button>
+            <div class="nav-submenu" id="navAdministracaoSubmenu">
+              <button
+                class="nav-subitem"
+                data-view="administracao"
+                type="button"
+              >
+                Painel
+              </button>
+              <button class="nav-subitem" data-view="logs" type="button">
+                Logs
+              </button>
+              <button
+                class="nav-subitem"
+                data-view="saude-integracao"
+                type="button"
+              >
+                Saúde da Integração
+              </button>
+            </div>
+          </div>
         </nav>
 
         <div class="sidebar-footer">
@@ -272,15 +372,23 @@
             </label>
             <div
               class="advanced-filter hidden"
-              data-multi-filter="tipoDemanda"
-            ></div>
-            <div
-              class="advanced-filter hidden"
               data-multi-filter="origem"
             ></div>
             <div
               class="advanced-filter hidden"
               data-multi-filter="prioridade"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="critico"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="substatus"
+            ></div>
+            <div
+              class="advanced-filter hidden"
+              data-multi-filter="planejadorCurto"
             ></div>
             <div
               class="advanced-filter hidden"
@@ -405,6 +513,7 @@
                       <th>Tipo OM</th>
                       <th>Centro Trabalho</th>
                       <th>Cadastro Centro</th>
+                      <th>Planejador Curto</th>
                       <th>Planejador OM</th>
                       <th>Programador</th>
                       <th>Local Instalação</th>
@@ -682,12 +791,267 @@
 
         <section
           class="view"
+          id="view-qualidade-local"
+          data-view-panel="qualidade-local"
+        >
+          <div class="page-heading">
+            <div>
+              <h2>Demanda Local</h2>
+              <p>
+                Agrupamento por ativo/local para analisar concentração,
+                repetição e oportunidades de tratamento conjunto.
+              </p>
+            </div>
+            <button
+              class="button secondary"
+              id="toggleQualityLocalFilters"
+              type="button"
+            >
+              Mostrar filtros
+            </button>
+          </div>
+
+          <div class="quality-focus-filters">
+            <label class="search-field">
+              Busca
+              <input
+                id="qualityLocalSearch"
+                type="search"
+                placeholder="Local, OM, descrição, centro, gerência ou supervisão"
+              />
+            </label>
+            <button
+              class="button secondary"
+              id="qualityLocalClearSearch"
+              type="button"
+            >
+              Limpar
+            </button>
+          </div>
+
+          <div
+            class="filter-panel quality-local-filter-panel hidden"
+            id="qualityLocalFilterPanel"
+            aria-label="Filtros de demanda local"
+          >
+            <div data-quality-local-multi-filter="gerencia"></div>
+            <div data-quality-local-multi-filter="supervisao"></div>
+            <div data-quality-local-multi-filter="centroTrabalho"></div>
+            <div data-quality-local-multi-filter="tipoOM"></div>
+            <div data-quality-local-multi-filter="competencia"></div>
+            <div data-quality-local-multi-filter="statusOperacional"></div>
+            <div data-quality-local-multi-filter="substatus"></div>
+            <div data-quality-local-multi-filter="prioridade"></div>
+            <div data-quality-local-multi-filter="critico"></div>
+            <div data-quality-local-multi-filter="anoVencimento"></div>
+            <div data-quality-local-multi-filter="mesVencimento"></div>
+            <label class="search-field">
+              Busca rápida
+              <input
+                id="qualityLocalQuickSearch"
+                type="search"
+                placeholder="OM, ID, descrição ou responsável"
+              />
+            </label>
+            <div class="filter-actions">
+              <button
+                class="button secondary"
+                id="qualityLocalClearFilters"
+                type="button"
+              >
+                Limpar filtros
+              </button>
+            </div>
+          </div>
+
+          <div
+            class="quality-local-selection"
+            id="qualityLocalSelection"
+            aria-live="polite"
+          ></div>
+
+          <section class="quality-local-layout">
+            <div class="table-panel">
+              <div class="panel-toolbar">
+                <div>
+                  <h2>Locais de Instalação</h2>
+                  <span id="qualityLocalCount">0 locais encontrados</span>
+                </div>
+              </div>
+
+              <div class="table-scroll quality-local-group-scroll">
+                <table class="data-table quality-local-group-table">
+                  <thead>
+                    <tr>
+                      <th>Local</th>
+                      <th>Demandas</th>
+                      <th>OMs</th>
+                      <th>Sem OM</th>
+                      <th>Centro</th>
+                      <th>Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="qualityLocalGroupTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="table-panel" id="qualityLocalDemandPanel">
+              <div class="panel-toolbar">
+                <div>
+                  <h2>Demandas do Local</h2>
+                  <span id="qualityLocalDemandCount">Selecione um local</span>
+                </div>
+              </div>
+
+              <div class="table-scroll quality-local-demand-scroll">
+                <table class="data-table quality-local-demand-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>OM</th>
+                      <th>Descrição</th>
+                      <th>Status</th>
+                      <th>Centro</th>
+                      <th>Competência</th>
+                      <th>Vencimento</th>
+                      <th>Data Planejada</th>
+                      <th>Data Replanejada</th>
+                    </tr>
+                  </thead>
+                  <tbody id="qualityLocalDemandTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section
+          class="view"
+          id="view-qualidade-centros"
+          data-view-panel="qualidade-centros"
+        >
+          <div class="page-heading">
+            <div>
+              <h2>Centros sem Cadastro</h2>
+              <p>
+                Visão focada nos centros de trabalho que impactam a carteira e
+                ainda não têm responsável cadastrado.
+              </p>
+            </div>
+          </div>
+
+          <div class="quality-focus-filters">
+            <label class="search-field">
+              Busca
+              <input
+                id="qualityCentersSearch"
+                type="search"
+                placeholder="Centro, gerência, supervisão, descrição ou OM"
+              />
+            </label>
+            <button
+              class="button secondary"
+              id="qualityCentersClearSearch"
+              type="button"
+            >
+              Limpar
+            </button>
+          </div>
+
+          <section class="table-panel">
+            <div class="panel-toolbar">
+              <div>
+                <h2>Centros pendentes</h2>
+                <span id="qualityCentersCount">0 centros encontrados</span>
+              </div>
+            </div>
+
+            <div class="table-scroll quality-focus-table-scroll">
+              <table class="data-table quality-focus-table">
+                <thead>
+                  <tr>
+                    <th>Centro</th>
+                    <th>Demandas impactadas</th>
+                    <th>Gerência provável</th>
+                    <th>Supervisão provável</th>
+                    <th>Descrição principal</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="qualityCentersTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section
+          class="view"
+          id="view-qualidade-divergencias"
+          data-view-panel="qualidade-divergencias"
+        >
+          <div class="page-heading">
+            <div>
+              <h2>Divergência entre Bases</h2>
+              <p>
+                Comparação entre ordens, futuras, realizados e Supabase para
+                encontrar conflitos de status, baixa e fonte oficial.
+              </p>
+            </div>
+          </div>
+
+          <div class="quality-focus-filters">
+            <label class="search-field">
+              Busca
+              <input
+                id="qualityDivergenceSearch"
+                type="search"
+                placeholder="OM, ID, descrição, fonte ou divergência"
+              />
+            </label>
+            <button
+              class="button secondary"
+              id="qualityDivergenceClearSearch"
+              type="button"
+            >
+              Limpar
+            </button>
+          </div>
+
+          <section class="table-panel">
+            <div class="panel-toolbar">
+              <div>
+                <h2>Conflitos encontrados</h2>
+                <span id="qualityDivergenceCount">0 divergências encontradas</span>
+              </div>
+            </div>
+
+            <div class="table-scroll quality-focus-table-scroll">
+              <table class="data-table quality-focus-table">
+                <thead>
+                  <tr>
+                    <th>Chave</th>
+                    <th>Fontes</th>
+                    <th>Divergência</th>
+                    <th>Status por fonte</th>
+                    <th>Data realizada</th>
+                    <th>Recomendação</th>
+                  </tr>
+                </thead>
+                <tbody id="qualityDivergenceTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section
+          class="view"
           id="view-notificacoes"
           data-view-panel="notificacoes"
         >
           <div class="page-heading">
             <div>
-              <h2>Central de Notificações Operacionais</h2>
+              <h2>Tratamento Operacional</h2>
               <p>
                 Pendências calculadas automaticamente conforme vencimento,
                 replanejamento, perda, responsabilidade e substituições.
@@ -699,7 +1063,7 @@
 
           <div class="notification-filters">
             <label>
-              Tipo de notificação
+              Tipo de pendência
               <select id="notificationTypeFilter">
                 <option value="">Todas</option>
                 <option value="vencida">Vencidas</option>
@@ -736,7 +1100,7 @@
             <div class="panel-toolbar">
               <div>
                 <h2>Fila de tratamento</h2>
-                <span id="notificationCount">0 notificações encontradas</span>
+                <span id="notificationCount">0 pendências encontradas</span>
               </div>
             </div>
 
@@ -765,12 +1129,147 @@
 
         <section
           class="view"
+          id="view-historico-carteira"
+          data-view-panel="historico-carteira"
+        >
+          <div class="page-heading">
+            <div>
+              <h2>Histórico da Carteira</h2>
+              <p>
+                Consulta operacional das mudanças feitas em planejamento,
+                replanejamento, realizado e perda.
+              </p>
+            </div>
+          </div>
+
+          <div class="portfolio-history-filters">
+            <label class="search-field">
+              Busca
+              <input
+                id="portfolioHistorySearch"
+                type="search"
+                placeholder="OM, ID, responsável, ação, usuário ou descrição"
+              />
+            </label>
+
+            <label>
+              Ação
+              <select id="portfolioHistoryAction">
+                <option value="">Todas</option>
+                <option value="Planejamento">Planejamento</option>
+                <option value="Replanejamento">Replanejamento</option>
+                <option value="Realizado">Realizado</option>
+                <option value="Perda">Perda</option>
+              </select>
+            </label>
+
+            <label>
+              Usuário
+              <input
+                id="portfolioHistoryUser"
+                type="search"
+                placeholder="usuario@vale.com"
+              />
+            </label>
+
+            <label>
+              De
+              <input id="portfolioHistoryStartDate" type="date" />
+            </label>
+
+            <label>
+              Até
+              <input id="portfolioHistoryEndDate" type="date" />
+            </label>
+
+            <button
+              class="button secondary"
+              id="portfolioHistoryClearFilters"
+              type="button"
+            >
+              Limpar
+            </button>
+          </div>
+
+          <section class="table-panel">
+            <div class="panel-toolbar">
+              <div>
+                <h2>Alterações operacionais</h2>
+                <span id="portfolioHistoryCount">0 registros encontrados</span>
+              </div>
+            </div>
+
+            <div class="table-scroll portfolio-history-table-scroll">
+              <table class="data-table portfolio-history-table">
+                <thead>
+                  <tr>
+                    <th>Data/Hora</th>
+                    <th>Ação</th>
+                    <th>OM / ID</th>
+                    <th>Descrição</th>
+                    <th>Usuário</th>
+                    <th>Detalhe</th>
+                    <th>Abrir</th>
+                  </tr>
+                </thead>
+                <tbody id="portfolioHistoryTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section
+          class="view"
           id="view-indicadores"
           data-view-panel="indicadores"
         >
           <div class="page-heading">
             <div>
               <h2>Painel de Indicadores</h2>
+            </div>
+            <button
+              class="button secondary"
+              id="toggleIndicatorFilters"
+              type="button"
+            >
+              Mostrar filtros
+            </button>
+          </div>
+          <div
+            class="filter-panel indicator-filter-panel hidden"
+            id="indicatorFilterPanel"
+            aria-label="Filtros dos indicadores"
+          >
+            <div data-indicator-multi-filter="gerencia"></div>
+            <div data-indicator-multi-filter="supervisao"></div>
+            <div data-indicator-multi-filter="centroTrabalho"></div>
+            <div data-indicator-multi-filter="tipoOM"></div>
+            <div data-indicator-multi-filter="competencia"></div>
+            <div data-indicator-multi-filter="statusOperacional"></div>
+            <div data-indicator-multi-filter="substatus"></div>
+            <div data-indicator-multi-filter="critico"></div>
+            <div data-indicator-multi-filter="prioridade"></div>
+            <div data-indicator-multi-filter="planejadorCurto"></div>
+            <div data-indicator-multi-filter="planejadorOM"></div>
+            <div data-indicator-multi-filter="programador"></div>
+            <div data-indicator-multi-filter="anoVencimento"></div>
+            <div data-indicator-multi-filter="mesVencimento"></div>
+            <label class="search-field">
+              Busca rapida
+              <input
+                id="indicatorQuickSearch"
+                type="search"
+                placeholder="Ordem, ID, descricao ou responsavel"
+              />
+            </label>
+            <div class="filter-actions">
+              <button
+                class="button secondary"
+                id="indicatorClearFilters"
+                type="button"
+              >
+                Limpar
+              </button>
             </div>
           </div>
           <div class="indicator-grid" id="indicatorGrid"></div>
@@ -839,6 +1338,10 @@
           <div class="page-heading">
             <div>
               <h2>Logs do Sistema</h2>
+              <p>
+                Registros administrativos, técnicos e auditoria de execução do
+                sistema.
+              </p>
             </div>
             <button class="button" id="exportLogs" type="button">
               Exportar Logs
@@ -861,6 +1364,72 @@
               </table>
             </div>
           </div>
+        </section>
+
+        <section
+          class="view"
+          id="view-saude-integracao"
+          data-view-panel="saude-integracao"
+        >
+          <div class="page-heading">
+            <div>
+              <h2>Saúde da Integração</h2>
+              <p>
+                Status das bases, integrações, fluxos de carga e falhas
+                recentes.
+              </p>
+            </div>
+          </div>
+
+          <div class="integration-health-grid" id="integrationHealthCards"></div>
+
+          <section class="integration-health-layout">
+            <div class="table-panel">
+              <div class="panel-toolbar">
+                <div>
+                  <h2>Status das fontes</h2>
+                  <span id="integrationHealthSummary">Aguardando dados</span>
+                </div>
+              </div>
+
+              <div class="table-scroll integration-health-table-scroll">
+                <table class="data-table integration-health-table">
+                  <thead>
+                    <tr>
+                      <th>Componente</th>
+                      <th>Status</th>
+                      <th>Última atualização</th>
+                      <th>Detalhe</th>
+                    </tr>
+                  </thead>
+                  <tbody id="integrationHealthTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="table-panel">
+              <div class="panel-toolbar">
+                <div>
+                  <h2>Falhas recentes</h2>
+                  <span id="integrationFailureCount">0 falhas encontradas</span>
+                </div>
+              </div>
+
+              <div class="table-scroll integration-health-table-scroll">
+                <table class="data-table integration-health-table">
+                  <thead>
+                    <tr>
+                      <th>Data/Hora</th>
+                      <th>Ação</th>
+                      <th>Referência</th>
+                      <th>Detalhe</th>
+                    </tr>
+                  </thead>
+                  <tbody id="integrationFailureTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
         </section>
       </main>
     </div>

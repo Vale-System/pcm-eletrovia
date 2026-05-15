@@ -16,7 +16,7 @@ O sistema nao copia toda a base SAP para `controle_demandas_eletrovia`. Essa tab
 
 Tabelas validadas via REST em 03/05/2026:
 
-- `cadastro_centros_trabalho`: 592 registros. Fonte mestre para centro, gerencia, supervisao, planejador OM e programador.
+- `cadastro_centros_trabalho`: 592 registros. Fonte mestre para centro, gerencia, supervisao, planejador de curto, planejador OM e programador.
 - `controle_demandas_eletrovia`: camada operacional por `id_demanda_controle`.
 - `usuarios_central_eletrovia`: login, perfil e permissoes.
 - `configuracoes_motivos` e `configuracoes_justificativas`: motivos e justificativas de replanejamento.
@@ -31,9 +31,9 @@ Tabelas validadas via REST em 03/05/2026:
 
 `cadastro_centros_trabalho` deve conter:
 
-`centro_trabalho`, `centro_trabalho_chave`, `gerencia`, `supervisao`, `planejador_om`, `planejador_om_email`, `planejador_om_matricula`, `programador`, `programador_email`, `programador_matricula`, `area`, `observacao`, `ativo`, `created_at`, `updated_at`, `created_by`, `updated_by`.
+`nivel_responsabilidade`, `centro_trabalho`, `centro_trabalho_chave`, `gerencia`, `supervisao`, `planejador_curto`, `planejador_curto_email`, `planejador_curto_matricula`, `planejador_om`, `planejador_om_email`, `planejador_om_matricula`, `programador`, `programador_email`, `programador_matricula`, `area`, `observacao`, `ativo`, `created_at`, `updated_at`, `created_by`, `updated_by`.
 
-`centro_trabalho_chave` e padronizado em maiusculo, sem acentos e sem espacos extras. A carteira compara o centro vindo de `base_ordens.json` e `base_futuras.json` contra essa chave e sobrescreve gerencia/supervisao/responsaveis com a fonte oficial do Supabase.
+`centro_trabalho_chave` e padronizado em maiusculo, sem acentos e sem espacos extras. Para novos cadastros flexiveis, a chave usa o escopo: `GERENCIA::<gerencia>`, `SUPERVISAO::<gerencia>::<supervisao>` ou `CENTRO::<centro>`. A carteira procura primeiro por centro, depois supervisao e por fim gerencia, preenchendo responsaveis pela melhor regra disponivel.
 
 A Administracao mostra tambem centros encontrados nos JSON que ainda nao possuem cadastro mestre ativo.
 
@@ -41,7 +41,7 @@ A Administracao mostra tambem centros encontrados nos JSON que ainda nao possuem
 
 Modelo interno principal:
 
-`id`, `ordem`, `tipoDemanda`, `descricao`, `gerencia`, `supervisao`, `centroTrabalho`, `localInstalacao`, `vencimento`, `competencia`, `tipoOM`, `prioridade`, `statusSistema`, `statusUsuario`, `toleranciaMin`, `toleranciaMax`, `dataPlanejada`, `dataReplanejadaAtual`, `dataRealizada`, `perda`, `motivoPerda`, `justificativaPerda`, `comentario`, `usuarioResponsavel`, `origem`, `planejadorOM`, `programador`.
+`id`, `ordem`, `tipoDemanda`, `descricao`, `gerencia`, `supervisao`, `centroTrabalho`, `localInstalacao`, `vencimento`, `competencia`, `tipoOM`, `prioridade`, `critico`, `statusSistema`, `statusUsuario`, `toleranciaMin`, `toleranciaMax`, `dataPlanejada`, `dataReplanejadaAtual`, `dataRealizada`, `perda`, `motivoPerda`, `justificativaPerda`, `comentario`, `usuarioResponsavel`, `origem`, `planejadorCurto`, `planejadorOM`, `programador`.
 
 Competencia e convertida para `YYYY-MM` a partir de formatos como `2026-05`, `202605`, `2026-05-01`, `01/05/2026`, texto com mes e serial Excel. Prioridade e convertida para `Alto`, `Medio`, `Baixo` ou `Nao informado`.
 
@@ -61,7 +61,7 @@ As permissoes finas gravadas no usuario controlam botoes e menus: planejar, repl
 
 ## Filtros
 
-A Carteira usa filtros de multipla selecao com busca digitavel e logica cruzada. Gerencia, supervisao e centro de trabalho se restringem mutuamente com base no recorte atual. O mesmo componente atende campos grandes como origem, tipo OM, competencia, prioridade, planejador OM, programador, status e cadastro do centro.
+A Carteira usa filtros de multipla selecao com busca digitavel e logica cruzada. Gerencia, supervisao e centro de trabalho se restringem mutuamente com base no recorte atual. O mesmo componente atende campos grandes como origem, tipo OM, competencia, prioridade, critico, substatus, planejador de curto, planejador OM, programador, status, vencimento e cadastro do centro. Os Indicadores tambem possuem filtros diretos para analise segmentada.
 
 Os Indicadores usam o mesmo recorte filtrado da Carteira.
 

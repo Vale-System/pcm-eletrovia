@@ -287,9 +287,31 @@
     }
   ];
 
+  const centrosTrabalho = centros.map((centro, index) => ({
+    id: `CT-${pad(index + 1)}`,
+    nivelResponsabilidade: "centro",
+    centroTrabalho: centro,
+    centroTrabalhoChave: `CENTRO::${centro}`,
+    gerencia: gerencias[index % gerencias.length],
+    supervisao: `Supervisao ${index + 1}`,
+    planejadorCurto: ["Julia Curto", "Marcos Curto", "Renata Curto"][index % 3],
+    planejadorCurtoEmail: ["julia.curto@vale.com", "marcos.curto@vale.com", "renata.curto@vale.com"][index % 3],
+    planejadorCurtoMatricula: `VC${1000 + index}`,
+    planejadorOM: ["Ana Planejamento", "Paulo OM", "Bianca OM"][index % 3],
+    planejadorOMEmail: ["ana.planejamento@vale.com", "paulo.om@vale.com", "bianca.om@vale.com"][index % 3],
+    planejadorOMMatricula: `VO${2000 + index}`,
+    programador: ["Carlos Programacao", "Diego Programacao", "Lia Programacao"][index % 3],
+    programadorEmail: ["carlos.programacao@vale.com", "diego.programacao@vale.com", "lia.programacao@vale.com"][index % 3],
+    programadorMatricula: `VP${3000 + index}`,
+    area: "PCM Eletrovia",
+    observacao: "",
+    ativo: true
+  }));
+
   global.CCE_SAMPLE = {
     demands,
     users,
+    centrosTrabalho,
     configs,
     parameters,
     historicoPlanejamento,

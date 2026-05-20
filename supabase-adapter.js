@@ -243,6 +243,23 @@
     });
   }
 
+  async function insertManyChunked(table, payload, chunkSize = 500) {
+    if (!payload?.length) return [];
+
+    const savedRows = [];
+
+    for (let index = 0; index < payload.length; index += chunkSize) {
+      const chunk = payload.slice(index, index + chunkSize);
+      const saved = await insertMany(table, chunk);
+
+      if (Array.isArray(saved)) {
+        savedRows.push(...saved);
+      }
+    }
+
+    return savedRows;
+  }
+
   async function upsert(table, payload, conflictKey) {
     return request(`${table}?on_conflict=${conflictKey}`, {
       method: "POST",
@@ -460,6 +477,71 @@
       ativo: row.ativo !== false,
       createdAt: row.created_at || "",
       updatedAt: row.updated_at || "",
+    };
+  }
+
+  function planejamentoHistoryPayload(entry, now = new Date().toISOString()) {
+    return {
+      id_demanda_controle: entry.demandaId,
+      ordem_sap: entry.ordem || "",
+      data_anterior: cleanDate(entry.dataAnterior),
+      nova_data: cleanDate(entry.novaData),
+      usuario: entry.usuario || "",
+      usuario_email: entry.usuario || "",
+      data_hora_alteracao: cleanDateTime(entry.dataHora) || now,
+      comentario: entry.comentario || "",
+      tipo_alteracao: entry.tipoAlteracao || "PLANEJAMENTO_INICIAL",
+      origem_alteracao: entry.origemAlteracao || "SISTEMA_WEB",
+      valor_anterior_texto: entry.dataAnterior || "",
+      valor_novo_texto: entry.novaData || "",
+    };
+  }
+
+  function replanejamentoHistoryPayload(entry, now = new Date().toISOString()) {
+    return {
+      id_demanda_controle: entry.demandaId,
+      ordem_sap: entry.ordem || "",
+      motivo: entry.motivo || "",
+      motivo_chave: entry.motivoChave || slugify(entry.motivo || ""),
+      justificativa: entry.justificativa || "",
+      justificativa_chave:
+        entry.justificativaChave || slugify(entry.justificativa || ""),
+      data_anterior: cleanDate(entry.dataAnterior),
+      nova_data: cleanDate(entry.novaData),
+      usuario: entry.usuario || "",
+      usuario_email: entry.usuario || "",
+      data_hora_alteracao: cleanDateTime(entry.dataHora) || now,
+      quantidade_replanejamentos: Number(
+        entry.quantidadeReplanejamentos || 0,
+      ),
+      comentario: entry.comentario || "",
+      origem_alteracao: entry.origemAlteracao || "SISTEMA_WEB",
+    };
+  }
+
+  function realizadoPerdaHistoryPayload(entry, now = new Date().toISOString()) {
+    return {
+      id_demanda_controle: entry.demandaId,
+      ordem_sap: entry.ordem || "",
+      data_realizada: cleanDate(entry.dataRealizada),
+      perda: Boolean(entry.perda),
+      perfil_perda: entry.motivoPerda || "",
+      perfil_perda_chave:
+        entry.motivoPerdaChave || slugify(entry.motivoPerda || ""),
+      motivo_perda: entry.motivoPerda || "",
+      motivo_perda_chave:
+        entry.motivoPerdaChave || slugify(entry.motivoPerda || ""),
+      justificativa_perda: entry.justificativaPerda || "",
+      justificativa_perda_chave:
+        entry.justificativaPerdaChave ||
+        slugify(entry.justificativaPerda || ""),
+      comentario: entry.comentario || "",
+      evidencia: entry.evidencia || "",
+      url_evidencia: entry.evidencia || "",
+      usuario: entry.usuario || "",
+      usuario_email: entry.usuario || "",
+      data_hora_registro: cleanDateTime(entry.dataHora) || now,
+      origem_alteracao: entry.origemAlteracao || "SISTEMA_WEB",
     };
   }
 
@@ -692,6 +774,34 @@
       return Array.isArray(saved) ? saved.map(mapControleToDemand) : records;
     }
 
+    async bulkAddHistories(entries) {
+      const planejamento = entries?.planejamento || [];
+      const replanejamento = entries?.replanejamento || [];
+      const realizadoPerda = entries?.realizadoPerda || [];
+      const now = new Date().toISOString();
+
+      const savedPlanejamento = await insertManyChunked(
+        TABLES.historicoPlanejamento,
+        planejamento.map((entry) => planejamentoHistoryPayload(entry, now)),
+      );
+
+      const savedReplanejamento = await insertManyChunked(
+        TABLES.historicoReplanejamento,
+        replanejamento.map((entry) => replanejamentoHistoryPayload(entry, now)),
+      );
+
+      const savedRealizadoPerda = await insertManyChunked(
+        TABLES.historicoRealizadoPerdas,
+        realizadoPerda.map((entry) => realizadoPerdaHistoryPayload(entry, now)),
+      );
+
+      return {
+        planejamento: savedPlanejamento.map(mapHistoricoPlanejamento),
+        replanejamento: savedReplanejamento.map(mapHistoricoReplanejamento),
+        realizadoPerda: savedRealizadoPerda.map(mapHistoricoRealizadoPerda),
+      };
+    }
+
     async updateReplanHistory(id, entry) {
       if (!id) {
         return this.addHistory("replanejamento", entry);
@@ -768,77 +878,21 @@
 
     async addHistory(type, entry) {
       if (type === "planejamento") {
-        const payload = {
-          id_demanda_controle: entry.demandaId,
-          ordem_sap: entry.ordem || "",
-          data_anterior: cleanDate(entry.dataAnterior),
-          nova_data: cleanDate(entry.novaData),
-          usuario: entry.usuario || "",
-          usuario_email: entry.usuario || "",
-          data_hora_alteracao:
-            cleanDateTime(entry.dataHora) || new Date().toISOString(),
-          comentario: entry.comentario || "",
-          tipo_alteracao: entry.tipoAlteracao || "PLANEJAMENTO_INICIAL",
-          origem_alteracao: entry.origemAlteracao || "SISTEMA_WEB",
-          valor_anterior_texto: entry.dataAnterior || "",
-          valor_novo_texto: entry.novaData || "",
-        };
+        const payload = planejamentoHistoryPayload(entry);
 
         const saved = await insert(TABLES.historicoPlanejamento, payload);
         return saved?.[0] ? mapHistoricoPlanejamento(saved[0]) : payload;
       }
 
       if (type === "replanejamento") {
-        const payload = {
-          id_demanda_controle: entry.demandaId,
-          ordem_sap: entry.ordem || "",
-          motivo: entry.motivo || "",
-          motivo_chave: entry.motivoChave || slugify(entry.motivo || ""),
-          justificativa: entry.justificativa || "",
-          justificativa_chave:
-            entry.justificativaChave || slugify(entry.justificativa || ""),
-          data_anterior: cleanDate(entry.dataAnterior),
-          nova_data: cleanDate(entry.novaData),
-          usuario: entry.usuario || "",
-          usuario_email: entry.usuario || "",
-          data_hora_alteracao:
-            cleanDateTime(entry.dataHora) || new Date().toISOString(),
-          quantidade_replanejamentos: Number(
-            entry.quantidadeReplanejamentos || 0,
-          ),
-          comentario: entry.comentario || "",
-          origem_alteracao: entry.origemAlteracao || "SISTEMA_WEB",
-        };
+        const payload = replanejamentoHistoryPayload(entry);
 
         const saved = await insert(TABLES.historicoReplanejamento, payload);
         return saved?.[0] ? mapHistoricoReplanejamento(saved[0]) : payload;
       }
 
       if (type === "realizadoPerda") {
-        const payload = {
-          id_demanda_controle: entry.demandaId,
-          ordem_sap: entry.ordem || "",
-          data_realizada: cleanDate(entry.dataRealizada),
-          perda: Boolean(entry.perda),
-          perfil_perda: entry.motivoPerda || "",
-          perfil_perda_chave:
-            entry.motivoPerdaChave || slugify(entry.motivoPerda || ""),
-          motivo_perda: entry.motivoPerda || "",
-          motivo_perda_chave:
-            entry.motivoPerdaChave || slugify(entry.motivoPerda || ""),
-          justificativa_perda: entry.justificativaPerda || "",
-          justificativa_perda_chave:
-            entry.justificativaPerdaChave ||
-            slugify(entry.justificativaPerda || ""),
-          comentario: entry.comentario || "",
-          evidencia: entry.evidencia || "",
-          url_evidencia: entry.evidencia || "",
-          usuario: entry.usuario || "",
-          usuario_email: entry.usuario || "",
-          data_hora_registro:
-            cleanDateTime(entry.dataHora) || new Date().toISOString(),
-          origem_alteracao: entry.origemAlteracao || "SISTEMA_WEB",
-        };
+        const payload = realizadoPerdaHistoryPayload(entry);
 
         const saved = await insert(TABLES.historicoRealizadoPerdas, payload);
         return saved?.[0] ? mapHistoricoRealizadoPerda(saved[0]) : payload;

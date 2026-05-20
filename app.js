@@ -5754,12 +5754,14 @@
         messages.push("Informe Ordem SAP ou ID_Demanda_Controle.");
       }
       if ((record.ordem || record.id) && !existing) {
-        messages.push(
-          "Demanda nao encontrada na carteira JSON/Supabase atual. Linha nao sera gravada.",
+        alerts.push(
+          "Demanda nao encontrada na carteira atual. Linha nao sera gravada.",
         );
       }
       if (record.dataPlanejada && !toDate(record.dataPlanejada))
         messages.push("Data planejada inválida.");
+      if (record.dataReplanejadaAtual && !toDate(record.dataReplanejadaAtual))
+        messages.push("Data replanejada inválida.");
       if (record.dataRealizada && !toDate(record.dataRealizada))
         messages.push("Data realizada inválida.");
       if (record.perda && (!record.motivoPerda || !record.justificativaPerda)) {
@@ -5800,6 +5802,164 @@
     });
 
     return partial;
+  }
+
+  function emptyBatchHistoryEntries() {
+    return {
+      planejamento: [],
+      replanejamento: [],
+      realizadoPerda: [],
+    };
+  }
+
+  function countBatchHistoryEntries(historyEntries) {
+    return (
+      (historyEntries?.planejamento?.length || 0) +
+      (historyEntries?.replanejamento?.length || 0) +
+      (historyEntries?.realizadoPerda?.length || 0)
+    );
+  }
+
+  function mergeBatchHistoryEntries(target, source) {
+    target.planejamento.push(...(source.planejamento || []));
+    target.replanejamento.push(...(source.replanejamento || []));
+    target.realizadoPerda.push(...(source.realizadoPerda || []));
+    return target;
+  }
+
+  function buildBatchHistoryEntries(record, previousDemand = {}, savedDemand) {
+    const entries = emptyBatchHistoryEntries();
+    const userEmail = state.currentUser?.email || "";
+    const now = new Date().toISOString();
+    const comentario =
+      record.comentario ||
+      savedDemand.comentario ||
+      previousDemand.comentario ||
+      "";
+
+    if (record.dataPlanejada) {
+      entries.planejamento.push({
+        demandaId: savedDemand.id,
+        ordem: savedDemand.ordem,
+        dataAnterior: previousDemand.dataPlanejada || "",
+        novaData: record.dataPlanejada,
+        usuario: userEmail,
+        comentario,
+        dataHora: now,
+        tipoAlteracao: "CARGA_LOTE_PLANEJAMENTO",
+        origemAlteracao: "CARGA_LOTE",
+      });
+    }
+
+    if (record.dataReplanejadaAtual) {
+      const motivo = record.motivo || "";
+      const justificativa = record.justificativa || "";
+
+      entries.replanejamento.push({
+        demandaId: savedDemand.id,
+        ordem: savedDemand.ordem,
+        motivo,
+        motivoChave: configKeyByName("motivos", motivo),
+        justificativa,
+        justificativaChave: configKeyByName("justificativas", justificativa),
+        dataAnterior:
+          previousDemand.dataReplanejadaAtual ||
+          previousDemand.dataPlanejada ||
+          previousDemand.vencimento ||
+          "",
+        novaData: record.dataReplanejadaAtual,
+        usuario: userEmail,
+        quantidadeReplanejamentos: savedDemand.quantidadeReplanejamentos || 0,
+        comentario,
+        dataHora: now,
+        origemAlteracao: "CARGA_LOTE",
+      });
+    }
+
+    if (record.dataRealizada || record.perda === true) {
+      entries.realizadoPerda.push({
+        demandaId: savedDemand.id,
+        ordem: savedDemand.ordem,
+        dataRealizada: record.dataRealizada || savedDemand.dataRealizada || "",
+        perda: record.perda === true || savedDemand.perda === true,
+        motivoPerda: record.motivoPerda || savedDemand.motivoPerda || "",
+        motivoPerdaChave: configKeyByName(
+          "perfisPerda",
+          record.motivoPerda || savedDemand.motivoPerda || "",
+        ),
+        justificativaPerda:
+          record.justificativaPerda || savedDemand.justificativaPerda || "",
+        justificativaPerdaChave: configKeyByName(
+          "justificativasPerda",
+          record.justificativaPerda || savedDemand.justificativaPerda || "",
+        ),
+        comentario,
+        evidencia: record.evidencia || "",
+        usuario: userEmail,
+        dataHora: now,
+        origemAlteracao: "CARGA_LOTE",
+      });
+    }
+
+    return entries;
+  }
+
+  async function saveBatchHistoryEntries(historyEntries) {
+    const total = countBatchHistoryEntries(historyEntries);
+    if (!total) return historyEntries || emptyBatchHistoryEntries();
+
+    if (state.repo.bulkAddHistories) {
+      return state.repo.bulkAddHistories(historyEntries);
+    }
+
+    for (const entry of historyEntries.planejamento || []) {
+      await state.repo.addHistory("planejamento", entry);
+    }
+
+    for (const entry of historyEntries.replanejamento || []) {
+      await state.repo.addHistory("replanejamento", entry);
+    }
+
+    for (const entry of historyEntries.realizadoPerda || []) {
+      await state.repo.addHistory("realizadoPerda", entry);
+    }
+
+    return historyEntries;
+  }
+
+  function appendBatchHistoriesLocally(historyEntries) {
+    if (!state.db || !historyEntries) return;
+
+    const now = new Date().toISOString();
+    const localId = (type, index) =>
+      `LOCAL-CARGA-${type}-${Date.now()}-${index}`;
+
+    state.db.historicoPlanejamento = [
+      ...(state.db.historicoPlanejamento || []),
+      ...(historyEntries.planejamento || []).map((entry, index) => ({
+        id: localId("PLAN", index),
+        ...entry,
+        dataHora: entry.dataHora || now,
+      })),
+    ];
+
+    state.db.historicoReplanejamento = [
+      ...(state.db.historicoReplanejamento || []),
+      ...(historyEntries.replanejamento || []).map((entry, index) => ({
+        id: localId("REPLAN", index),
+        ...entry,
+        dataHora: entry.dataHora || now,
+      })),
+    ];
+
+    state.db.historicoRealizadoPerdas = [
+      ...(state.db.historicoRealizadoPerdas || []),
+      ...(historyEntries.realizadoPerda || []).map((entry, index) => ({
+        id: localId("REAL", index),
+        ...entry,
+        dataHora: entry.dataHora || now,
+      })),
+    ];
   }
 
   function applySavedBatchLocally(records) {
@@ -5845,8 +6005,9 @@
     clearBatchLookup();
   }
 
-  function finishBatchWithoutFullRefresh(records, resumoCarga) {
+  function finishBatchWithoutFullRefresh(records, resumoCarga, historyEntries) {
     applySavedBatchLocally(records);
+    appendBatchHistoriesLocally(historyEntries);
 
     state.batch = {
       rows: [],
@@ -5890,7 +6051,7 @@
     showBatchStatus(
       "success",
       "Carga em lote enviada com sucesso.",
-      `${resumoCarga.processados} registro(s) salvos. Como foi uma carga grande, o sistema atualizou a memória local e não recarregou todo o banco para evitar travamento. Use Atualizar somente se precisar recarregar tudo.`,
+      `${resumoCarga.processados} registro(s) salvos e ${resumoCarga.historicos || 0} histórico(s) gravado(s). Como foi uma carga grande, o sistema atualizou a memória local e não recarregou todo o banco para evitar travamento. Use Atualizar somente se precisar recarregar tudo.`,
     );
 
     showToast(
@@ -6033,39 +6194,64 @@
     );
 
     const blockedInSave = [];
+    const notFoundInSave = [];
+    const preparedBatchRows = [];
+    const historyEntries = emptyBatchHistoryEntries();
 
-    const records = candidates
-      .map((item) => {
-        const existing = findDemandForBatch(item.record);
+    candidates.forEach((item) => {
+      const existing = findDemandForBatch(item.record);
 
-        if (!existing) return null;
-
-        if (isBlockedForBatchUpdate(existing)) {
-          blockedInSave.push({
-            ...item,
-            message: blockedBatchMessage(existing, item.record),
-          });
-          return null;
-        }
-
-        const partial = buildBatchPartialUpdate(item.record);
-
-        return prepareDemandForSave({
-          ...existing,
-          ...partial,
-
-          id: existing.id,
-          ordem: existing.ordem || item.record.ordem || "",
-
-          origem: existing.origem || item.record.origem || "Carga em Lote",
-
-          usuarioResponsavel:
-            partial.usuarioResponsavel ||
-            existing.usuarioResponsavel ||
-            state.currentUser.email,
+      if (!existing) {
+        notFoundInSave.push({
+          ...item,
+          message:
+            "Demanda nao encontrada na carteira atual. Linha nao sera gravada.",
         });
-      })
-      .filter(Boolean);
+        return;
+      }
+
+      if (isBlockedForBatchUpdate(existing)) {
+        blockedInSave.push({
+          ...item,
+          message: blockedBatchMessage(existing, item.record),
+        });
+        return;
+      }
+
+      const partial = buildBatchPartialUpdate(item.record);
+
+      if (
+        partial.dataReplanejadaAtual &&
+        partial.dataReplanejadaAtual !== existing.dataReplanejadaAtual
+      ) {
+        partial.quantidadeReplanejamentos =
+          Number(existing.quantidadeReplanejamentos || 0) + 1;
+      }
+
+      const demand = prepareDemandForSave({
+        ...existing,
+        ...partial,
+
+        id: existing.id,
+        ordem: existing.ordem || item.record.ordem || "",
+
+        origem: existing.origem || item.record.origem || "Carga em Lote",
+
+        usuarioResponsavel:
+          partial.usuarioResponsavel ||
+          existing.usuarioResponsavel ||
+          state.currentUser.email,
+      });
+
+      mergeBatchHistoryEntries(
+        historyEntries,
+        buildBatchHistoryEntries(item.record, existing, demand),
+      );
+
+      preparedBatchRows.push({ demand });
+    });
+
+    const records = preparedBatchRows.map((item) => item.demand);
 
     if (blockedInSave.length) {
       state.batch.errors = [
@@ -6085,13 +6271,40 @@
       );
     }
 
+    if (notFoundInSave.length) {
+      const warningLines = new Set(
+        state.batch.warnings.map((item) => item.line),
+      );
+      const newNotFoundWarnings = notFoundInSave.filter(
+        (item) => !warningLines.has(item.line),
+      );
+
+      state.batch.warnings = [
+        ...state.batch.warnings,
+        ...newNotFoundWarnings.map((item) => ({
+          ...item,
+          status: "ALERTA",
+          acao: "NAO_ENCONTRADO_CARTEIRA",
+        })),
+      ];
+
+      renderBatch();
+
+      showToast(
+        `${notFoundInSave.length} registro(s) não encontrado(s) na carteira atual e não gravado(s).`,
+        "warning",
+      );
+    }
+
     if (!records.length) {
       showBatchStatus(
         "error",
         "Nenhum registro foi preparado para gravação.",
         blockedInSave.length
           ? "Todas as linhas selecionadas estavam bloqueadas por status Realizado/Cancelado."
-          : "As linhas válidas não encontraram correspondência na carteira atual.",
+          : notFoundInSave.length
+            ? "Todas as linhas selecionadas não foram encontradas na carteira atual."
+            : "As linhas válidas não tinham Ordem SAP nem ID_Demanda_Controle.",
       );
 
       showToast("Nenhum registro foi preparado para gravação.", "error");
@@ -6100,6 +6313,8 @@
 
     try {
       await state.repo.bulkUpsertDemandas(records);
+      const savedHistoryEntries = await saveBatchHistoryEntries(historyEntries);
+      const historyCount = countBatchHistoryEntries(historyEntries);
 
       const batchRun = await state.repo.createBatchRun?.({
         nomeArquivo: state.batch.fileName || "arquivo_sem_nome",
@@ -6115,7 +6330,7 @@
           ? "PROCESSADO_COM_ERRO"
           : "PROCESSADO",
         detalheErro: state.batch.errors.length
-          ? `${state.batch.errors.length} linhas com erro de validação.`
+          ? `${state.batch.errors.length} linhas com erro de validação. ${historyCount} histórico(s) gravado(s).`
           : "",
       });
 
@@ -6166,8 +6381,8 @@
         lista: "cargas_lote",
         referencia: `${records.length} registros`,
         detalhe: includeWarnings
-          ? "Válidos e alertas confirmados"
-          : "Somente válidos",
+          ? `Válidos e alertas confirmados | ${historyCount} histórico(s) gravado(s)`
+          : `Somente válidos | ${historyCount} histórico(s) gravado(s)`,
         modulo: "CARGA_LOTE",
         status: "SUCESSO",
       });
@@ -6178,10 +6393,15 @@
         alertas: includeWarnings ? state.batch.warnings.length : 0,
         erros: state.batch.errors.length,
         loteId: loteId || "",
+        historicos: historyCount,
       };
 
       if (records.length > LARGE_BATCH_REFRESH_LIMIT) {
-        finishBatchWithoutFullRefresh(records, resumoCarga);
+        finishBatchWithoutFullRefresh(
+          records,
+          resumoCarga,
+          savedHistoryEntries,
+        );
         return;
       }
 
@@ -6205,7 +6425,7 @@
       showBatchStatus(
         "success",
         "Carga em lote enviada com sucesso.",
-        `${resumoCarga.processados} registro(s) processado(s). ${
+        `${resumoCarga.processados} registro(s) processado(s) e ${resumoCarga.historicos} histórico(s) gravado(s). ${
           resumoCarga.loteId ? `Lote: ${resumoCarga.loteId}. ` : ""
         }${resumoCarga.alertas ? `${resumoCarga.alertas} alerta(s) confirmado(s). ` : ""}${
           resumoCarga.erros

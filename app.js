@@ -5804,6 +5804,23 @@
     return partial;
   }
 
+  function effectiveBatchRecordForSave(record, existing) {
+    const effective = { ...(record || {}) };
+    const hasPreviousPlanning = Boolean(
+      existing?.dataPlanejada || existing?.dataReplanejadaAtual,
+    );
+
+    if (effective.dataPlanejada && hasPreviousPlanning) {
+      if (!effective.dataReplanejadaAtual) {
+        effective.dataReplanejadaAtual = effective.dataPlanejada;
+      }
+
+      effective.dataPlanejada = "";
+    }
+
+    return effective;
+  }
+
   function emptyBatchHistoryEntries() {
     return {
       planejamento: [],
@@ -6218,7 +6235,11 @@
         return;
       }
 
-      const partial = buildBatchPartialUpdate(item.record);
+      const effectiveRecord = effectiveBatchRecordForSave(
+        item.record,
+        existing,
+      );
+      const partial = buildBatchPartialUpdate(effectiveRecord);
 
       if (
         partial.dataReplanejadaAtual &&
@@ -6245,7 +6266,7 @@
 
       mergeBatchHistoryEntries(
         historyEntries,
-        buildBatchHistoryEntries(item.record, existing, demand),
+        buildBatchHistoryEntries(effectiveRecord, existing, demand),
       );
 
       preparedBatchRows.push({ demand });

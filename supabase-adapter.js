@@ -511,9 +511,7 @@
       usuario: entry.usuario || "",
       usuario_email: entry.usuario || "",
       data_hora_alteracao: cleanDateTime(entry.dataHora) || now,
-      quantidade_replanejamentos: Number(
-        entry.quantidadeReplanejamentos || 0,
-      ),
+      quantidade_replanejamentos: Number(entry.quantidadeReplanejamentos || 0),
       comentario: entry.comentario || "",
       origem_alteracao: entry.origemAlteracao || "SISTEMA_WEB",
     };
@@ -1164,7 +1162,9 @@
     }
     async upsertCentroTrabalho(record) {
       const nivelResponsabilidade = String(
-        record.nivelResponsabilidade || record.nivel_responsabilidade || "centro",
+        record.nivelResponsabilidade ||
+          record.nivel_responsabilidade ||
+          "centro",
       )
         .trim()
         .toLowerCase();

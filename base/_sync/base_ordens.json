@@ -1,8 +1,8 @@
 {
   "base_name": "base_ordens",
   "target_path": "base/base_ordens.json",
-  "lote_id": "base_ordens-20260518-185615-4e2cbfa4",
-  "updated_at_utc": "2026-05-18T20:04:15Z",
-  "sha256": "43df93d7638782e3aad8b0b6456aa5ee70a7387767c50c9467370980c99fdd54",
-  "size_bytes": 13081478
+  "lote_id": "base_ordens-20260527-172409-b43ab83c",
+  "updated_at_utc": "2026-05-27T17:34:58Z",
+  "sha256": "12342a118fa0e7fe4be04cf251bf9dc695dedbd918c32727e89cdce8e3145567",
+  "size_bytes": 13441444
 }

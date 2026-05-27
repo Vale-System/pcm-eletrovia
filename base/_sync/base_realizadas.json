@@ -1,8 +1,8 @@
 {
   "base_name": "base_realizadas",
   "target_path": "base/base_realizados.json",
-  "lote_id": "base_realizadas-20260527-173153-1d52b814",
-  "updated_at_utc": "2026-05-27T17:51:03Z",
-  "sha256": "5aaef21c5130a41720cbb434e6b1bc6314bdf1b62620cef204483b8dbd97af5e",
-  "size_bytes": 27516202
+  "lote_id": "base_realizadas-20260527-184839-7719a333",
+  "updated_at_utc": "2026-05-27T19:13:11Z",
+  "sha256": "31bf19af8089516c40cad8015d30574a2d56c0b32cf04fbb1247d7ca3eb8981a",
+  "size_bytes": 30449281
 }

@@ -1,0 +1,91 @@
+[
+  {
+    "gerencia": "GAL 1",
+    "sede": "TFPM",
+    "distrito": "São Luís - MA",
+    "km_inicio": 0,
+    "km_fim": 0.001
+  },
+  {
+    "gerencia": "GAL 1",
+    "sede": "BAC",
+    "distrito": "Bacabeira - MA",
+    "km_inicio": 0.001,
+    "km_fim": 81.97
+  },
+  {
+    "gerencia": "GAL 2",
+    "sede": "VTM",
+    "distrito": "Vitória do Mearim - MA",
+    "km_inicio": 81.97,
+    "km_fim": 165.364
+  },
+  {
+    "gerencia": "GAL 2",
+    "sede": "SIS",
+    "distrito": "Santa Inês - MA",
+    "km_inicio": 165.364,
+    "km_fim": 257.796
+  },
+  {
+    "gerencia": "GAL 2",
+    "sede": "AAL",
+    "distrito": "Alto Alegre do Pindaré - MA",
+    "km_inicio": 257.796,
+    "km_fim": 335.21
+  },
+  {
+    "gerencia": "GAL 2",
+    "sede": "NVA",
+    "distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "km_inicio": 335.21,
+    "km_fim": 446.111
+  },
+  {
+    "gerencia": "GAL 3",
+    "sede": "ACD 1",
+    "distrito": "Açailândia - MA (Trecho 1)",
+    "km_inicio": 446.111,
+    "km_fim": 522.047
+  },
+  {
+    "gerencia": "GAL 3",
+    "sede": "ACD 2",
+    "distrito": "Açailândia - MA (Trecho 2)",
+    "km_inicio": 522.047,
+    "km_fim": 609.71
+  },
+  {
+    "gerencia": "GAL 3",
+    "sede": "SPAB",
+    "distrito": "São Pedro da Água Branca - MA",
+    "km_inicio": 609.71,
+    "km_fim": 697.354
+  },
+  {
+    "gerencia": "GAL 3",
+    "sede": "MBA",
+    "distrito": "Marabá - PA",
+    "km_inicio": 697.354,
+    "km_fim": 792.28
+  },
+  {
+    "gerencia": "GAL 4",
+    "sede": "PBA",
+    "distrito": "Parauapebas - PA",
+    "km_inicio": 792.28,
+    "km_fim": 861.7
+  },
+  {
+    "gerencia": "GAL 4",
+    "sede": "TFCJ",
+    "distrito": "Carajás - PA",
+    "km_inicio": 861.7,
+    "km_fim": 889.55
+  },
+  {
+    "gerencia": "GAL 4",
+    "sede": "RFSP",
+    "distrito": "Ramal Ferroviário"
+  }
+]

@@ -476,6 +476,7 @@
       normalized === "TRUE" ||
       normalized === "1" ||
       normalized === "X" ||
+      normalized === "x" ||
       normalized.includes("CRITICO") ||
       normalized.includes("CRITICA")
     ) {
@@ -487,6 +488,7 @@
       normalized === "NÃO" ||
       normalized === "N" ||
       normalized === "FALSE" ||
+      normalized === "" ||
       normalized === "0"
     ) {
       return "Não";
@@ -652,10 +654,7 @@
 
     const statusSistema = normalizeText(demand.statusSistema);
 
-    return (
-      statusSistema.includes("LIB") ||
-      statusSistema.includes("CONF")
-    );
+    return statusSistema.includes("LIB") || statusSistema.includes("CONF");
   }
 
   function hasLibConfStatus(demand) {
@@ -1199,11 +1198,9 @@
 
   function demandHasFutureSource(demanda) {
     return normalizeText(
-      [
-        demanda?.origem,
-        demanda?.fontesConsolidadas,
-        demanda?.tipoDemanda,
-      ].join(" "),
+      [demanda?.origem, demanda?.fontesConsolidadas, demanda?.tipoDemanda].join(
+        " ",
+      ),
     ).includes("FUTUR");
   }
 
@@ -2037,8 +2034,7 @@
       if (filters.action && row.action !== filters.action) return false;
       if (filters.startDate && rowDate && rowDate < filters.startDate)
         return false;
-      if (filters.endDate && rowDate && rowDate > filters.endDate)
-        return false;
+      if (filters.endDate && rowDate && rowDate > filters.endDate) return false;
       if (user && !normalizeText(row.usuario).includes(user)) return false;
 
       if (search) {
@@ -2467,10 +2463,7 @@
         availableOptions.includes(option),
       );
       filters[definition.key] = selected;
-      const options = uniqueOptions([
-        ...availableOptions,
-        ...selected,
-      ]);
+      const options = uniqueOptions([...availableOptions, ...selected]);
       renderMultiFilter(host, definition, options, selected);
     });
     state.indicatorFilters = filters;
@@ -2574,8 +2567,10 @@
   }
 
   function updateAllMultiFilterSummaries(root) {
-    $$("[data-multi-filter], [data-indicator-multi-filter]", root || document)
-      .forEach(updateMultiFilterSummary);
+    $$(
+      "[data-multi-filter], [data-indicator-multi-filter]",
+      root || document,
+    ).forEach(updateMultiFilterSummary);
   }
 
   function filterValueFor(item, definition) {
@@ -2586,7 +2581,9 @@
         configurable: true,
       });
     }
-    if (Object.prototype.hasOwnProperty.call(item.__filterCache, definition.key))
+    if (
+      Object.prototype.hasOwnProperty.call(item.__filterCache, definition.key)
+    )
       return item.__filterCache[definition.key];
 
     let result = "";
@@ -3863,8 +3860,7 @@
         };
       })
       .sort(
-        (a, b) =>
-          b.quantidade - a.quantidade || a.local.localeCompare(b.local),
+        (a, b) => b.quantidade - a.quantidade || a.local.localeCompare(b.local),
       );
 
     state.quality.localGroupsCache = {
@@ -3974,7 +3970,9 @@
       ? selected.demandas
           .slice()
           .sort((a, b) =>
-            String(a.vencimento || "").localeCompare(String(b.vencimento || "")),
+            String(a.vencimento || "").localeCompare(
+              String(b.vencimento || ""),
+            ),
           )
           .map(
             (demand) => `
@@ -4014,7 +4012,8 @@
   function renderQualityCenters() {
     const rows = filteredMissingCenterIssues();
     $("#qualityCentersSearch").value = state.quality.centersSearch;
-    $("#qualityCentersCount").textContent = `${rows.length} centros encontrados`;
+    $("#qualityCentersCount").textContent =
+      `${rows.length} centros encontrados`;
 
     $("#qualityCentersTableBody").innerHTML = rows.length
       ? rows
@@ -4089,7 +4088,8 @@
         if (statusSistema.length > 1) divergencias.push("Status sistema");
         if (statusUsuario.length > 1) divergencias.push("Status usuario");
         if (dataRealizada.length > 1) divergencias.push("Data realizada");
-        if (statusOperacional.length > 1) divergencias.push("Status operacional");
+        if (statusOperacional.length > 1)
+          divergencias.push("Status operacional");
 
         if (!divergencias.length) return null;
 
@@ -5491,9 +5491,8 @@
     const groups = $("#validationGroups");
     const saveValidButton = $("#saveValidBatch");
     const saveConfirmedButton = $("#saveConfirmedBatch");
-    const confirmWarningsLabel = $("#confirmWarnings")?.closest(
-      ".confirm-alerts",
-    );
+    const confirmWarningsLabel =
+      $("#confirmWarnings")?.closest(".confirm-alerts");
 
     const updateSaveActions = () => {
       const hasRows = state.batch.rows.length > 0;
@@ -7667,7 +7666,10 @@
         record.nivelResponsabilidade === "centro" &&
         !String(record.centroTrabalho || "").trim()
       ) {
-        showToast("Informe o Centro de Trabalho para cadastro por centro.", "error");
+        showToast(
+          "Informe o Centro de Trabalho para cadastro por centro.",
+          "error",
+        );
         return;
       }
 
@@ -7680,7 +7682,8 @@
         usuario: state.currentUser.email,
         acao: "Cadastro Centro de Trabalho",
         lista: "cadastro_centros_trabalho",
-        referencia: record.centroTrabalho || record.supervisao || record.gerencia,
+        referencia:
+          record.centroTrabalho || record.supervisao || record.gerencia,
         detalhe: `${record.nivelResponsabilidade || "centro"} | ${record.gerencia || "-"} | ${record.supervisao || "-"}`,
         modulo: "CONFIGURACOES",
       });
@@ -7712,7 +7715,8 @@
       }
 
       const centro = centros.find(
-        (item) => centroResponsabilidadeChave(item) === button.dataset.editCentro,
+        (item) =>
+          centroResponsabilidadeChave(item) === button.dataset.editCentro,
       );
 
       if (!centro) return;
@@ -7725,7 +7729,8 @@
       form.supervisao.value = centro.supervisao || "";
       form.planejadorCurto.value = centro.planejadorCurto || "";
       form.planejadorCurtoEmail.value = centro.planejadorCurtoEmail || "";
-      form.planejadorCurtoMatricula.value = centro.planejadorCurtoMatricula || "";
+      form.planejadorCurtoMatricula.value =
+        centro.planejadorCurtoMatricula || "";
       form.planejadorOM.value = centro.planejadorOM || "";
       form.planejadorOMEmail.value = centro.planejadorOMEmail || "";
       form.planejadorOMMatricula.value = centro.planejadorOMMatricula || "";
@@ -8108,7 +8113,11 @@
       `${okCount} OK | ${alertCount} alertas | ${failCount} falhas`;
 
     $("#integrationHealthCards").innerHTML = [
-      ["Status geral", failCount ? "Falha" : alertCount ? "Alerta" : "OK", "Bases e integrações"],
+      [
+        "Status geral",
+        failCount ? "Falha" : alertCount ? "Alerta" : "OK",
+        "Bases e integrações",
+      ],
       ["Última atualização", formatDateTime(lastUpdate), "Dados carregados"],
       ["Supabase", state.repo?.mode || "-", "Repositório ativo"],
       ["Falhas recentes", failures.length, "logs técnicos"],
@@ -8658,7 +8667,10 @@
 
     $("#toggleQualityLocalFilters")?.addEventListener("click", () => {
       state.quality.localFiltersVisible = !state.quality.localFiltersVisible;
-      if (state.quality.localFiltersVisible && !state.quality.localFiltersReady) {
+      if (
+        state.quality.localFiltersVisible &&
+        !state.quality.localFiltersReady
+      ) {
         collectQualityLocalFilters();
         buildQualityLocalFilterOptions();
       }

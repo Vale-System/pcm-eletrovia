@@ -450,15 +450,26 @@
     const text = String(value ?? "").trim();
     if (!text) return "Nao informado";
     const normalized = normalizeText(text);
-    if (/^1($|[^0-9])/.test(normalized) || normalized.includes("ALTO"))
+    if (
+      /^1($|[^0-9])/.test(normalized) ||
+      normalized.includes("ALTO") ||
+      normalized.includes("Alta") ||
+      normalized.includes("ALTA")
+    )
       return "Alto";
     if (
       /^2($|[^0-9])/.test(normalized) ||
       normalized.includes("MEDIO") ||
+      normalized.includes("Média") ||
       normalized.includes("MEDIA")
     )
       return "Medio";
-    if (/^3($|[^0-9])/.test(normalized) || normalized.includes("BAIXO"))
+    if (
+      /^3($|[^0-9])/.test(normalized) ||
+      normalized.includes("BAIXO") ||
+      normalized.includes("Baixa") ||
+      normalized.includes("BAIXA")
+    )
       return "Baixo";
     return text;
   }

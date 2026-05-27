@@ -1,0 +1,6260 @@
+[
+  {
+    "Km": 0,
+    "km_key": 0,
+    "Distrito": "São Luís - MA",
+    "Latitude": -2.603066,
+    "Longitude": -44.316244
+  },
+  {
+    "Km": 0.001,
+    "km_key": 0.001,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.62173,
+    "Longitude": -44.31053
+  },
+  {
+    "Km": 1,
+    "km_key": 1,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.63038,
+    "Longitude": -44.30797
+  },
+  {
+    "Km": 2,
+    "km_key": 2,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.63918,
+    "Longitude": -44.306
+  },
+  {
+    "Km": 3,
+    "km_key": 3,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.64797,
+    "Longitude": -44.30394
+  },
+  {
+    "Km": 4,
+    "km_key": 4,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.65568,
+    "Longitude": -44.29935
+  },
+  {
+    "Km": 5,
+    "km_key": 5,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.66318,
+    "Longitude": -44.29435
+  },
+  {
+    "Km": 6,
+    "km_key": 6,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.67179,
+    "Longitude": -44.29479
+  },
+  {
+    "Km": 7,
+    "km_key": 7,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.68006,
+    "Longitude": -44.29838
+  },
+  {
+    "Km": 8,
+    "km_key": 8,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.68839,
+    "Longitude": -44.30206
+  },
+  {
+    "Km": 9,
+    "km_key": 9,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.69598,
+    "Longitude": -44.30686
+  },
+  {
+    "Km": 10,
+    "km_key": 10,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.70327,
+    "Longitude": -44.31261
+  },
+  {
+    "Km": 11,
+    "km_key": 11,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.71035,
+    "Longitude": -44.31819
+  },
+  {
+    "Km": 12,
+    "km_key": 12,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.71739,
+    "Longitude": -44.32381
+  },
+  {
+    "Km": 13,
+    "km_key": 13,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.72386,
+    "Longitude": -44.33008
+  },
+  {
+    "Km": 14,
+    "km_key": 14,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.73016,
+    "Longitude": -44.3362
+  },
+  {
+    "Km": 15,
+    "km_key": 15,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.73349,
+    "Longitude": -44.34427
+  },
+  {
+    "Km": 16,
+    "km_key": 16,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.73594,
+    "Longitude": -44.35264
+  },
+  {
+    "Km": 17,
+    "km_key": 17,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.74432,
+    "Longitude": -44.35535
+  },
+  {
+    "Km": 18,
+    "km_key": 18,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.75278,
+    "Longitude": -44.3583
+  },
+  {
+    "Km": 19,
+    "km_key": 19,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.75971,
+    "Longitude": -44.36406
+  },
+  {
+    "Km": 20,
+    "km_key": 20,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.7666,
+    "Longitude": -44.36987
+  },
+  {
+    "Km": 21,
+    "km_key": 21,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.77408,
+    "Longitude": -44.37471
+  },
+  {
+    "Km": 22,
+    "km_key": 22,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.78313,
+    "Longitude": -44.37504
+  },
+  {
+    "Km": 23,
+    "km_key": 23,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.79216,
+    "Longitude": -44.37511
+  },
+  {
+    "Km": 24,
+    "km_key": 24,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.80119,
+    "Longitude": -44.37518
+  },
+  {
+    "Km": 25,
+    "km_key": 25,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.81022,
+    "Longitude": -44.37526
+  },
+  {
+    "Km": 26,
+    "km_key": 26,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.81932,
+    "Longitude": -44.37533
+  },
+  {
+    "Km": 27,
+    "km_key": 27,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.82835,
+    "Longitude": -44.3754
+  },
+  {
+    "Km": 28,
+    "km_key": 28,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.83738,
+    "Longitude": -44.37547
+  },
+  {
+    "Km": 29,
+    "km_key": 29,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.8464,
+    "Longitude": -44.37554
+  },
+  {
+    "Km": 30,
+    "km_key": 30,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.85552,
+    "Longitude": -44.37561
+  },
+  {
+    "Km": 31,
+    "km_key": 31,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.86457,
+    "Longitude": -44.37568
+  },
+  {
+    "Km": 32,
+    "km_key": 32,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.8736,
+    "Longitude": -44.37575
+  },
+  {
+    "Km": 33,
+    "km_key": 33,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.88262,
+    "Longitude": -44.37582
+  },
+  {
+    "Km": 34,
+    "km_key": 34,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.89153,
+    "Longitude": -44.37497
+  },
+  {
+    "Km": 35,
+    "km_key": 35,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.89834,
+    "Longitude": -44.36917
+  },
+  {
+    "Km": 36,
+    "km_key": 36,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.90481,
+    "Longitude": -44.36273
+  },
+  {
+    "Km": 37,
+    "km_key": 37,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.91125,
+    "Longitude": -44.35643
+  },
+  {
+    "Km": 38,
+    "km_key": 38,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.91939,
+    "Longitude": -44.35272
+  },
+  {
+    "Km": 39,
+    "km_key": 39,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.92799,
+    "Longitude": -44.34996
+  },
+  {
+    "Km": 40,
+    "km_key": 40,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.93658,
+    "Longitude": -44.3472
+  },
+  {
+    "Km": 41,
+    "km_key": 41,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.94544,
+    "Longitude": -44.34555
+  },
+  {
+    "Km": 42,
+    "km_key": 42,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.95437,
+    "Longitude": -44.34418
+  },
+  {
+    "Km": 43,
+    "km_key": 43,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.96329,
+    "Longitude": -44.3428
+  },
+  {
+    "Km": 44,
+    "km_key": 44,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.97222,
+    "Longitude": -44.34144
+  },
+  {
+    "Km": 45,
+    "km_key": 45,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.98115,
+    "Longitude": -44.34158
+  },
+  {
+    "Km": 46,
+    "km_key": 46,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.98982,
+    "Longitude": -44.34417
+  },
+  {
+    "Km": 47,
+    "km_key": 47,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -2.99847,
+    "Longitude": -44.34674
+  },
+  {
+    "Km": 48,
+    "km_key": 48,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.00713,
+    "Longitude": -44.34928
+  },
+  {
+    "Km": 49,
+    "km_key": 49,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.01608,
+    "Longitude": -44.35015
+  },
+  {
+    "Km": 50,
+    "km_key": 50,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.02528,
+    "Longitude": -44.34887
+  },
+  {
+    "Km": 51,
+    "km_key": 51,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.03419,
+    "Longitude": -44.34744
+  },
+  {
+    "Km": 52,
+    "km_key": 52,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.04311,
+    "Longitude": -44.34601
+  },
+  {
+    "Km": 53,
+    "km_key": 53,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.05178,
+    "Longitude": -44.34359
+  },
+  {
+    "Km": 54,
+    "km_key": 54,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.06019,
+    "Longitude": -44.34063
+  },
+  {
+    "Km": 55,
+    "km_key": 55,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.06871,
+    "Longitude": -44.33763
+  },
+  {
+    "Km": 56,
+    "km_key": 56,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.07722,
+    "Longitude": -44.33464
+  },
+  {
+    "Km": 57,
+    "km_key": 57,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.08573,
+    "Longitude": -44.33165
+  },
+  {
+    "Km": 58,
+    "km_key": 58,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.09463,
+    "Longitude": -44.33016
+  },
+  {
+    "Km": 59,
+    "km_key": 59,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.10364,
+    "Longitude": -44.32961
+  },
+  {
+    "Km": 60,
+    "km_key": 60,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.11265,
+    "Longitude": -44.32906
+  },
+  {
+    "Km": 61,
+    "km_key": 61,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.12166,
+    "Longitude": -44.32884
+  },
+  {
+    "Km": 62,
+    "km_key": 62,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.1298,
+    "Longitude": -44.33256
+  },
+  {
+    "Km": 63,
+    "km_key": 63,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.13707,
+    "Longitude": -44.33789
+  },
+  {
+    "Km": 64,
+    "km_key": 64,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.14433,
+    "Longitude": -44.34322
+  },
+  {
+    "Km": 65,
+    "km_key": 65,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.15164,
+    "Longitude": -44.34859
+  },
+  {
+    "Km": 66,
+    "km_key": 66,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.15888,
+    "Longitude": -44.3539
+  },
+  {
+    "Km": 67,
+    "km_key": 67,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.16615,
+    "Longitude": -44.35923
+  },
+  {
+    "Km": 68,
+    "km_key": 68,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.17342,
+    "Longitude": -44.36456
+  },
+  {
+    "Km": 69,
+    "km_key": 69,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.18074,
+    "Longitude": -44.36994
+  },
+  {
+    "Km": 70,
+    "km_key": 70,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.18801,
+    "Longitude": -44.37527
+  },
+  {
+    "Km": 71,
+    "km_key": 71,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.19524,
+    "Longitude": -44.38065
+  },
+  {
+    "Km": 72,
+    "km_key": 72,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.20154,
+    "Longitude": -44.38707
+  },
+  {
+    "Km": 73,
+    "km_key": 73,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.20777,
+    "Longitude": -44.39382
+  },
+  {
+    "Km": 74,
+    "km_key": 74,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.21389,
+    "Longitude": -44.40042
+  },
+  {
+    "Km": 75,
+    "km_key": 75,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.22,
+    "Longitude": -44.40703
+  },
+  {
+    "Km": 76,
+    "km_key": 76,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.22696,
+    "Longitude": -44.41263
+  },
+  {
+    "Km": 77,
+    "km_key": 77,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.23496,
+    "Longitude": -44.41671
+  },
+  {
+    "Km": 78,
+    "km_key": 78,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.24251,
+    "Longitude": -44.42158
+  },
+  {
+    "Km": 79,
+    "km_key": 79,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.24962,
+    "Longitude": -44.42711
+  },
+  {
+    "Km": 80,
+    "km_key": 80,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.25673,
+    "Longitude": -44.43266
+  },
+  {
+    "Km": 81,
+    "km_key": 81,
+    "Distrito": "Bacabeira - MA",
+    "Latitude": -3.26388,
+    "Longitude": -44.43823
+  },
+  {
+    "Km": 82,
+    "km_key": 82,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.271,
+    "Longitude": -44.44377
+  },
+  {
+    "Km": 83,
+    "km_key": 83,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.2781,
+    "Longitude": -44.44931
+  },
+  {
+    "Km": 84,
+    "km_key": 84,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.28521,
+    "Longitude": -44.45485
+  },
+  {
+    "Km": 85,
+    "km_key": 85,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.29232,
+    "Longitude": -44.46039
+  },
+  {
+    "Km": 86,
+    "km_key": 86,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.29948,
+    "Longitude": -44.46597
+  },
+  {
+    "Km": 87,
+    "km_key": 87,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.30661,
+    "Longitude": -44.47152
+  },
+  {
+    "Km": 88,
+    "km_key": 88,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.31371,
+    "Longitude": -44.47706
+  },
+  {
+    "Km": 89,
+    "km_key": 89,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.32082,
+    "Longitude": -44.4826
+  },
+  {
+    "Km": 90,
+    "km_key": 90,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.32793,
+    "Longitude": -44.48814
+  },
+  {
+    "Km": 91,
+    "km_key": 91,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.33507,
+    "Longitude": -44.49371
+  },
+  {
+    "Km": 92,
+    "km_key": 92,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.34222,
+    "Longitude": -44.4992
+  },
+  {
+    "Km": 93,
+    "km_key": 93,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.34982,
+    "Longitude": -44.50405
+  },
+  {
+    "Km": 94,
+    "km_key": 94,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.35743,
+    "Longitude": -44.50888
+  },
+  {
+    "Km": 95,
+    "km_key": 95,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.36504,
+    "Longitude": -44.51371
+  },
+  {
+    "Km": 96,
+    "km_key": 96,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.37265,
+    "Longitude": -44.51854
+  },
+  {
+    "Km": 97,
+    "km_key": 97,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.38026,
+    "Longitude": -44.52337
+  },
+  {
+    "Km": 98,
+    "km_key": 98,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.38787,
+    "Longitude": -44.5282
+  },
+  {
+    "Km": 99,
+    "km_key": 99,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.3956,
+    "Longitude": -44.53311
+  },
+  {
+    "Km": 100,
+    "km_key": 100,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.40278,
+    "Longitude": -44.53852
+  },
+  {
+    "Km": 101,
+    "km_key": 101,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.40941,
+    "Longitude": -44.54461
+  },
+  {
+    "Km": 102,
+    "km_key": 102,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.41607,
+    "Longitude": -44.55073
+  },
+  {
+    "Km": 103,
+    "km_key": 103,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.4227,
+    "Longitude": -44.55682
+  },
+  {
+    "Km": 104,
+    "km_key": 104,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.42933,
+    "Longitude": -44.56292
+  },
+  {
+    "Km": 105,
+    "km_key": 105,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.43597,
+    "Longitude": -44.56902
+  },
+  {
+    "Km": 106,
+    "km_key": 106,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.44266,
+    "Longitude": -44.57517
+  },
+  {
+    "Km": 107,
+    "km_key": 107,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.4493,
+    "Longitude": -44.58126
+  },
+  {
+    "Km": 108,
+    "km_key": 108,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.45593,
+    "Longitude": -44.58736
+  },
+  {
+    "Km": 109,
+    "km_key": 109,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.46256,
+    "Longitude": -44.59346
+  },
+  {
+    "Km": 110,
+    "km_key": 110,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.47012,
+    "Longitude": -44.59868
+  },
+  {
+    "Km": 111,
+    "km_key": 111,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.47824,
+    "Longitude": -44.60262
+  },
+  {
+    "Km": 112,
+    "km_key": 112,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.48534,
+    "Longitude": -44.60811
+  },
+  {
+    "Km": 113,
+    "km_key": 113,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.49216,
+    "Longitude": -44.614
+  },
+  {
+    "Km": 114,
+    "km_key": 114,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.50026,
+    "Longitude": -44.6176
+  },
+  {
+    "Km": 115,
+    "km_key": 115,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.50865,
+    "Longitude": -44.62097
+  },
+  {
+    "Km": 116,
+    "km_key": 116,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.51546,
+    "Longitude": -44.6268
+  },
+  {
+    "Km": 117,
+    "km_key": 117,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.5218,
+    "Longitude": -44.6332
+  },
+  {
+    "Km": 118,
+    "km_key": 118,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.52817,
+    "Longitude": -44.63963
+  },
+  {
+    "Km": 119,
+    "km_key": 119,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.53451,
+    "Longitude": -44.64603
+  },
+  {
+    "Km": 120,
+    "km_key": 120,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.54085,
+    "Longitude": -44.65242
+  },
+  {
+    "Km": 121,
+    "km_key": 121,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.54719,
+    "Longitude": -44.65882
+  },
+  {
+    "Km": 122,
+    "km_key": 122,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.55356,
+    "Longitude": -44.66519
+  },
+  {
+    "Km": 123,
+    "km_key": 123,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.55955,
+    "Longitude": -44.6719
+  },
+  {
+    "Km": 124,
+    "km_key": 124,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.56491,
+    "Longitude": -44.67913
+  },
+  {
+    "Km": 125,
+    "km_key": 125,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57015,
+    "Longitude": -44.68645
+  },
+  {
+    "Km": 126,
+    "km_key": 126,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57505,
+    "Longitude": -44.69411
+  },
+  {
+    "Km": 127,
+    "km_key": 127,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57523,
+    "Longitude": -44.703
+  },
+  {
+    "Km": 128,
+    "km_key": 128,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57431,
+    "Longitude": -44.71194
+  },
+  {
+    "Km": 129,
+    "km_key": 129,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57347,
+    "Longitude": -44.72089
+  },
+  {
+    "Km": 130,
+    "km_key": 130,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57409,
+    "Longitude": -44.72996
+  },
+  {
+    "Km": 131,
+    "km_key": 131,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57495,
+    "Longitude": -44.73891
+  },
+  {
+    "Km": 132,
+    "km_key": 132,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57619,
+    "Longitude": -44.74781
+  },
+  {
+    "Km": 133,
+    "km_key": 133,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57713,
+    "Longitude": -44.75673
+  },
+  {
+    "Km": 134,
+    "km_key": 134,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57409,
+    "Longitude": -44.76517
+  },
+  {
+    "Km": 135,
+    "km_key": 135,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57077,
+    "Longitude": -44.77353
+  },
+  {
+    "Km": 136,
+    "km_key": 136,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.56742,
+    "Longitude": -44.78196
+  },
+  {
+    "Km": 137,
+    "km_key": 137,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.56485,
+    "Longitude": -44.79051
+  },
+  {
+    "Km": 138,
+    "km_key": 138,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.56656,
+    "Longitude": -44.79931
+  },
+  {
+    "Km": 139,
+    "km_key": 139,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.56348,
+    "Longitude": -44.80755
+  },
+  {
+    "Km": 140,
+    "km_key": 140,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.5579,
+    "Longitude": -44.81464
+  },
+  {
+    "Km": 141,
+    "km_key": 141,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.55287,
+    "Longitude": -44.8221
+  },
+  {
+    "Km": 142,
+    "km_key": 142,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.54799,
+    "Longitude": -44.82967
+  },
+  {
+    "Km": 143,
+    "km_key": 143,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.54311,
+    "Longitude": -44.83723
+  },
+  {
+    "Km": 144,
+    "km_key": 144,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.53823,
+    "Longitude": -44.84479
+  },
+  {
+    "Km": 145,
+    "km_key": 145,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.5341,
+    "Longitude": -44.85273
+  },
+  {
+    "Km": 146,
+    "km_key": 146,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.53276,
+    "Longitude": -44.86162
+  },
+  {
+    "Km": 147,
+    "km_key": 147,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.53157,
+    "Longitude": -44.87056
+  },
+  {
+    "Km": 148,
+    "km_key": 148,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.53377,
+    "Longitude": -44.87915
+  },
+  {
+    "Km": 149,
+    "km_key": 149,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.53939,
+    "Longitude": -44.88617
+  },
+  {
+    "Km": 150,
+    "km_key": 150,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.54518,
+    "Longitude": -44.89312
+  },
+  {
+    "Km": 151,
+    "km_key": 151,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.55034,
+    "Longitude": -44.9005
+  },
+  {
+    "Km": 152,
+    "km_key": 152,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.55361,
+    "Longitude": -44.90888
+  },
+  {
+    "Km": 153,
+    "km_key": 153,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.55793,
+    "Longitude": -44.91668
+  },
+  {
+    "Km": 154,
+    "km_key": 154,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.56448,
+    "Longitude": -44.92286
+  },
+  {
+    "Km": 155,
+    "km_key": 155,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.5703,
+    "Longitude": -44.92965
+  },
+  {
+    "Km": 156,
+    "km_key": 156,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57413,
+    "Longitude": -44.93779
+  },
+  {
+    "Km": 157,
+    "km_key": 157,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.57794,
+    "Longitude": -44.94593
+  },
+  {
+    "Km": 158,
+    "km_key": 158,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.58178,
+    "Longitude": -44.95411
+  },
+  {
+    "Km": 159,
+    "km_key": 159,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.58533,
+    "Longitude": -44.96237
+  },
+  {
+    "Km": 160,
+    "km_key": 160,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.58854,
+    "Longitude": -44.97077
+  },
+  {
+    "Km": 161,
+    "km_key": 161,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.59174,
+    "Longitude": -44.97918
+  },
+  {
+    "Km": 162,
+    "km_key": 162,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.59498,
+    "Longitude": -44.98767
+  },
+  {
+    "Km": 163,
+    "km_key": 163,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.59818,
+    "Longitude": -44.99608
+  },
+  {
+    "Km": 164,
+    "km_key": 164,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.60088,
+    "Longitude": -45.00462
+  },
+  {
+    "Km": 165,
+    "km_key": 165,
+    "Distrito": "Vitória do Mearim - MA",
+    "Latitude": -3.59924,
+    "Longitude": -45.01334
+  },
+  {
+    "Km": 166,
+    "km_key": 166,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.5956,
+    "Longitude": -45.02156
+  },
+  {
+    "Km": 167,
+    "km_key": 167,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.59196,
+    "Longitude": -45.02978
+  },
+  {
+    "Km": 168,
+    "km_key": 168,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.58832,
+    "Longitude": -45.03801
+  },
+  {
+    "Km": 169,
+    "km_key": 169,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.58469,
+    "Longitude": -45.04622
+  },
+  {
+    "Km": 170,
+    "km_key": 170,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.58224,
+    "Longitude": -45.05479
+  },
+  {
+    "Km": 171,
+    "km_key": 171,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.5827,
+    "Longitude": -45.06385
+  },
+  {
+    "Km": 172,
+    "km_key": 172,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.58319,
+    "Longitude": -45.07293
+  },
+  {
+    "Km": 173,
+    "km_key": 173,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.58367,
+    "Longitude": -45.0819
+  },
+  {
+    "Km": 174,
+    "km_key": 174,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.58439,
+    "Longitude": -45.09085
+  },
+  {
+    "Km": 175,
+    "km_key": 175,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.58746,
+    "Longitude": -45.09928
+  },
+  {
+    "Km": 176,
+    "km_key": 176,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.59068,
+    "Longitude": -45.10768
+  },
+  {
+    "Km": 177,
+    "km_key": 177,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.59382,
+    "Longitude": -45.11611
+  },
+  {
+    "Km": 178,
+    "km_key": 178,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.59678,
+    "Longitude": -45.12459
+  },
+  {
+    "Km": 179,
+    "km_key": 179,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.59973,
+    "Longitude": -45.13304
+  },
+  {
+    "Km": 180,
+    "km_key": 180,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.60269,
+    "Longitude": -45.14153
+  },
+  {
+    "Km": 181,
+    "km_key": 181,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.60566,
+    "Longitude": -45.15001
+  },
+  {
+    "Km": 182,
+    "km_key": 182,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.61006,
+    "Longitude": -45.15784
+  },
+  {
+    "Km": 183,
+    "km_key": 183,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.61493,
+    "Longitude": -45.16564
+  },
+  {
+    "Km": 184,
+    "km_key": 184,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.61971,
+    "Longitude": -45.17327
+  },
+  {
+    "Km": 185,
+    "km_key": 185,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.62385,
+    "Longitude": -45.18124
+  },
+  {
+    "Km": 186,
+    "km_key": 186,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.62778,
+    "Longitude": -45.18933
+  },
+  {
+    "Km": 187,
+    "km_key": 187,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.63173,
+    "Longitude": -45.19742
+  },
+  {
+    "Km": 188,
+    "km_key": 188,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.63565,
+    "Longitude": -45.2055
+  },
+  {
+    "Km": 189,
+    "km_key": 189,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.63959,
+    "Longitude": -45.21358
+  },
+  {
+    "Km": 190,
+    "km_key": 190,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.64353,
+    "Longitude": -45.22167
+  },
+  {
+    "Km": 191,
+    "km_key": 191,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.6472,
+    "Longitude": -45.22987
+  },
+  {
+    "Km": 192,
+    "km_key": 192,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.65034,
+    "Longitude": -45.23829
+  },
+  {
+    "Km": 193,
+    "km_key": 193,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.65372,
+    "Longitude": -45.24662
+  },
+  {
+    "Km": 194,
+    "km_key": 194,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.65779,
+    "Longitude": -45.25483
+  },
+  {
+    "Km": 195,
+    "km_key": 195,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.66143,
+    "Longitude": -45.26304
+  },
+  {
+    "Km": 196,
+    "km_key": 196,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.66385,
+    "Longitude": -45.2717
+  },
+  {
+    "Km": 197,
+    "km_key": 197,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.66627,
+    "Longitude": -45.28036
+  },
+  {
+    "Km": 198,
+    "km_key": 198,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.66868,
+    "Longitude": -45.289
+  },
+  {
+    "Km": 199,
+    "km_key": 199,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.67111,
+    "Longitude": -45.29766
+  },
+  {
+    "Km": 200,
+    "km_key": 200,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.67353,
+    "Longitude": -45.30632
+  },
+  {
+    "Km": 201,
+    "km_key": 201,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.67595,
+    "Longitude": -45.31498
+  },
+  {
+    "Km": 202,
+    "km_key": 202,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.67839,
+    "Longitude": -45.32372
+  },
+  {
+    "Km": 203,
+    "km_key": 203,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.68086,
+    "Longitude": -45.33236
+  },
+  {
+    "Km": 204,
+    "km_key": 204,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.68328,
+    "Longitude": -45.34102
+  },
+  {
+    "Km": 205,
+    "km_key": 205,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.6863,
+    "Longitude": -45.34949
+  },
+  {
+    "Km": 206,
+    "km_key": 206,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.68937,
+    "Longitude": -45.358
+  },
+  {
+    "Km": 207,
+    "km_key": 207,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.69241,
+    "Longitude": -45.36646
+  },
+  {
+    "Km": 208,
+    "km_key": 208,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.69534,
+    "Longitude": -45.37496
+  },
+  {
+    "Km": 209,
+    "km_key": 209,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.69612,
+    "Longitude": -45.3839
+  },
+  {
+    "Km": 210,
+    "km_key": 210,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.69669,
+    "Longitude": -45.39297
+  },
+  {
+    "Km": 211,
+    "km_key": 211,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.6973,
+    "Longitude": -45.40194
+  },
+  {
+    "Km": 212,
+    "km_key": 212,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.69789,
+    "Longitude": -45.4109
+  },
+  {
+    "Km": 213,
+    "km_key": 213,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.6985,
+    "Longitude": -45.41987
+  },
+  {
+    "Km": 214,
+    "km_key": 214,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.69911,
+    "Longitude": -45.42883
+  },
+  {
+    "Km": 215,
+    "km_key": 215,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.70016,
+    "Longitude": -45.43774
+  },
+  {
+    "Km": 216,
+    "km_key": 216,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.70516,
+    "Longitude": -45.44509
+  },
+  {
+    "Km": 217,
+    "km_key": 217,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.71171,
+    "Longitude": -45.45138
+  },
+  {
+    "Km": 218,
+    "km_key": 218,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.71815,
+    "Longitude": -45.45768
+  },
+  {
+    "Km": 219,
+    "km_key": 219,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.7204,
+    "Longitude": -45.46615
+  },
+  {
+    "Km": 220,
+    "km_key": 220,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.72045,
+    "Longitude": -45.47514
+  },
+  {
+    "Km": 221,
+    "km_key": 221,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.72182,
+    "Longitude": -45.48403
+  },
+  {
+    "Km": 222,
+    "km_key": 222,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.72329,
+    "Longitude": -45.4929
+  },
+  {
+    "Km": 223,
+    "km_key": 223,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.72467,
+    "Longitude": -45.50178
+  },
+  {
+    "Km": 224,
+    "km_key": 224,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.72275,
+    "Longitude": -45.51048
+  },
+  {
+    "Km": 225,
+    "km_key": 225,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.7195,
+    "Longitude": -45.5189
+  },
+  {
+    "Km": 226,
+    "km_key": 226,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.71662,
+    "Longitude": -45.52746
+  },
+  {
+    "Km": 227,
+    "km_key": 227,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.71663,
+    "Longitude": -45.53644
+  },
+  {
+    "Km": 228,
+    "km_key": 228,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.71495,
+    "Longitude": -45.54508
+  },
+  {
+    "Km": 229,
+    "km_key": 229,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.71032,
+    "Longitude": -45.55261
+  },
+  {
+    "Km": 230,
+    "km_key": 230,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.70826,
+    "Longitude": -45.56136
+  },
+  {
+    "Km": 231,
+    "km_key": 231,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.70619,
+    "Longitude": -45.57011
+  },
+  {
+    "Km": 232,
+    "km_key": 232,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.70413,
+    "Longitude": -45.57886
+  },
+  {
+    "Km": 233,
+    "km_key": 233,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.70202,
+    "Longitude": -45.58777
+  },
+  {
+    "Km": 234,
+    "km_key": 234,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.69996,
+    "Longitude": -45.59651
+  },
+  {
+    "Km": 235,
+    "km_key": 235,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.69793,
+    "Longitude": -45.60527
+  },
+  {
+    "Km": 236,
+    "km_key": 236,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.69648,
+    "Longitude": -45.61415
+  },
+  {
+    "Km": 237,
+    "km_key": 237,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.69508,
+    "Longitude": -45.62305
+  },
+  {
+    "Km": 238,
+    "km_key": 238,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.69182,
+    "Longitude": -45.63123
+  },
+  {
+    "Km": 239,
+    "km_key": 239,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.68398,
+    "Longitude": -45.63557
+  },
+  {
+    "Km": 240,
+    "km_key": 240,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.67688,
+    "Longitude": -45.64107
+  },
+  {
+    "Km": 241,
+    "km_key": 241,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.67053,
+    "Longitude": -45.64748
+  },
+  {
+    "Km": 242,
+    "km_key": 242,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.66656,
+    "Longitude": -45.65555
+  },
+  {
+    "Km": 243,
+    "km_key": 243,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.66268,
+    "Longitude": -45.66366
+  },
+  {
+    "Km": 244,
+    "km_key": 244,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.65944,
+    "Longitude": -45.67201
+  },
+  {
+    "Km": 245,
+    "km_key": 245,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.65925,
+    "Longitude": -45.68104
+  },
+  {
+    "Km": 246,
+    "km_key": 246,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.65922,
+    "Longitude": -45.69002
+  },
+  {
+    "Km": 247,
+    "km_key": 247,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.65866,
+    "Longitude": -45.69895
+  },
+  {
+    "Km": 248,
+    "km_key": 248,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.65365,
+    "Longitude": -45.70638
+  },
+  {
+    "Km": 249,
+    "km_key": 249,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.64813,
+    "Longitude": -45.7135
+  },
+  {
+    "Km": 250,
+    "km_key": 250,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.6465,
+    "Longitude": -45.72227
+  },
+  {
+    "Km": 251,
+    "km_key": 251,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.64676,
+    "Longitude": -45.73126
+  },
+  {
+    "Km": 252,
+    "km_key": 252,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.64702,
+    "Longitude": -45.74024
+  },
+  {
+    "Km": 253,
+    "km_key": 253,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.64796,
+    "Longitude": -45.74918
+  },
+  {
+    "Km": 254,
+    "km_key": 254,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.64904,
+    "Longitude": -45.7581
+  },
+  {
+    "Km": 255,
+    "km_key": 255,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.65087,
+    "Longitude": -45.76688
+  },
+  {
+    "Km": 256,
+    "km_key": 256,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.65362,
+    "Longitude": -45.77545
+  },
+  {
+    "Km": 257,
+    "km_key": 257,
+    "Distrito": "Santa Inês - MA",
+    "Latitude": -3.65366,
+    "Longitude": -45.78437
+  },
+  {
+    "Km": 258,
+    "km_key": 258,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.6527,
+    "Longitude": -45.79331
+  },
+  {
+    "Km": 259,
+    "km_key": 259,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.65247,
+    "Longitude": -45.80229
+  },
+  {
+    "Km": 260,
+    "km_key": 260,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.65242,
+    "Longitude": -45.81128
+  },
+  {
+    "Km": 261,
+    "km_key": 261,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.65386,
+    "Longitude": -45.82005
+  },
+  {
+    "Km": 262,
+    "km_key": 262,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.65881,
+    "Longitude": -45.8277
+  },
+  {
+    "Km": 263,
+    "km_key": 263,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.66388,
+    "Longitude": -45.83518
+  },
+  {
+    "Km": 264,
+    "km_key": 264,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.66893,
+    "Longitude": -45.84264
+  },
+  {
+    "Km": 265,
+    "km_key": 265,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.67294,
+    "Longitude": -45.85057
+  },
+  {
+    "Km": 266,
+    "km_key": 266,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.6728,
+    "Longitude": -45.85956
+  },
+  {
+    "Km": 267,
+    "km_key": 267,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.67347,
+    "Longitude": -45.86848
+  },
+  {
+    "Km": 268,
+    "km_key": 268,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.67541,
+    "Longitude": -45.87726
+  },
+  {
+    "Km": 269,
+    "km_key": 269,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.67734,
+    "Longitude": -45.88604
+  },
+  {
+    "Km": 270,
+    "km_key": 270,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.6806,
+    "Longitude": -45.89446
+  },
+  {
+    "Km": 271,
+    "km_key": 271,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.68419,
+    "Longitude": -45.90272
+  },
+  {
+    "Km": 272,
+    "km_key": 272,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.68947,
+    "Longitude": -45.90993
+  },
+  {
+    "Km": 273,
+    "km_key": 273,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.69355,
+    "Longitude": -45.91784
+  },
+  {
+    "Km": 274,
+    "km_key": 274,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.69855,
+    "Longitude": -45.9254
+  },
+  {
+    "Km": 275,
+    "km_key": 275,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70446,
+    "Longitude": -45.93218
+  },
+  {
+    "Km": 276,
+    "km_key": 276,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70817,
+    "Longitude": -45.94011
+  },
+  {
+    "Km": 277,
+    "km_key": 277,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70801,
+    "Longitude": -45.94904
+  },
+  {
+    "Km": 278,
+    "km_key": 278,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70576,
+    "Longitude": -45.95778
+  },
+  {
+    "Km": 279,
+    "km_key": 279,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70242,
+    "Longitude": -45.96606
+  },
+  {
+    "Km": 280,
+    "km_key": 280,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.69843,
+    "Longitude": -45.97405
+  },
+  {
+    "Km": 281,
+    "km_key": 281,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.69669,
+    "Longitude": -45.98287
+  },
+  {
+    "Km": 282,
+    "km_key": 282,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.69788,
+    "Longitude": -45.99153
+  },
+  {
+    "Km": 283,
+    "km_key": 283,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70254,
+    "Longitude": -45.99923
+  },
+  {
+    "Km": 284,
+    "km_key": 284,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70727,
+    "Longitude": -46.00691
+  },
+  {
+    "Km": 285,
+    "km_key": 285,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70871,
+    "Longitude": -46.01557
+  },
+  {
+    "Km": 286,
+    "km_key": 286,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70792,
+    "Longitude": -46.02453
+  },
+  {
+    "Km": 287,
+    "km_key": 287,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70704,
+    "Longitude": -46.03363
+  },
+  {
+    "Km": 288,
+    "km_key": 288,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70658,
+    "Longitude": -46.04258
+  },
+  {
+    "Km": 289,
+    "km_key": 289,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.70987,
+    "Longitude": -46.05087
+  },
+  {
+    "Km": 290,
+    "km_key": 290,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.71423,
+    "Longitude": -46.05874
+  },
+  {
+    "Km": 291,
+    "km_key": 291,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.71856,
+    "Longitude": -46.06663
+  },
+  {
+    "Km": 292,
+    "km_key": 292,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.72151,
+    "Longitude": -46.07509
+  },
+  {
+    "Km": 293,
+    "km_key": 293,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.72395,
+    "Longitude": -46.08375
+  },
+  {
+    "Km": 294,
+    "km_key": 294,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.7264,
+    "Longitude": -46.0924
+  },
+  {
+    "Km": 295,
+    "km_key": 295,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.72955,
+    "Longitude": -46.10077
+  },
+  {
+    "Km": 296,
+    "km_key": 296,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.73516,
+    "Longitude": -46.10793
+  },
+  {
+    "Km": 297,
+    "km_key": 297,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.74126,
+    "Longitude": -46.11453
+  },
+  {
+    "Km": 298,
+    "km_key": 298,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.74786,
+    "Longitude": -46.12066
+  },
+  {
+    "Km": 299,
+    "km_key": 299,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.75387,
+    "Longitude": -46.12731
+  },
+  {
+    "Km": 300,
+    "km_key": 300,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.75966,
+    "Longitude": -46.13421
+  },
+  {
+    "Km": 301,
+    "km_key": 301,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.76692,
+    "Longitude": -46.13956
+  },
+  {
+    "Km": 302,
+    "km_key": 302,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.77366,
+    "Longitude": -46.14551
+  },
+  {
+    "Km": 303,
+    "km_key": 303,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.78105,
+    "Longitude": -46.15066
+  },
+  {
+    "Km": 304,
+    "km_key": 304,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.78875,
+    "Longitude": -46.15534
+  },
+  {
+    "Km": 305,
+    "km_key": 305,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.7965,
+    "Longitude": -46.15995
+  },
+  {
+    "Km": 306,
+    "km_key": 306,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.80479,
+    "Longitude": -46.16351
+  },
+  {
+    "Km": 307,
+    "km_key": 307,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.8131,
+    "Longitude": -46.16703
+  },
+  {
+    "Km": 308,
+    "km_key": 308,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.82096,
+    "Longitude": -46.17143
+  },
+  {
+    "Km": 309,
+    "km_key": 309,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.82882,
+    "Longitude": -46.17584
+  },
+  {
+    "Km": 310,
+    "km_key": 310,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.83761,
+    "Longitude": -46.17824
+  },
+  {
+    "Km": 311,
+    "km_key": 311,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.84632,
+    "Longitude": -46.18065
+  },
+  {
+    "Km": 312,
+    "km_key": 312,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.85416,
+    "Longitude": -46.18509
+  },
+  {
+    "Km": 313,
+    "km_key": 313,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.8619,
+    "Longitude": -46.18971
+  },
+  {
+    "Km": 314,
+    "km_key": 314,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.86965,
+    "Longitude": -46.19434
+  },
+  {
+    "Km": 315,
+    "km_key": 315,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.87739,
+    "Longitude": -46.19896
+  },
+  {
+    "Km": 316,
+    "km_key": 316,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.88562,
+    "Longitude": -46.20245
+  },
+  {
+    "Km": 317,
+    "km_key": 317,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.8947,
+    "Longitude": -46.20294
+  },
+  {
+    "Km": 318,
+    "km_key": 318,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.90362,
+    "Longitude": -46.20204
+  },
+  {
+    "Km": 319,
+    "km_key": 319,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.91248,
+    "Longitude": -46.20198
+  },
+  {
+    "Km": 320,
+    "km_key": 320,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.92139,
+    "Longitude": -46.20371
+  },
+  {
+    "Km": 321,
+    "km_key": 321,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.93011,
+    "Longitude": -46.20562
+  },
+  {
+    "Km": 322,
+    "km_key": 322,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.93769,
+    "Longitude": -46.21042
+  },
+  {
+    "Km": 323,
+    "km_key": 323,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.94328,
+    "Longitude": -46.21742
+  },
+  {
+    "Km": 324,
+    "km_key": 324,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.94739,
+    "Longitude": -46.22552
+  },
+  {
+    "Km": 325,
+    "km_key": 325,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.95145,
+    "Longitude": -46.23355
+  },
+  {
+    "Km": 326,
+    "km_key": 326,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.95338,
+    "Longitude": -46.24227
+  },
+  {
+    "Km": 327,
+    "km_key": 327,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.95802,
+    "Longitude": -46.24983
+  },
+  {
+    "Km": 328,
+    "km_key": 328,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.96556,
+    "Longitude": -46.25473
+  },
+  {
+    "Km": 329,
+    "km_key": 329,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.97361,
+    "Longitude": -46.25862
+  },
+  {
+    "Km": 330,
+    "km_key": 330,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.98219,
+    "Longitude": -46.26134
+  },
+  {
+    "Km": 331,
+    "km_key": 331,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.9906,
+    "Longitude": -46.26459
+  },
+  {
+    "Km": 332,
+    "km_key": 332,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -3.99925,
+    "Longitude": -46.2675
+  },
+  {
+    "Km": 333,
+    "km_key": 333,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -4.0058,
+    "Longitude": -46.2736
+  },
+  {
+    "Km": 334,
+    "km_key": 334,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -4.0122,
+    "Longitude": -46.27984
+  },
+  {
+    "Km": 335,
+    "km_key": 335,
+    "Distrito": "Alto Alegre do Pindaré - MA",
+    "Latitude": -4.01808,
+    "Longitude": -46.28664
+  },
+  {
+    "Km": 336,
+    "km_key": 336,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.02427,
+    "Longitude": -46.29325
+  },
+  {
+    "Km": 337,
+    "km_key": 337,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.02845,
+    "Longitude": -46.30122
+  },
+  {
+    "Km": 338,
+    "km_key": 338,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.03269,
+    "Longitude": -46.30915
+  },
+  {
+    "Km": 339,
+    "km_key": 339,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.03861,
+    "Longitude": -46.31601
+  },
+  {
+    "Km": 340,
+    "km_key": 340,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.04293,
+    "Longitude": -46.32368
+  },
+  {
+    "Km": 341,
+    "km_key": 341,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.04473,
+    "Longitude": -46.33248
+  },
+  {
+    "Km": 342,
+    "km_key": 342,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.05,
+    "Longitude": -46.33964
+  },
+  {
+    "Km": 343,
+    "km_key": 343,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.05655,
+    "Longitude": -46.34582
+  },
+  {
+    "Km": 344,
+    "km_key": 344,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.06081,
+    "Longitude": -46.35377
+  },
+  {
+    "Km": 345,
+    "km_key": 345,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.06525,
+    "Longitude": -46.36157
+  },
+  {
+    "Km": 346,
+    "km_key": 346,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.07242,
+    "Longitude": -46.36699
+  },
+  {
+    "Km": 347,
+    "km_key": 347,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.08054,
+    "Longitude": -46.37091
+  },
+  {
+    "Km": 348,
+    "km_key": 348,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.08894,
+    "Longitude": -46.37409
+  },
+  {
+    "Km": 349,
+    "km_key": 349,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.09668,
+    "Longitude": -46.37867
+  },
+  {
+    "Km": 350,
+    "km_key": 350,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.10334,
+    "Longitude": -46.38474
+  },
+  {
+    "Km": 351,
+    "km_key": 351,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.10794,
+    "Longitude": -46.39245
+  },
+  {
+    "Km": 352,
+    "km_key": 352,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.11297,
+    "Longitude": -46.39988
+  },
+  {
+    "Km": 353,
+    "km_key": 353,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.11865,
+    "Longitude": -46.40686
+  },
+  {
+    "Km": 354,
+    "km_key": 354,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.12319,
+    "Longitude": -46.41463
+  },
+  {
+    "Km": 355,
+    "km_key": 355,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.12772,
+    "Longitude": -46.4226
+  },
+  {
+    "Km": 356,
+    "km_key": 356,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.13217,
+    "Longitude": -46.43042
+  },
+  {
+    "Km": 357,
+    "km_key": 357,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.13905,
+    "Longitude": -46.43554
+  },
+  {
+    "Km": 358,
+    "km_key": 358,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.14802,
+    "Longitude": -46.43558
+  },
+  {
+    "Km": 359,
+    "km_key": 359,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.15593,
+    "Longitude": -46.4397
+  },
+  {
+    "Km": 360,
+    "km_key": 360,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.16349,
+    "Longitude": -46.44475
+  },
+  {
+    "Km": 361,
+    "km_key": 361,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.17016,
+    "Longitude": -46.45072
+  },
+  {
+    "Km": 362,
+    "km_key": 362,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.17764,
+    "Longitude": -46.4557
+  },
+  {
+    "Km": 363,
+    "km_key": 363,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.18397,
+    "Longitude": -46.4621
+  },
+  {
+    "Km": 364,
+    "km_key": 364,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.18936,
+    "Longitude": -46.46939
+  },
+  {
+    "Km": 365,
+    "km_key": 365,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.19491,
+    "Longitude": -46.47627
+  },
+  {
+    "Km": 366,
+    "km_key": 366,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.20287,
+    "Longitude": -46.48043
+  },
+  {
+    "Km": 367,
+    "km_key": 367,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.20757,
+    "Longitude": -46.48805
+  },
+  {
+    "Km": 368,
+    "km_key": 368,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.21354,
+    "Longitude": -46.49476
+  },
+  {
+    "Km": 369,
+    "km_key": 369,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.22037,
+    "Longitude": -46.50049
+  },
+  {
+    "Km": 370,
+    "km_key": 370,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.22772,
+    "Longitude": -46.50538
+  },
+  {
+    "Km": 371,
+    "km_key": 371,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.23317,
+    "Longitude": -46.51255
+  },
+  {
+    "Km": 372,
+    "km_key": 372,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.23864,
+    "Longitude": -46.51975
+  },
+  {
+    "Km": 373,
+    "km_key": 373,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.24409,
+    "Longitude": -46.52692
+  },
+  {
+    "Km": 374,
+    "km_key": 374,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.25202,
+    "Longitude": -46.53054
+  },
+  {
+    "Km": 375,
+    "km_key": 375,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.25957,
+    "Longitude": -46.53519
+  },
+  {
+    "Km": 376,
+    "km_key": 376,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.26819,
+    "Longitude": -46.53777
+  },
+  {
+    "Km": 377,
+    "km_key": 377,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.27418,
+    "Longitude": -46.54422
+  },
+  {
+    "Km": 378,
+    "km_key": 378,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.27883,
+    "Longitude": -46.55197
+  },
+  {
+    "Km": 379,
+    "km_key": 379,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.28646,
+    "Longitude": -46.5566
+  },
+  {
+    "Km": 380,
+    "km_key": 380,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.29223,
+    "Longitude": -46.56348
+  },
+  {
+    "Km": 381,
+    "km_key": 381,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.2973,
+    "Longitude": -46.57087
+  },
+  {
+    "Km": 382,
+    "km_key": 382,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.30383,
+    "Longitude": -46.57707
+  },
+  {
+    "Km": 383,
+    "km_key": 383,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.31097,
+    "Longitude": -46.58248
+  },
+  {
+    "Km": 384,
+    "km_key": 384,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.31683,
+    "Longitude": -46.58931
+  },
+  {
+    "Km": 385,
+    "km_key": 385,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.32132,
+    "Longitude": -46.597
+  },
+  {
+    "Km": 386,
+    "km_key": 386,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.32253,
+    "Longitude": -46.60591
+  },
+  {
+    "Km": 387,
+    "km_key": 387,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.32367,
+    "Longitude": -46.61495
+  },
+  {
+    "Km": 388,
+    "km_key": 388,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.3271,
+    "Longitude": -46.62323
+  },
+  {
+    "Km": 389,
+    "km_key": 389,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.33313,
+    "Longitude": -46.62981
+  },
+  {
+    "Km": 390,
+    "km_key": 390,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.33805,
+    "Longitude": -46.6372
+  },
+  {
+    "Km": 391,
+    "km_key": 391,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.34124,
+    "Longitude": -46.6456
+  },
+  {
+    "Km": 392,
+    "km_key": 392,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.34443,
+    "Longitude": -46.65401
+  },
+  {
+    "Km": 393,
+    "km_key": 393,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.34617,
+    "Longitude": -46.66283
+  },
+  {
+    "Km": 394,
+    "km_key": 394,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.34769,
+    "Longitude": -46.67169
+  },
+  {
+    "Km": 395,
+    "km_key": 395,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.35055,
+    "Longitude": -46.68004
+  },
+  {
+    "Km": 396,
+    "km_key": 396,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.35628,
+    "Longitude": -46.68694
+  },
+  {
+    "Km": 397,
+    "km_key": 397,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.35885,
+    "Longitude": -46.69567
+  },
+  {
+    "Km": 398,
+    "km_key": 398,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.36265,
+    "Longitude": -46.70358
+  },
+  {
+    "Km": 399,
+    "km_key": 399,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.36913,
+    "Longitude": -46.70981
+  },
+  {
+    "Km": 400,
+    "km_key": 400,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.37321,
+    "Longitude": -46.71782
+  },
+  {
+    "Km": 401,
+    "km_key": 401,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.37862,
+    "Longitude": -46.72498
+  },
+  {
+    "Km": 402,
+    "km_key": 402,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.38226,
+    "Longitude": -46.73321
+  },
+  {
+    "Km": 403,
+    "km_key": 403,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.38504,
+    "Longitude": -46.74142
+  },
+  {
+    "Km": 404,
+    "km_key": 404,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.38591,
+    "Longitude": -46.7503
+  },
+  {
+    "Km": 405,
+    "km_key": 405,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.38392,
+    "Longitude": -46.75907
+  },
+  {
+    "Km": 406,
+    "km_key": 406,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.38187,
+    "Longitude": -46.76795
+  },
+  {
+    "Km": 407,
+    "km_key": 407,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.3812,
+    "Longitude": -46.77691
+  },
+  {
+    "Km": 408,
+    "km_key": 408,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.38512,
+    "Longitude": -46.7849
+  },
+  {
+    "Km": 409,
+    "km_key": 409,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.38691,
+    "Longitude": -46.79369
+  },
+  {
+    "Km": 410,
+    "km_key": 410,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.38788,
+    "Longitude": -46.80264
+  },
+  {
+    "Km": 411,
+    "km_key": 411,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.38825,
+    "Longitude": -46.81158
+  },
+  {
+    "Km": 412,
+    "km_key": 412,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.3867,
+    "Longitude": -46.82041
+  },
+  {
+    "Km": 413,
+    "km_key": 413,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.38951,
+    "Longitude": -46.82894
+  },
+  {
+    "Km": 414,
+    "km_key": 414,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.39272,
+    "Longitude": -46.83741
+  },
+  {
+    "Km": 415,
+    "km_key": 415,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.39895,
+    "Longitude": -46.84389
+  },
+  {
+    "Km": 416,
+    "km_key": 416,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.40536,
+    "Longitude": -46.85022
+  },
+  {
+    "Km": 417,
+    "km_key": 417,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.41299,
+    "Longitude": -46.85469
+  },
+  {
+    "Km": 418,
+    "km_key": 418,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.42062,
+    "Longitude": -46.85946
+  },
+  {
+    "Km": 419,
+    "km_key": 419,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.42717,
+    "Longitude": -46.86561
+  },
+  {
+    "Km": 420,
+    "km_key": 420,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.43417,
+    "Longitude": -46.8715
+  },
+  {
+    "Km": 421,
+    "km_key": 421,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.43979,
+    "Longitude": -46.87825
+  },
+  {
+    "Km": 422,
+    "km_key": 422,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.44136,
+    "Longitude": -46.88711
+  },
+  {
+    "Km": 423,
+    "km_key": 423,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.44292,
+    "Longitude": -46.89597
+  },
+  {
+    "Km": 424,
+    "km_key": 424,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.44522,
+    "Longitude": -46.9046
+  },
+  {
+    "Km": 425,
+    "km_key": 425,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.45224,
+    "Longitude": -46.91021
+  },
+  {
+    "Km": 426,
+    "km_key": 426,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.4595,
+    "Longitude": -46.91554
+  },
+  {
+    "Km": 427,
+    "km_key": 427,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.46677,
+    "Longitude": -46.92087
+  },
+  {
+    "Km": 428,
+    "km_key": 428,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.47116,
+    "Longitude": -46.92845
+  },
+  {
+    "Km": 429,
+    "km_key": 429,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.4757,
+    "Longitude": -46.93592
+  },
+  {
+    "Km": 430,
+    "km_key": 430,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.48293,
+    "Longitude": -46.94131
+  },
+  {
+    "Km": 431,
+    "km_key": 431,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.48594,
+    "Longitude": -46.94945
+  },
+  {
+    "Km": 432,
+    "km_key": 432,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.48685,
+    "Longitude": -46.95847
+  },
+  {
+    "Km": 433,
+    "km_key": 433,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.48718,
+    "Longitude": -46.96742
+  },
+  {
+    "Km": 434,
+    "km_key": 434,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.48625,
+    "Longitude": -46.9763
+  },
+  {
+    "Km": 435,
+    "km_key": 435,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.49257,
+    "Longitude": -46.9821
+  },
+  {
+    "Km": 436,
+    "km_key": 436,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.50122,
+    "Longitude": -46.98415
+  },
+  {
+    "Km": 437,
+    "km_key": 437,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.5041,
+    "Longitude": -46.99216
+  },
+  {
+    "Km": 438,
+    "km_key": 438,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.50243,
+    "Longitude": -47.001
+  },
+  {
+    "Km": 439,
+    "km_key": 439,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.50095,
+    "Longitude": -47.00993
+  },
+  {
+    "Km": 440,
+    "km_key": 440,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.50042,
+    "Longitude": -47.01891
+  },
+  {
+    "Km": 441,
+    "km_key": 441,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.50011,
+    "Longitude": -47.02789
+  },
+  {
+    "Km": 442,
+    "km_key": 442,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.50266,
+    "Longitude": -47.0365
+  },
+  {
+    "Km": 443,
+    "km_key": 443,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.50562,
+    "Longitude": -47.04502
+  },
+  {
+    "Km": 444,
+    "km_key": 444,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.5107,
+    "Longitude": -47.05217
+  },
+  {
+    "Km": 445,
+    "km_key": 445,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.51779,
+    "Longitude": -47.05773
+  },
+  {
+    "Km": 446,
+    "km_key": 446,
+    "Distrito": "Nova Vida (Bom Jesus das Selvas - MA)",
+    "Latitude": -4.52488,
+    "Longitude": -47.0633
+  },
+  {
+    "Km": 447,
+    "km_key": 447,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.53081,
+    "Longitude": -47.07001
+  },
+  {
+    "Km": 448,
+    "km_key": 448,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.53392,
+    "Longitude": -47.07845
+  },
+  {
+    "Km": 449,
+    "km_key": 449,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.53973,
+    "Longitude": -47.08497
+  },
+  {
+    "Km": 450,
+    "km_key": 450,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.54868,
+    "Longitude": -47.08554
+  },
+  {
+    "Km": 450,
+    "km_key": 450,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.54869,
+    "Longitude": -47.08558
+  },
+  {
+    "Km": 451,
+    "km_key": 451,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.55756,
+    "Longitude": -47.08649
+  },
+  {
+    "Km": 452,
+    "km_key": 452,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.56115,
+    "Longitude": -47.0942
+  },
+  {
+    "Km": 453,
+    "km_key": 453,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.55833,
+    "Longitude": -47.10273
+  },
+  {
+    "Km": 454,
+    "km_key": 454,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.55558,
+    "Longitude": -47.11129
+  },
+  {
+    "Km": 455,
+    "km_key": 455,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.55943,
+    "Longitude": -47.11897
+  },
+  {
+    "Km": 456,
+    "km_key": 456,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.5662,
+    "Longitude": -47.12492
+  },
+  {
+    "Km": 457,
+    "km_key": 457,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.5722,
+    "Longitude": -47.13155
+  },
+  {
+    "Km": 458,
+    "km_key": 458,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.5753,
+    "Longitude": -47.13999
+  },
+  {
+    "Km": 459,
+    "km_key": 459,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.57825,
+    "Longitude": -47.14859
+  },
+  {
+    "Km": 460,
+    "km_key": 460,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.58117,
+    "Longitude": -47.1571
+  },
+  {
+    "Km": 461,
+    "km_key": 461,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.58409,
+    "Longitude": -47.16562
+  },
+  {
+    "Km": 462,
+    "km_key": 462,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.58703,
+    "Longitude": -47.17416
+  },
+  {
+    "Km": 463,
+    "km_key": 463,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.58995,
+    "Longitude": -47.18269
+  },
+  {
+    "Km": 464,
+    "km_key": 464,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.59328,
+    "Longitude": -47.19103
+  },
+  {
+    "Km": 465,
+    "km_key": 465,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.60002,
+    "Longitude": -47.19682
+  },
+  {
+    "Km": 466,
+    "km_key": 466,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.60871,
+    "Longitude": -47.19918
+  },
+  {
+    "Km": 467,
+    "km_key": 467,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.61755,
+    "Longitude": -47.2013
+  },
+  {
+    "Km": 468,
+    "km_key": 468,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.62528,
+    "Longitude": -47.20571
+  },
+  {
+    "Km": 469,
+    "km_key": 469,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.62948,
+    "Longitude": -47.21357
+  },
+  {
+    "Km": 470,
+    "km_key": 470,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.63244,
+    "Longitude": -47.22207
+  },
+  {
+    "Km": 471,
+    "km_key": 471,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.63654,
+    "Longitude": -47.23005
+  },
+  {
+    "Km": 472,
+    "km_key": 472,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.6427,
+    "Longitude": -47.23662
+  },
+  {
+    "Km": 473,
+    "km_key": 473,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.64901,
+    "Longitude": -47.24305
+  },
+  {
+    "Km": 474,
+    "km_key": 474,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.65638,
+    "Longitude": -47.24825
+  },
+  {
+    "Km": 475,
+    "km_key": 475,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.66384,
+    "Longitude": -47.25349
+  },
+  {
+    "Km": 476,
+    "km_key": 476,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.67104,
+    "Longitude": -47.2589
+  },
+  {
+    "Km": 477,
+    "km_key": 477,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.67716,
+    "Longitude": -47.2655
+  },
+  {
+    "Km": 478,
+    "km_key": 478,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.68329,
+    "Longitude": -47.27212
+  },
+  {
+    "Km": 479,
+    "km_key": 479,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.68945,
+    "Longitude": -47.27878
+  },
+  {
+    "Km": 480,
+    "km_key": 480,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.69557,
+    "Longitude": -47.28539
+  },
+  {
+    "Km": 481,
+    "km_key": 481,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.70248,
+    "Longitude": -47.29113
+  },
+  {
+    "Km": 482,
+    "km_key": 482,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.70985,
+    "Longitude": -47.29634
+  },
+  {
+    "Km": 483,
+    "km_key": 483,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.71719,
+    "Longitude": -47.30153
+  },
+  {
+    "Km": 484,
+    "km_key": 484,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.72478,
+    "Longitude": -47.30635
+  },
+  {
+    "Km": 485,
+    "km_key": 485,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.73346,
+    "Longitude": -47.30883
+  },
+  {
+    "Km": 486,
+    "km_key": 486,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.74223,
+    "Longitude": -47.31086
+  },
+  {
+    "Km": 487,
+    "km_key": 487,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.7503,
+    "Longitude": -47.30708
+  },
+  {
+    "Km": 488,
+    "km_key": 488,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.7581,
+    "Longitude": -47.30258
+  },
+  {
+    "Km": 489,
+    "km_key": 489,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.76698,
+    "Longitude": -47.30002
+  },
+  {
+    "Km": 490,
+    "km_key": 490,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.7757,
+    "Longitude": -47.29763
+  },
+  {
+    "Km": 491,
+    "km_key": 491,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.78443,
+    "Longitude": -47.29747
+  },
+  {
+    "Km": 492,
+    "km_key": 492,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.79195,
+    "Longitude": -47.30244
+  },
+  {
+    "Km": 493,
+    "km_key": 493,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.79969,
+    "Longitude": -47.30708
+  },
+  {
+    "Km": 494,
+    "km_key": 494,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.80735,
+    "Longitude": -47.31205
+  },
+  {
+    "Km": 495,
+    "km_key": 495,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.80868,
+    "Longitude": -47.32045
+  },
+  {
+    "Km": 496,
+    "km_key": 496,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.80423,
+    "Longitude": -47.32828
+  },
+  {
+    "Km": 497,
+    "km_key": 497,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.79979,
+    "Longitude": -47.33603
+  },
+  {
+    "Km": 498,
+    "km_key": 498,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.7964,
+    "Longitude": -47.34423
+  },
+  {
+    "Km": 499,
+    "km_key": 499,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.80128,
+    "Longitude": -47.3512
+  },
+  {
+    "Km": 500,
+    "km_key": 500,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.80963,
+    "Longitude": -47.35454
+  },
+  {
+    "Km": 501,
+    "km_key": 501,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.81729,
+    "Longitude": -47.35961
+  },
+  {
+    "Km": 502,
+    "km_key": 502,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.82488,
+    "Longitude": -47.36448
+  },
+  {
+    "Km": 503,
+    "km_key": 503,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.83368,
+    "Longitude": -47.36639
+  },
+  {
+    "Km": 504,
+    "km_key": 504,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.84216,
+    "Longitude": -47.36924
+  },
+  {
+    "Km": 505,
+    "km_key": 505,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.84918,
+    "Longitude": -47.37476
+  },
+  {
+    "Km": 506,
+    "km_key": 506,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.85713,
+    "Longitude": -47.3786
+  },
+  {
+    "Km": 507,
+    "km_key": 507,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.86608,
+    "Longitude": -47.37752
+  },
+  {
+    "Km": 508,
+    "km_key": 508,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.87502,
+    "Longitude": -47.37625
+  },
+  {
+    "Km": 509,
+    "km_key": 509,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.88402,
+    "Longitude": -47.37496
+  },
+  {
+    "Km": 510,
+    "km_key": 510,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.89266,
+    "Longitude": -47.37647
+  },
+  {
+    "Km": 511,
+    "km_key": 511,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.89843,
+    "Longitude": -47.38332
+  },
+  {
+    "Km": 512,
+    "km_key": 512,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.90364,
+    "Longitude": -47.39043
+  },
+  {
+    "Km": 512,
+    "km_key": 512,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.90364,
+    "Longitude": -47.39043
+  },
+  {
+    "Km": 513,
+    "km_key": 513,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.90885,
+    "Longitude": -47.398
+  },
+  {
+    "Km": 514,
+    "km_key": 514,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.91259,
+    "Longitude": -47.40619
+  },
+  {
+    "Km": 515,
+    "km_key": 515,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.91644,
+    "Longitude": -47.41459
+  },
+  {
+    "Km": 516,
+    "km_key": 516,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.92104,
+    "Longitude": -47.42226
+  },
+  {
+    "Km": 517,
+    "km_key": 517,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.92875,
+    "Longitude": -47.42679
+  },
+  {
+    "Km": 518,
+    "km_key": 518,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.93691,
+    "Longitude": -47.43041
+  },
+  {
+    "Km": 519,
+    "km_key": 519,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.94504,
+    "Longitude": -47.43431
+  },
+  {
+    "Km": 520,
+    "km_key": 520,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.95079,
+    "Longitude": -47.44122
+  },
+  {
+    "Km": 521,
+    "km_key": 521,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.95635,
+    "Longitude": -47.4483
+  },
+  {
+    "Km": 522,
+    "km_key": 522,
+    "Distrito": "Açailândia - MA (Trecho 1)",
+    "Latitude": -4.96191,
+    "Longitude": -47.45539
+  },
+  {
+    "Km": 523,
+    "km_key": 523,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -4.9675,
+    "Longitude": -47.46251
+  },
+  {
+    "Km": 524,
+    "km_key": 524,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -4.97306,
+    "Longitude": -47.4696
+  },
+  {
+    "Km": 525,
+    "km_key": 525,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -4.97992,
+    "Longitude": -47.47529
+  },
+  {
+    "Km": 526,
+    "km_key": 526,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -4.98792,
+    "Longitude": -47.47964
+  },
+  {
+    "Km": 527,
+    "km_key": 527,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -4.99585,
+    "Longitude": -47.48396
+  },
+  {
+    "Km": 528,
+    "km_key": 528,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.00404,
+    "Longitude": -47.48772
+  },
+  {
+    "Km": 529,
+    "km_key": 529,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.01229,
+    "Longitude": -47.49138
+  },
+  {
+    "Km": 530,
+    "km_key": 530,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.0206,
+    "Longitude": -47.49506
+  },
+  {
+    "Km": 531,
+    "km_key": 531,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.02895,
+    "Longitude": -47.49845
+  },
+  {
+    "Km": 532,
+    "km_key": 532,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.03792,
+    "Longitude": -47.49937
+  },
+  {
+    "Km": 533,
+    "km_key": 533,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.04691,
+    "Longitude": -47.50013
+  },
+  {
+    "Km": 534,
+    "km_key": 534,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.05492,
+    "Longitude": -47.5035
+  },
+  {
+    "Km": 535,
+    "km_key": 535,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.06123,
+    "Longitude": -47.51002
+  },
+  {
+    "Km": 536,
+    "km_key": 536,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.0675,
+    "Longitude": -47.51649
+  },
+  {
+    "Km": 537,
+    "km_key": 537,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.07344,
+    "Longitude": -47.52323
+  },
+  {
+    "Km": 538,
+    "km_key": 538,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.0777,
+    "Longitude": -47.53117
+  },
+  {
+    "Km": 539,
+    "km_key": 539,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.08199,
+    "Longitude": -47.53922
+  },
+  {
+    "Km": 540,
+    "km_key": 540,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.08669,
+    "Longitude": -47.54686
+  },
+  {
+    "Km": 541,
+    "km_key": 541,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.09308,
+    "Longitude": -47.55322
+  },
+  {
+    "Km": 542,
+    "km_key": 542,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.09778,
+    "Longitude": -47.56073
+  },
+  {
+    "Km": 543,
+    "km_key": 543,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.10125,
+    "Longitude": -47.56908
+  },
+  {
+    "Km": 544,
+    "km_key": 544,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.1044,
+    "Longitude": -47.57749
+  },
+  {
+    "Km": 545,
+    "km_key": 545,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.10481,
+    "Longitude": -47.58647
+  },
+  {
+    "Km": 546,
+    "km_key": 546,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.10791,
+    "Longitude": -47.5948
+  },
+  {
+    "Km": 547,
+    "km_key": 547,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.10708,
+    "Longitude": -47.60371
+  },
+  {
+    "Km": 548,
+    "km_key": 548,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.10468,
+    "Longitude": -47.61238
+  },
+  {
+    "Km": 549,
+    "km_key": 549,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.09914,
+    "Longitude": -47.61932
+  },
+  {
+    "Km": 550,
+    "km_key": 550,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.09267,
+    "Longitude": -47.62532
+  },
+  {
+    "Km": 551,
+    "km_key": 551,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.09291,
+    "Longitude": -47.63421
+  },
+  {
+    "Km": 552,
+    "km_key": 552,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.09408,
+    "Longitude": -47.64324
+  },
+  {
+    "Km": 553,
+    "km_key": 553,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.09525,
+    "Longitude": -47.65216
+  },
+  {
+    "Km": 554,
+    "km_key": 554,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.09805,
+    "Longitude": -47.66061
+  },
+  {
+    "Km": 555,
+    "km_key": 555,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.10273,
+    "Longitude": -47.66831
+  },
+  {
+    "Km": 556,
+    "km_key": 556,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.10741,
+    "Longitude": -47.676
+  },
+  {
+    "Km": 557,
+    "km_key": 557,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.11207,
+    "Longitude": -47.68369
+  },
+  {
+    "Km": 558,
+    "km_key": 558,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.11681,
+    "Longitude": -47.69148
+  },
+  {
+    "Km": 559,
+    "km_key": 559,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.11747,
+    "Longitude": -47.69998
+  },
+  {
+    "Km": 560,
+    "km_key": 560,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.11331,
+    "Longitude": -47.70787
+  },
+  {
+    "Km": 561,
+    "km_key": 561,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.11707,
+    "Longitude": -47.71552
+  },
+  {
+    "Km": 562,
+    "km_key": 562,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.12508,
+    "Longitude": -47.71991
+  },
+  {
+    "Km": 563,
+    "km_key": 563,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.13294,
+    "Longitude": -47.72432
+  },
+  {
+    "Km": 564,
+    "km_key": 564,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.13576,
+    "Longitude": -47.73234
+  },
+  {
+    "Km": 565,
+    "km_key": 565,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.13169,
+    "Longitude": -47.74035
+  },
+  {
+    "Km": 566,
+    "km_key": 566,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.12738,
+    "Longitude": -47.74826
+  },
+  {
+    "Km": 567,
+    "km_key": 567,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.12365,
+    "Longitude": -47.75638
+  },
+  {
+    "Km": 568,
+    "km_key": 568,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.12757,
+    "Longitude": -47.76392
+  },
+  {
+    "Km": 569,
+    "km_key": 569,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.13577,
+    "Longitude": -47.76752
+  },
+  {
+    "Km": 570,
+    "km_key": 570,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.13928,
+    "Longitude": -47.77566
+  },
+  {
+    "Km": 571,
+    "km_key": 571,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.14179,
+    "Longitude": -47.78431
+  },
+  {
+    "Km": 572,
+    "km_key": 572,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.14413,
+    "Longitude": -47.79315
+  },
+  {
+    "Km": 573,
+    "km_key": 573,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.1402,
+    "Longitude": -47.80095
+  },
+  {
+    "Km": 574,
+    "km_key": 574,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.13412,
+    "Longitude": -47.80756
+  },
+  {
+    "Km": 575,
+    "km_key": 575,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.12577,
+    "Longitude": -47.81093
+  },
+  {
+    "Km": 576,
+    "km_key": 576,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.11847,
+    "Longitude": -47.81633
+  },
+  {
+    "Km": 577,
+    "km_key": 577,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.1115,
+    "Longitude": -47.82201
+  },
+  {
+    "Km": 578,
+    "km_key": 578,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.11103,
+    "Longitude": -47.8305
+  },
+  {
+    "Km": 579,
+    "km_key": 579,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.11827,
+    "Longitude": -47.83589
+  },
+  {
+    "Km": 580,
+    "km_key": 580,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.12523,
+    "Longitude": -47.84148
+  },
+  {
+    "Km": 581,
+    "km_key": 581,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.13084,
+    "Longitude": -47.84852
+  },
+  {
+    "Km": 582,
+    "km_key": 582,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.13688,
+    "Longitude": -47.85522
+  },
+  {
+    "Km": 583,
+    "km_key": 583,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.14291,
+    "Longitude": -47.86191
+  },
+  {
+    "Km": 584,
+    "km_key": 584,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.14794,
+    "Longitude": -47.86927
+  },
+  {
+    "Km": 585,
+    "km_key": 585,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.14804,
+    "Longitude": -47.87827
+  },
+  {
+    "Km": 586,
+    "km_key": 586,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.14812,
+    "Longitude": -47.88726
+  },
+  {
+    "Km": 587,
+    "km_key": 587,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.15008,
+    "Longitude": -47.89608
+  },
+  {
+    "Km": 588,
+    "km_key": 588,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.15273,
+    "Longitude": -47.90467
+  },
+  {
+    "Km": 589,
+    "km_key": 589,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.15185,
+    "Longitude": -47.9136
+  },
+  {
+    "Km": 590,
+    "km_key": 590,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.15367,
+    "Longitude": -47.92233
+  },
+  {
+    "Km": 591,
+    "km_key": 591,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.15706,
+    "Longitude": -47.93062
+  },
+  {
+    "Km": 592,
+    "km_key": 592,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.16453,
+    "Longitude": -47.93555
+  },
+  {
+    "Km": 593,
+    "km_key": 593,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.17152,
+    "Longitude": -47.94096
+  },
+  {
+    "Km": 594,
+    "km_key": 594,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.17212,
+    "Longitude": -47.94984
+  },
+  {
+    "Km": 595,
+    "km_key": 595,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.17174,
+    "Longitude": -47.95889
+  },
+  {
+    "Km": 596,
+    "km_key": 596,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.17474,
+    "Longitude": -47.96716
+  },
+  {
+    "Km": 597,
+    "km_key": 597,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.17589,
+    "Longitude": -47.97581
+  },
+  {
+    "Km": 598,
+    "km_key": 598,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.17259,
+    "Longitude": -47.98419
+  },
+  {
+    "Km": 599,
+    "km_key": 599,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.16896,
+    "Longitude": -47.99248
+  },
+  {
+    "Km": 600,
+    "km_key": 600,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.16364,
+    "Longitude": -47.99975
+  },
+  {
+    "Km": 601,
+    "km_key": 601,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.16083,
+    "Longitude": -48.00804
+  },
+  {
+    "Km": 602,
+    "km_key": 602,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.16424,
+    "Longitude": -48.01631
+  },
+  {
+    "Km": 603,
+    "km_key": 603,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.16833,
+    "Longitude": -48.02434
+  },
+  {
+    "Km": 604,
+    "km_key": 604,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.1725,
+    "Longitude": -48.03243
+  },
+  {
+    "Km": 605,
+    "km_key": 605,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.17545,
+    "Longitude": -48.04091
+  },
+  {
+    "Km": 606,
+    "km_key": 606,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.17584,
+    "Longitude": -48.04987
+  },
+  {
+    "Km": 607,
+    "km_key": 607,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.17475,
+    "Longitude": -48.05881
+  },
+  {
+    "Km": 608,
+    "km_key": 608,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.17364,
+    "Longitude": -48.06775
+  },
+  {
+    "Km": 609,
+    "km_key": 609,
+    "Distrito": "Açailândia - MA (Trecho 2)",
+    "Latitude": -5.17254,
+    "Longitude": -48.07669
+  },
+  {
+    "Km": 610,
+    "km_key": 610,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.17148,
+    "Longitude": -48.08572
+  },
+  {
+    "Km": 611,
+    "km_key": 611,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.17033,
+    "Longitude": -48.09465
+  },
+  {
+    "Km": 612,
+    "km_key": 612,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16923,
+    "Longitude": -48.10358
+  },
+  {
+    "Km": 613,
+    "km_key": 613,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16719,
+    "Longitude": -48.11235
+  },
+  {
+    "Km": 614,
+    "km_key": 614,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16498,
+    "Longitude": -48.12114
+  },
+  {
+    "Km": 615,
+    "km_key": 615,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.1628,
+    "Longitude": -48.12988
+  },
+  {
+    "Km": 616,
+    "km_key": 616,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16193,
+    "Longitude": -48.13876
+  },
+  {
+    "Km": 617,
+    "km_key": 617,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16332,
+    "Longitude": -48.14766
+  },
+  {
+    "Km": 618,
+    "km_key": 618,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16471,
+    "Longitude": -48.1566
+  },
+  {
+    "Km": 619,
+    "km_key": 619,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16588,
+    "Longitude": -48.16552
+  },
+  {
+    "Km": 620,
+    "km_key": 620,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16567,
+    "Longitude": -48.17452
+  },
+  {
+    "Km": 621,
+    "km_key": 621,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16547,
+    "Longitude": -48.18352
+  },
+  {
+    "Km": 622,
+    "km_key": 622,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16522,
+    "Longitude": -48.19262
+  },
+  {
+    "Km": 623,
+    "km_key": 623,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16434,
+    "Longitude": -48.20156
+  },
+  {
+    "Km": 624,
+    "km_key": 624,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16279,
+    "Longitude": -48.21043
+  },
+  {
+    "Km": 625,
+    "km_key": 625,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16124,
+    "Longitude": -48.2193
+  },
+  {
+    "Km": 626,
+    "km_key": 626,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.1597,
+    "Longitude": -48.22821
+  },
+  {
+    "Km": 627,
+    "km_key": 627,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15951,
+    "Longitude": -48.23721
+  },
+  {
+    "Km": 628,
+    "km_key": 628,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15945,
+    "Longitude": -48.24621
+  },
+  {
+    "Km": 629,
+    "km_key": 629,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15939,
+    "Longitude": -48.25521
+  },
+  {
+    "Km": 630,
+    "km_key": 630,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15932,
+    "Longitude": -48.2643
+  },
+  {
+    "Km": 631,
+    "km_key": 631,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15926,
+    "Longitude": -48.2733
+  },
+  {
+    "Km": 632,
+    "km_key": 632,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15903,
+    "Longitude": -48.2823
+  },
+  {
+    "Km": 633,
+    "km_key": 633,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15645,
+    "Longitude": -48.29092
+  },
+  {
+    "Km": 634,
+    "km_key": 634,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15364,
+    "Longitude": -48.29961
+  },
+  {
+    "Km": 635,
+    "km_key": 635,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15087,
+    "Longitude": -48.30817
+  },
+  {
+    "Km": 636,
+    "km_key": 636,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.14852,
+    "Longitude": -48.31684
+  },
+  {
+    "Km": 637,
+    "km_key": 637,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.14927,
+    "Longitude": -48.3258
+  },
+  {
+    "Km": 638,
+    "km_key": 638,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15031,
+    "Longitude": -48.33478
+  },
+  {
+    "Km": 639,
+    "km_key": 639,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15133,
+    "Longitude": -48.34373
+  },
+  {
+    "Km": 640,
+    "km_key": 640,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15195,
+    "Longitude": -48.35268
+  },
+  {
+    "Km": 641,
+    "km_key": 641,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15096,
+    "Longitude": -48.36163
+  },
+  {
+    "Km": 642,
+    "km_key": 642,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.14995,
+    "Longitude": -48.37064
+  },
+  {
+    "Km": 643,
+    "km_key": 643,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.14896,
+    "Longitude": -48.37959
+  },
+  {
+    "Km": 644,
+    "km_key": 644,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.14904,
+    "Longitude": -48.38853
+  },
+  {
+    "Km": 645,
+    "km_key": 645,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15078,
+    "Longitude": -48.39736
+  },
+  {
+    "Km": 646,
+    "km_key": 646,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15141,
+    "Longitude": -48.40634
+  },
+  {
+    "Km": 647,
+    "km_key": 647,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15187,
+    "Longitude": -48.41533
+  },
+  {
+    "Km": 648,
+    "km_key": 648,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15235,
+    "Longitude": -48.42431
+  },
+  {
+    "Km": 649,
+    "km_key": 649,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15415,
+    "Longitude": -48.43314
+  },
+  {
+    "Km": 650,
+    "km_key": 650,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15601,
+    "Longitude": -48.44194
+  },
+  {
+    "Km": 651,
+    "km_key": 651,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.1579,
+    "Longitude": -48.45091
+  },
+  {
+    "Km": 652,
+    "km_key": 652,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15891,
+    "Longitude": -48.45981
+  },
+  {
+    "Km": 653,
+    "km_key": 653,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.15826,
+    "Longitude": -48.46878
+  },
+  {
+    "Km": 654,
+    "km_key": 654,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.1591,
+    "Longitude": -48.47766
+  },
+  {
+    "Km": 655,
+    "km_key": 655,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16179,
+    "Longitude": -48.48628
+  },
+  {
+    "Km": 656,
+    "km_key": 656,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.16578,
+    "Longitude": -48.49427
+  },
+  {
+    "Km": 657,
+    "km_key": 657,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.17031,
+    "Longitude": -48.50201
+  },
+  {
+    "Km": 658,
+    "km_key": 658,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.17403,
+    "Longitude": -48.5102
+  },
+  {
+    "Km": 659,
+    "km_key": 659,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.18076,
+    "Longitude": -48.51615
+  },
+  {
+    "Km": 660,
+    "km_key": 660,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.18563,
+    "Longitude": -48.52353
+  },
+  {
+    "Km": 661,
+    "km_key": 661,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.18937,
+    "Longitude": -48.53172
+  },
+  {
+    "Km": 662,
+    "km_key": 662,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.19446,
+    "Longitude": -48.53912
+  },
+  {
+    "Km": 663,
+    "km_key": 663,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.19997,
+    "Longitude": -48.54631
+  },
+  {
+    "Km": 664,
+    "km_key": 664,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.2058,
+    "Longitude": -48.55319
+  },
+  {
+    "Km": 665,
+    "km_key": 665,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.21197,
+    "Longitude": -48.55976
+  },
+  {
+    "Km": 666,
+    "km_key": 666,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.21814,
+    "Longitude": -48.56633
+  },
+  {
+    "Km": 667,
+    "km_key": 667,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.22164,
+    "Longitude": -48.57459
+  },
+  {
+    "Km": 668,
+    "km_key": 668,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.22404,
+    "Longitude": -48.58327
+  },
+  {
+    "Km": 669,
+    "km_key": 669,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.22638,
+    "Longitude": -48.59196
+  },
+  {
+    "Km": 670,
+    "km_key": 670,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.22893,
+    "Longitude": -48.60059
+  },
+  {
+    "Km": 671,
+    "km_key": 671,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.23288,
+    "Longitude": -48.60884
+  },
+  {
+    "Km": 672,
+    "km_key": 672,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.23665,
+    "Longitude": -48.61703
+  },
+  {
+    "Km": 673,
+    "km_key": 673,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.24048,
+    "Longitude": -48.62518
+  },
+  {
+    "Km": 674,
+    "km_key": 674,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.24634,
+    "Longitude": -48.63197
+  },
+  {
+    "Km": 675,
+    "km_key": 675,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.24877,
+    "Longitude": -48.64069
+  },
+  {
+    "Km": 676,
+    "km_key": 676,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25032,
+    "Longitude": -48.64956
+  },
+  {
+    "Km": 677,
+    "km_key": 677,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25187,
+    "Longitude": -48.65843
+  },
+  {
+    "Km": 678,
+    "km_key": 678,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.2531,
+    "Longitude": -48.66733
+  },
+  {
+    "Km": 679,
+    "km_key": 679,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25259,
+    "Longitude": -48.67632
+  },
+  {
+    "Km": 680,
+    "km_key": 680,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25207,
+    "Longitude": -48.6853
+  },
+  {
+    "Km": 681,
+    "km_key": 681,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25155,
+    "Longitude": -48.69433
+  },
+  {
+    "Km": 682,
+    "km_key": 682,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25098,
+    "Longitude": -48.70335
+  },
+  {
+    "Km": 683,
+    "km_key": 683,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25046,
+    "Longitude": -48.71234
+  },
+  {
+    "Km": 684,
+    "km_key": 684,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25043,
+    "Longitude": -48.72133
+  },
+  {
+    "Km": 685,
+    "km_key": 685,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25079,
+    "Longitude": -48.7304
+  },
+  {
+    "Km": 686,
+    "km_key": 686,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25114,
+    "Longitude": -48.7394
+  },
+  {
+    "Km": 687,
+    "km_key": 687,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.2515,
+    "Longitude": -48.7484
+  },
+  {
+    "Km": 688,
+    "km_key": 688,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25185,
+    "Longitude": -48.75739
+  },
+  {
+    "Km": 689,
+    "km_key": 689,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25221,
+    "Longitude": -48.76645
+  },
+  {
+    "Km": 690,
+    "km_key": 690,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25248,
+    "Longitude": -48.77545
+  },
+  {
+    "Km": 691,
+    "km_key": 691,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25196,
+    "Longitude": -48.78444
+  },
+  {
+    "Km": 692,
+    "km_key": 692,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25143,
+    "Longitude": -48.79343
+  },
+  {
+    "Km": 693,
+    "km_key": 693,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25091,
+    "Longitude": -48.80241
+  },
+  {
+    "Km": 694,
+    "km_key": 694,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.25039,
+    "Longitude": -48.81149
+  },
+  {
+    "Km": 695,
+    "km_key": 695,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.24986,
+    "Longitude": -48.82046
+  },
+  {
+    "Km": 696,
+    "km_key": 696,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.24934,
+    "Longitude": -48.82945
+  },
+  {
+    "Km": 697,
+    "km_key": 697,
+    "Distrito": "São Pedro da Água Branca - MA",
+    "Latitude": -5.24882,
+    "Longitude": -48.83844
+  },
+  {
+    "Km": 698,
+    "km_key": 698,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.2483,
+    "Longitude": -48.84748
+  },
+  {
+    "Km": 699,
+    "km_key": 699,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24778,
+    "Longitude": -48.85647
+  },
+  {
+    "Km": 700,
+    "km_key": 700,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24725,
+    "Longitude": -48.86552
+  },
+  {
+    "Km": 701,
+    "km_key": 701,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24673,
+    "Longitude": -48.87452
+  },
+  {
+    "Km": 702,
+    "km_key": 702,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24621,
+    "Longitude": -48.88351
+  },
+  {
+    "Km": 703,
+    "km_key": 703,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24569,
+    "Longitude": -48.8925
+  },
+  {
+    "Km": 704,
+    "km_key": 704,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24516,
+    "Longitude": -48.90162
+  },
+  {
+    "Km": 705,
+    "km_key": 705,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24464,
+    "Longitude": -48.9106
+  },
+  {
+    "Km": 706,
+    "km_key": 706,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24412,
+    "Longitude": -48.91959
+  },
+  {
+    "Km": 707,
+    "km_key": 707,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.2436,
+    "Longitude": -48.92858
+  },
+  {
+    "Km": 708,
+    "km_key": 708,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24309,
+    "Longitude": -48.93753
+  },
+  {
+    "Km": 709,
+    "km_key": 709,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24258,
+    "Longitude": -48.94652
+  },
+  {
+    "Km": 710,
+    "km_key": 710,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24308,
+    "Longitude": -48.95545
+  },
+  {
+    "Km": 711,
+    "km_key": 711,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.24674,
+    "Longitude": -48.96368
+  },
+  {
+    "Km": 712,
+    "km_key": 712,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.25051,
+    "Longitude": -48.97186
+  },
+  {
+    "Km": 713,
+    "km_key": 713,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.25432,
+    "Longitude": -48.98015
+  },
+  {
+    "Km": 714,
+    "km_key": 714,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.25809,
+    "Longitude": -48.98834
+  },
+  {
+    "Km": 715,
+    "km_key": 715,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.26185,
+    "Longitude": -48.99652
+  },
+  {
+    "Km": 716,
+    "km_key": 716,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.26562,
+    "Longitude": -49.0047
+  },
+  {
+    "Km": 717,
+    "km_key": 717,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.26941,
+    "Longitude": -49.01294
+  },
+  {
+    "Km": 718,
+    "km_key": 718,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.27318,
+    "Longitude": -49.02114
+  },
+  {
+    "Km": 719,
+    "km_key": 719,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.27693,
+    "Longitude": -49.0293
+  },
+  {
+    "Km": 720,
+    "km_key": 720,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.2807,
+    "Longitude": -49.03748
+  },
+  {
+    "Km": 721,
+    "km_key": 721,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.28446,
+    "Longitude": -49.04566
+  },
+  {
+    "Km": 722,
+    "km_key": 722,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.28827,
+    "Longitude": -49.05393
+  },
+  {
+    "Km": 723,
+    "km_key": 723,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.29215,
+    "Longitude": -49.06205
+  },
+  {
+    "Km": 724,
+    "km_key": 724,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.29874,
+    "Longitude": -49.06807
+  },
+  {
+    "Km": 725,
+    "km_key": 725,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.30626,
+    "Longitude": -49.07312
+  },
+  {
+    "Km": 726,
+    "km_key": 726,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.31374,
+    "Longitude": -49.07816
+  },
+  {
+    "Km": 727,
+    "km_key": 727,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.32123,
+    "Longitude": -49.08318
+  },
+  {
+    "Km": 728,
+    "km_key": 728,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.32953,
+    "Longitude": -49.08573
+  },
+  {
+    "Km": 729,
+    "km_key": 729,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.33751,
+    "Longitude": -49.08157
+  },
+  {
+    "Km": 730,
+    "km_key": 730,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.34542,
+    "Longitude": -49.07708
+  },
+  {
+    "Km": 731,
+    "km_key": 731,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.35361,
+    "Longitude": -49.0735
+  },
+  {
+    "Km": 732,
+    "km_key": 732,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.36206,
+    "Longitude": -49.07612
+  },
+  {
+    "Km": 733,
+    "km_key": 733,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.36996,
+    "Longitude": -49.08047
+  },
+  {
+    "Km": 734,
+    "km_key": 734,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.37787,
+    "Longitude": -49.08483
+  },
+  {
+    "Km": 735,
+    "km_key": 735,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.38504,
+    "Longitude": -49.09032
+  },
+  {
+    "Km": 736,
+    "km_key": 736,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.39225,
+    "Longitude": -49.09569
+  },
+  {
+    "Km": 737,
+    "km_key": 737,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.4002,
+    "Longitude": -49.09997
+  },
+  {
+    "Km": 738,
+    "km_key": 738,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.40814,
+    "Longitude": -49.10424
+  },
+  {
+    "Km": 739,
+    "km_key": 739,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.4163,
+    "Longitude": -49.10862
+  },
+  {
+    "Km": 740,
+    "km_key": 740,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.42344,
+    "Longitude": -49.11395
+  },
+  {
+    "Km": 741,
+    "km_key": 741,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.42923,
+    "Longitude": -49.12086
+  },
+  {
+    "Km": 742,
+    "km_key": 742,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.43502,
+    "Longitude": -49.12777
+  },
+  {
+    "Km": 743,
+    "km_key": 743,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.44075,
+    "Longitude": -49.13467
+  },
+  {
+    "Km": 744,
+    "km_key": 744,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.44602,
+    "Longitude": -49.14192
+  },
+  {
+    "Km": 745,
+    "km_key": 745,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.44776,
+    "Longitude": -49.15075
+  },
+  {
+    "Km": 746,
+    "km_key": 746,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.44935,
+    "Longitude": -49.15961
+  },
+  {
+    "Km": 747,
+    "km_key": 747,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.45096,
+    "Longitude": -49.1685
+  },
+  {
+    "Km": 748,
+    "km_key": 748,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.45342,
+    "Longitude": -49.17709
+  },
+  {
+    "Km": 749,
+    "km_key": 749,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.45996,
+    "Longitude": -49.18326
+  },
+  {
+    "Km": 750,
+    "km_key": 750,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.46675,
+    "Longitude": -49.18921
+  },
+  {
+    "Km": 751,
+    "km_key": 751,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.47361,
+    "Longitude": -49.19523
+  },
+  {
+    "Km": 752,
+    "km_key": 752,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.48138,
+    "Longitude": -49.19922
+  },
+  {
+    "Km": 753,
+    "km_key": 753,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.49038,
+    "Longitude": -49.19921
+  },
+  {
+    "Km": 754,
+    "km_key": 754,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.4983,
+    "Longitude": -49.20343
+  },
+  {
+    "Km": 755,
+    "km_key": 755,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.50608,
+    "Longitude": -49.20819
+  },
+  {
+    "Km": 756,
+    "km_key": 756,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.51421,
+    "Longitude": -49.21195
+  },
+  {
+    "Km": 757,
+    "km_key": 757,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.52322,
+    "Longitude": -49.21208
+  },
+  {
+    "Km": 758,
+    "km_key": 758,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.53229,
+    "Longitude": -49.21189
+  },
+  {
+    "Km": 759,
+    "km_key": 759,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.54128,
+    "Longitude": -49.21219
+  },
+  {
+    "Km": 760,
+    "km_key": 760,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.54796,
+    "Longitude": -49.21788
+  },
+  {
+    "Km": 761,
+    "km_key": 761,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.55391,
+    "Longitude": -49.22457
+  },
+  {
+    "Km": 762,
+    "km_key": 762,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.56075,
+    "Longitude": -49.23046
+  },
+  {
+    "Km": 763,
+    "km_key": 763,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.567,
+    "Longitude": -49.23695
+  },
+  {
+    "Km": 764,
+    "km_key": 764,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.57311,
+    "Longitude": -49.24358
+  },
+  {
+    "Km": 765,
+    "km_key": 765,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.57928,
+    "Longitude": -49.25016
+  },
+  {
+    "Km": 766,
+    "km_key": 766,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.58574,
+    "Longitude": -49.25642
+  },
+  {
+    "Km": 767,
+    "km_key": 767,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.59296,
+    "Longitude": -49.26183
+  },
+  {
+    "Km": 768,
+    "km_key": 768,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.5992,
+    "Longitude": -49.26842
+  },
+  {
+    "Km": 769,
+    "km_key": 769,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.60509,
+    "Longitude": -49.27524
+  },
+  {
+    "Km": 770,
+    "km_key": 770,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.61153,
+    "Longitude": -49.28152
+  },
+  {
+    "Km": 771,
+    "km_key": 771,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.61849,
+    "Longitude": -49.28741
+  },
+  {
+    "Km": 772,
+    "km_key": 772,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.62539,
+    "Longitude": -49.29324
+  },
+  {
+    "Km": 773,
+    "km_key": 773,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.63226,
+    "Longitude": -49.29909
+  },
+  {
+    "Km": 774,
+    "km_key": 774,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.63664,
+    "Longitude": -49.30682
+  },
+  {
+    "Km": 775,
+    "km_key": 775,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.64069,
+    "Longitude": -49.31473
+  },
+  {
+    "Km": 776,
+    "km_key": 776,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.64584,
+    "Longitude": -49.32202
+  },
+  {
+    "Km": 777,
+    "km_key": 777,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.64766,
+    "Longitude": -49.33084
+  },
+  {
+    "Km": 778,
+    "km_key": 778,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.65074,
+    "Longitude": -49.33922
+  },
+  {
+    "Km": 779,
+    "km_key": 779,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.65555,
+    "Longitude": -49.34694
+  },
+  {
+    "Km": 780,
+    "km_key": 780,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.66031,
+    "Longitude": -49.35459
+  },
+  {
+    "Km": 781,
+    "km_key": 781,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.66217,
+    "Longitude": -49.36326
+  },
+  {
+    "Km": 782,
+    "km_key": 782,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.66215,
+    "Longitude": -49.37223
+  },
+  {
+    "Km": 783,
+    "km_key": 783,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.6603,
+    "Longitude": -49.38105
+  },
+  {
+    "Km": 784,
+    "km_key": 784,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.65846,
+    "Longitude": -49.38987
+  },
+  {
+    "Km": 785,
+    "km_key": 785,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.65612,
+    "Longitude": -49.39865
+  },
+  {
+    "Km": 786,
+    "km_key": 786,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.6515,
+    "Longitude": -49.40638
+  },
+  {
+    "Km": 787,
+    "km_key": 787,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.64682,
+    "Longitude": -49.41409
+  },
+  {
+    "Km": 788,
+    "km_key": 788,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.6451,
+    "Longitude": -49.4226
+  },
+  {
+    "Km": 789,
+    "km_key": 789,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.64651,
+    "Longitude": -49.43158
+  },
+  {
+    "Km": 790,
+    "km_key": 790,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.64786,
+    "Longitude": -49.44049
+  },
+  {
+    "Km": 791,
+    "km_key": 791,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.64921,
+    "Longitude": -49.4494
+  },
+  {
+    "Km": 792,
+    "km_key": 792,
+    "Distrito": "Marabá - PA",
+    "Latitude": -5.64755,
+    "Longitude": -49.45812
+  },
+  {
+    "Km": 793,
+    "km_key": 793,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.64453,
+    "Longitude": -49.46666
+  },
+  {
+    "Km": 794,
+    "km_key": 794,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.64471,
+    "Longitude": -49.47526
+  },
+  {
+    "Km": 795,
+    "km_key": 795,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.64989,
+    "Longitude": -49.48265
+  },
+  {
+    "Km": 796,
+    "km_key": 796,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.6551,
+    "Longitude": -49.49006
+  },
+  {
+    "Km": 797,
+    "km_key": 797,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.66029,
+    "Longitude": -49.49744
+  },
+  {
+    "Km": 798,
+    "km_key": 798,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.66635,
+    "Longitude": -49.50396
+  },
+  {
+    "Km": 799,
+    "km_key": 799,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.67461,
+    "Longitude": -49.50753
+  },
+  {
+    "Km": 800,
+    "km_key": 800,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.68024,
+    "Longitude": -49.51427
+  },
+  {
+    "Km": 801,
+    "km_key": 801,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.68463,
+    "Longitude": -49.52215
+  },
+  {
+    "Km": 802,
+    "km_key": 802,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.68901,
+    "Longitude": -49.53002
+  },
+  {
+    "Km": 803,
+    "km_key": 803,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.69069,
+    "Longitude": -49.53876
+  },
+  {
+    "Km": 804,
+    "km_key": 804,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.69069,
+    "Longitude": -49.54807
+  },
+  {
+    "Km": 805,
+    "km_key": 805,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.69036,
+    "Longitude": -49.55691
+  },
+  {
+    "Km": 806,
+    "km_key": 806,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.69295,
+    "Longitude": -49.56553
+  },
+  {
+    "Km": 807,
+    "km_key": 807,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.69351,
+    "Longitude": -49.57446
+  },
+  {
+    "Km": 808,
+    "km_key": 808,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.69311,
+    "Longitude": -49.58351
+  },
+  {
+    "Km": 809,
+    "km_key": 809,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.69722,
+    "Longitude": -49.59121
+  },
+  {
+    "Km": 810,
+    "km_key": 810,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.70507,
+    "Longitude": -49.59566
+  },
+  {
+    "Km": 811,
+    "km_key": 811,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.71332,
+    "Longitude": -49.59932
+  },
+  {
+    "Km": 812,
+    "km_key": 812,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.72005,
+    "Longitude": -49.60497
+  },
+  {
+    "Km": 813,
+    "km_key": 813,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.72522,
+    "Longitude": -49.61244
+  },
+  {
+    "Km": 814,
+    "km_key": 814,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.72942,
+    "Longitude": -49.62035
+  },
+  {
+    "Km": 815,
+    "km_key": 815,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.73048,
+    "Longitude": -49.6293
+  },
+  {
+    "Km": 816,
+    "km_key": 816,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.73276,
+    "Longitude": -49.6379
+  },
+  {
+    "Km": 817,
+    "km_key": 817,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.73587,
+    "Longitude": -49.64628
+  },
+  {
+    "Km": 818,
+    "km_key": 818,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.73789,
+    "Longitude": -49.65506
+  },
+  {
+    "Km": 819,
+    "km_key": 819,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.7395,
+    "Longitude": -49.66387
+  },
+  {
+    "Km": 820,
+    "km_key": 820,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.74276,
+    "Longitude": -49.67232
+  },
+  {
+    "Km": 821,
+    "km_key": 821,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.74733,
+    "Longitude": -49.68008
+  },
+  {
+    "Km": 822,
+    "km_key": 822,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.75439,
+    "Longitude": -49.68557
+  },
+  {
+    "Km": 823,
+    "km_key": 823,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.76216,
+    "Longitude": -49.69015
+  },
+  {
+    "Km": 823,
+    "km_key": 823,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.76224,
+    "Longitude": -49.6902
+  },
+  {
+    "Km": 824,
+    "km_key": 824,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.76715,
+    "Longitude": -49.69743
+  },
+  {
+    "Km": 825,
+    "km_key": 825,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.76494,
+    "Longitude": -49.70594
+  },
+  {
+    "Km": 826,
+    "km_key": 826,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.76048,
+    "Longitude": -49.71377
+  },
+  {
+    "Km": 827,
+    "km_key": 827,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.75927,
+    "Longitude": -49.72242
+  },
+  {
+    "Km": 828,
+    "km_key": 828,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.76485,
+    "Longitude": -49.72918
+  },
+  {
+    "Km": 829,
+    "km_key": 829,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.77299,
+    "Longitude": -49.73307
+  },
+  {
+    "Km": 830,
+    "km_key": 830,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.77899,
+    "Longitude": -49.73937
+  },
+  {
+    "Km": 831,
+    "km_key": 831,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.78152,
+    "Longitude": -49.74816
+  },
+  {
+    "Km": 832,
+    "km_key": 832,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.78468,
+    "Longitude": -49.75653
+  },
+  {
+    "Km": 833,
+    "km_key": 833,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.79178,
+    "Longitude": -49.76207
+  },
+  {
+    "Km": 834,
+    "km_key": 834,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.799,
+    "Longitude": -49.76746
+  },
+  {
+    "Km": 835,
+    "km_key": 835,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.8062,
+    "Longitude": -49.77284
+  },
+  {
+    "Km": 836,
+    "km_key": 836,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.81439,
+    "Longitude": -49.77644
+  },
+  {
+    "Km": 837,
+    "km_key": 837,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.82294,
+    "Longitude": -49.77927
+  },
+  {
+    "Km": 838,
+    "km_key": 838,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.82963,
+    "Longitude": -49.78529
+  },
+  {
+    "Km": 839,
+    "km_key": 839,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.83644,
+    "Longitude": -49.79117
+  },
+  {
+    "Km": 840,
+    "km_key": 840,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.8439,
+    "Longitude": -49.79625
+  },
+  {
+    "Km": 841,
+    "km_key": 841,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.85119,
+    "Longitude": -49.80121
+  },
+  {
+    "Km": 842,
+    "km_key": 842,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.85957,
+    "Longitude": -49.80508
+  },
+  {
+    "Km": 843,
+    "km_key": 843,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.86858,
+    "Longitude": -49.8057
+  },
+  {
+    "Km": 844,
+    "km_key": 844,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.87738,
+    "Longitude": -49.80732
+  },
+  {
+    "Km": 845,
+    "km_key": 845,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.88534,
+    "Longitude": -49.81158
+  },
+  {
+    "Km": 846,
+    "km_key": 846,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.89265,
+    "Longitude": -49.81673
+  },
+  {
+    "Km": 847,
+    "km_key": 847,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.8973,
+    "Longitude": -49.82444
+  },
+  {
+    "Km": 848,
+    "km_key": 848,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.90161,
+    "Longitude": -49.83236
+  },
+  {
+    "Km": 849,
+    "km_key": 849,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.90732,
+    "Longitude": -49.83907
+  },
+  {
+    "Km": 850,
+    "km_key": 850,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.9153,
+    "Longitude": -49.84368
+  },
+  {
+    "Km": 851,
+    "km_key": 851,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.92312,
+    "Longitude": -49.84819
+  },
+  {
+    "Km": 852,
+    "km_key": 852,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.9283,
+    "Longitude": -49.85525
+  },
+  {
+    "Km": 853,
+    "km_key": 853,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.93093,
+    "Longitude": -49.86392
+  },
+  {
+    "Km": 854,
+    "km_key": 854,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.93636,
+    "Longitude": -49.8706
+  },
+  {
+    "Km": 855,
+    "km_key": 855,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.94508,
+    "Longitude": -49.87262
+  },
+  {
+    "Km": 856,
+    "km_key": 856,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.95262,
+    "Longitude": -49.87738
+  },
+  {
+    "Km": 857,
+    "km_key": 857,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.96129,
+    "Longitude": -49.8754
+  },
+  {
+    "Km": 858,
+    "km_key": 858,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.96979,
+    "Longitude": -49.87643
+  },
+  {
+    "Km": 859,
+    "km_key": 859,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.97614,
+    "Longitude": -49.88299
+  },
+  {
+    "Km": 860,
+    "km_key": 860,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.98077,
+    "Longitude": -49.89067
+  },
+  {
+    "Km": 861,
+    "km_key": 861,
+    "Distrito": "Parauapebas - PA",
+    "Latitude": -5.98923,
+    "Longitude": -49.89325
+  },
+  {
+    "Km": 862,
+    "km_key": 862,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.9964,
+    "Longitude": -49.89793
+  },
+  {
+    "Km": 863,
+    "km_key": 863,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99799,
+    "Longitude": -49.90685
+  },
+  {
+    "Km": 864,
+    "km_key": 864,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99923,
+    "Longitude": -49.91579
+  },
+  {
+    "Km": 865,
+    "km_key": 865,
+    "Distrito": "Carajás - PA",
+    "Latitude": -6.00051,
+    "Longitude": -49.92471
+  },
+  {
+    "Km": 866,
+    "km_key": 866,
+    "Distrito": "Carajás - PA",
+    "Latitude": -6.00085,
+    "Longitude": -49.93371
+  },
+  {
+    "Km": 867,
+    "km_key": 867,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.9989,
+    "Longitude": -49.94238
+  },
+  {
+    "Km": 868,
+    "km_key": 868,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99411,
+    "Longitude": -49.94992
+  },
+  {
+    "Km": 869,
+    "km_key": 869,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99738,
+    "Longitude": -49.95797
+  },
+  {
+    "Km": 870,
+    "km_key": 870,
+    "Distrito": "Carajás - PA",
+    "Latitude": -6.0028,
+    "Longitude": -49.96475
+  },
+  {
+    "Km": 871,
+    "km_key": 871,
+    "Distrito": "Carajás - PA",
+    "Latitude": -6.00316,
+    "Longitude": -49.97357
+  },
+  {
+    "Km": 872,
+    "km_key": 872,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99927,
+    "Longitude": -49.9817
+  },
+  {
+    "Km": 873,
+    "km_key": 873,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99556,
+    "Longitude": -49.9899
+  },
+  {
+    "Km": 874,
+    "km_key": 874,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99419,
+    "Longitude": -49.99881
+  },
+  {
+    "Km": 875,
+    "km_key": 875,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.993,
+    "Longitude": -50.00774
+  },
+  {
+    "Km": 876,
+    "km_key": 876,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99184,
+    "Longitude": -50.01675
+  },
+  {
+    "Km": 877,
+    "km_key": 877,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99204,
+    "Longitude": -50.02567
+  },
+  {
+    "Km": 878,
+    "km_key": 878,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99417,
+    "Longitude": -50.03443
+  },
+  {
+    "Km": 879,
+    "km_key": 879,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99511,
+    "Longitude": -50.04333
+  },
+  {
+    "Km": 880,
+    "km_key": 880,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99389,
+    "Longitude": -50.05223
+  },
+  {
+    "Km": 881,
+    "km_key": 881,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.98873,
+    "Longitude": -50.05971
+  },
+  {
+    "Km": 882,
+    "km_key": 882,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.98342,
+    "Longitude": -50.06704
+  },
+  {
+    "Km": 883,
+    "km_key": 883,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.98225,
+    "Longitude": -50.07583
+  },
+  {
+    "Km": 884,
+    "km_key": 884,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.98255,
+    "Longitude": -50.08484
+  },
+  {
+    "Km": 885,
+    "km_key": 885,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.98742,
+    "Longitude": -50.09192
+  },
+  {
+    "Km": 886,
+    "km_key": 886,
+    "Distrito": "Carajás - PA",
+    "Latitude": -5.99531,
+    "Longitude": -50.09637
+  },
+  {
+    "Km": 887,
+    "km_key": 887,
+    "Distrito": "Carajás - PA",
+    "Latitude": -6.00086,
+    "Longitude": -50.10331
+  },
+  {
+    "Km": 888,
+    "km_key": 888,
+    "Distrito": "Carajás - PA",
+    "Latitude": -6.00552,
+    "Longitude": -50.11103
+  },
+  {
+    "Km": 889,
+    "km_key": 889,
+    "Distrito": "Carajás - PA",
+    "Latitude": -6.0102,
+    "Longitude": -50.1188
+  }
+]

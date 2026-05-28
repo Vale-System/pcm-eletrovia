@@ -9,6 +9,10 @@
       forecastDays: 16,
       mode: "district",
       cacheMinutes: 60,
+      timezone: "America/Fortaleza",
+      visaoPadrao: "mensal",
+      periodosPadrao: ["manha", "tarde"],
+      origensDataPadrao: ["Data replanejada", "Data planejada", "Vencimento"],
     },
 
     distritos: [

@@ -586,6 +586,126 @@
 
   let realWeatherCache = null;
   let realWeatherPromise = null;
+  let realWeatherCacheKey = "";
+
+  function currentDateTextLocal(timezone = "America/Fortaleza") {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+
+    const get = (type) => parts.find((part) => part.type === type)?.value || "";
+    return `${get("year")}-${get("month")}-${get("day")}`;
+  }
+
+  function currentMonthText() {
+    return currentDateTextLocal("America/Fortaleza").slice(0, 7);
+  }
+
+  function daysOfMonth(monthText) {
+    const [year, month] = monthText.split("-").map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    const days = [];
+
+    for (let day = 1; day <= lastDay; day++) {
+      days.push(
+        `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
+          2,
+          "0",
+        )}`,
+      );
+    }
+
+    return days;
+  }
+
+  function dateToNoon(dateText) {
+    return new Date(`${dateText}T12:00:00`);
+  }
+
+  function weekRangeFromDate(dateText) {
+    const base = dateToNoon(dateText || currentDateTextLocal());
+    const day = base.getDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+
+    const start = new Date(base);
+    start.setDate(base.getDate() + diffToMonday);
+
+    const days = [];
+
+    for (let index = 0; index < 7; index++) {
+      const current = new Date(start);
+      current.setDate(start.getDate() + index);
+      days.push(current.toISOString().slice(0, 10));
+    }
+
+    return days;
+  }
+
+  function sameMonth(dateText, monthText) {
+    return String(dateText || "").slice(0, 7) === monthText;
+  }
+
+  function getClimateViewMode(container, config) {
+    return (
+      container.dataset.viewMode || config.weatherApi?.visaoPadrao || "mensal"
+    );
+  }
+
+  function getPeriodFilter(container) {
+    return container.dataset.periodo || "todos";
+  }
+
+  function periodKeysFromFilter(value) {
+    if (value === "manha") return ["manha"];
+    if (value === "tarde") return ["tarde"];
+    return ["manha", "tarde"];
+  }
+
+  function periodLabelFromFilter(value) {
+    if (value === "manha") return "Manhã";
+    if (value === "tarde") return "Tarde";
+    return "Integral";
+  }
+
+  function getDateOriginFilter(container) {
+    return container.dataset.origemData || "todos";
+  }
+
+  function originLabel(value) {
+    if (value === "Data replanejada") return "Replanejamento";
+    if (value === "Data planejada") return "Planejamento";
+    if (value === "Vencimento") return "Vencimento";
+    return value || "-";
+  }
+
+  function rowMatchesDateOrigin(row, selectedOrigin) {
+    if (!selectedOrigin || selectedOrigin === "todos") return true;
+    return row.origemDataProgramada === selectedOrigin;
+  }
+
+  function dateMatchesCurrentView(
+    dateText,
+    monthText,
+    viewMode,
+    weekReference,
+  ) {
+    if (viewMode === "semanal") {
+      return weekRangeFromDate(weekReference).includes(dateText);
+    }
+
+    return sameMonth(dateText, monthText);
+  }
+
+  function riskClassFromLevel(level, fallback = "sem-dados") {
+    if (level >= 4) return "critico";
+    if (level === 3) return "alto";
+    if (level === 2) return "atencao";
+    if (level === 1) return "favoravel";
+    return fallback || "sem-dados";
+  }
 
   function representativePointFromDistrict(distrito, config) {
     if (!distrito) return null;
@@ -615,7 +735,6 @@
     }
 
     const coordenadas = config.coordenadasKm || [];
-
     if (!coordenadas.length) return null;
 
     let kmReferencia = null;
@@ -640,7 +759,6 @@
 
     for (const item of coordenadas) {
       const itemKm = Number(item.km);
-
       if (!Number.isFinite(itemKm)) continue;
 
       const distance = Math.abs(itemKm - kmReferencia);
@@ -675,7 +793,6 @@
       if (isRfsp) return;
 
       const point = representativePointFromDistrict(distrito, config);
-
       if (!point) return;
 
       points.push(point);
@@ -685,10 +802,7 @@
 
     points.forEach((point) => {
       const key = point.id || `${point.latitude},${point.longitude}`;
-
-      if (!unique.has(key)) {
-        unique.set(key, point);
-      }
+      if (!unique.has(key)) unique.set(key, point);
     });
 
     return Array.from(unique.values());
@@ -696,37 +810,75 @@
 
   function forecastKeyForDistrict(distrito) {
     if (!distrito) return "";
-
     return String(distrito.codigo || distrito.sede || distrito.nome || "");
+  }
+
+  function normalizePeriodWeather(period) {
+    if (!period) {
+      return {
+        label: "-",
+        precipitationMm: 0,
+        precipitationProbability: 0,
+        windGustKmh: 0,
+        precipitationHours: 0,
+        riscoLabel: "Sem dados",
+        riscoBase: "sem-dados",
+        nivel: 0,
+        icone: "☁️",
+      };
+    }
+
+    return {
+      label: period.label || "-",
+      precipitationMm: Number(period.precipitationMm || 0),
+      precipitationProbability: Number(period.precipitationProbability || 0),
+      windGustKmh: Number(period.windGustKmh || 0),
+      precipitationHours: Number(period.precipitationHours || 0),
+      riscoLabel: period.riscoLabel || "Sem dados",
+      riscoBase: period.riscoBase || "sem-dados",
+      nivel: Number(period.nivel || 0),
+      icone: period.icone || "☁️",
+    };
   }
 
   function normalizeRealWeatherResponse(data) {
     const map = new Map();
 
-    if (!data?.ok || !Array.isArray(data.results)) {
-      return map;
-    }
+    if (!data?.ok || !Array.isArray(data.results)) return map;
 
     data.results.forEach((result) => {
       const point = result.point || {};
       const key = String(point.id || point.nome || point.distrito || "");
-
       if (!key) return;
 
       const dailyMap = new Map();
 
       (result.daily || []).forEach((day) => {
         if (!day.date) return;
+
+        const periodos = {
+          manha: normalizePeriodWeather(day.periodos?.manha),
+          tarde: normalizePeriodWeather(day.periodos?.tarde),
+        };
+
         dailyMap.set(day.date, {
           riscoBase: day.riscoBase || "sem-dados",
           riscoLabel: day.riscoLabel || "Sem dados",
+          nivel: Number(day.nivel || 0),
+
           chuvaMm: Number(day.precipitationMm || 0),
           probabilidade: Number(day.precipitationProbability || 0),
           ventoRajadaKmh: Number(day.windGustKmh || 0),
           horasChuva: Number(day.precipitationHours || 0),
+
           weatherCode: day.weatherCode,
           icone: day.icone || "☁️",
           fonte: "api",
+
+          periodoCritico: day.periodoCritico || "",
+          periodos,
+          periodosConsiderados: day.periodosConsiderados || data.periodos || [],
+          timezone: data.timezone || "America/Fortaleza",
         });
       });
 
@@ -736,22 +888,42 @@
     return map;
   }
 
-  async function loadRealWeatherForecast(config) {
+  async function loadRealWeatherForecast(config, selectedPeriodKeys = []) {
     const apiConfig = config.weatherApi || {};
 
     if (!apiConfig.enabled || !apiConfig.workerUrl) {
       return new Map();
     }
 
-    if (realWeatherCache) return realWeatherCache;
-    if (realWeatherPromise) return realWeatherPromise;
+    const periodos =
+      Array.isArray(selectedPeriodKeys) && selectedPeriodKeys.length
+        ? selectedPeriodKeys
+        : apiConfig.periodosPadrao || ["manha", "tarde"];
+
+    const cacheKey = [
+      apiConfig.workerUrl,
+      apiConfig.forecastDays || 16,
+      periodos.join("|"),
+      apiConfig.timezone || "America/Fortaleza",
+    ].join("::");
+
+    if (realWeatherCache && realWeatherCacheKey === cacheKey) {
+      return realWeatherCache;
+    }
+
+    if (realWeatherPromise && realWeatherCacheKey === cacheKey) {
+      return realWeatherPromise;
+    }
 
     const points = buildWeatherApiPoints(config);
 
     if (!points.length) {
       realWeatherCache = new Map();
+      realWeatherCacheKey = cacheKey;
       return realWeatherCache;
     }
+
+    realWeatherCacheKey = cacheKey;
 
     realWeatherPromise = fetch(apiConfig.workerUrl, {
       method: "POST",
@@ -762,6 +934,7 @@
       },
       body: JSON.stringify({
         forecastDays: apiConfig.forecastDays || 16,
+        periodos,
         points,
       }),
     })
@@ -783,6 +956,9 @@
         );
         realWeatherCache = new Map();
         return realWeatherCache;
+      })
+      .finally(() => {
+        realWeatherPromise = null;
       });
 
     return realWeatherPromise;
@@ -790,20 +966,10 @@
 
   function realWeatherFor(dateText, distrito, realForecastMap) {
     const key = forecastKeyForDistrict(distrito);
-
     if (!key || !realForecastMap?.has(key)) return null;
 
     const dailyMap = realForecastMap.get(key);
-
     return dailyMap.get(dateText) || null;
-  }
-
-  function getWeather(dateText, distrito, coordenada, realForecastMap) {
-    const real = realWeatherFor(dateText, distrito, realForecastMap);
-
-    if (real) return real;
-
-    return pseudoWeather(dateText, distrito, coordenada);
   }
 
   function pseudoWeather(dateText, distrito, coordenada) {
@@ -811,14 +977,19 @@
       return {
         riscoBase: "sem-dados",
         riscoLabel: "Sem dados",
+        nivel: 0,
         chuvaMm: 0,
         probabilidade: 0,
+        ventoRajadaKmh: 0,
         icone: "☁️",
+        periodos: {
+          manha: normalizePeriodWeather(null),
+          tarde: normalizePeriodWeather(null),
+        },
       };
     }
 
     const seedText = `${dateText}-${distrito.codigo}-${coordenada?.km ?? "D"}`;
-
     let seed = 0;
 
     for (let i = 0; i < seedText.length; i++) {
@@ -828,43 +999,80 @@
     const chance = seed % 100;
     const chuvaMm = Number(((seed % 35) + (chance > 70 ? 8 : 0)).toFixed(1));
 
+    let base = {
+      riscoBase: "favoravel",
+      riscoLabel: "Favorável",
+      nivel: 1,
+      chuvaMm,
+      probabilidade: Math.max(5, chance),
+      ventoRajadaKmh: 0,
+      icone: "☀️",
+    };
+
     if (chuvaMm >= 25 || chance >= 88) {
-      return {
+      base = {
         riscoBase: "critico",
         riscoLabel: "Crítico",
+        nivel: 4,
         chuvaMm,
         probabilidade: Math.min(95, chance),
+        ventoRajadaKmh: 0,
         icone: "⛈️",
       };
-    }
-
-    if (chuvaMm >= 12 || chance >= 70) {
-      return {
+    } else if (chuvaMm >= 12 || chance >= 70) {
+      base = {
         riscoBase: "alto",
         riscoLabel: "Alto",
+        nivel: 3,
         chuvaMm,
         probabilidade: Math.min(90, chance),
+        ventoRajadaKmh: 0,
         icone: "🌧️",
       };
-    }
-
-    if (chuvaMm >= 4 || chance >= 45) {
-      return {
+    } else if (chuvaMm >= 4 || chance >= 45) {
+      base = {
         riscoBase: "atencao",
         riscoLabel: "Atenção",
+        nivel: 2,
         chuvaMm,
         probabilidade: Math.min(80, chance),
+        ventoRajadaKmh: 0,
         icone: "🌦️",
       };
     }
 
     return {
-      riscoBase: "favoravel",
-      riscoLabel: "Favorável",
-      chuvaMm,
-      probabilidade: Math.max(5, chance),
-      icone: "☀️",
+      ...base,
+      periodos: {
+        manha: normalizePeriodWeather({
+          label: "Manhã",
+          precipitationMm: chuvaMm / 2,
+          precipitationProbability: base.probabilidade,
+          windGustKmh: 0,
+          riscoLabel: base.riscoLabel,
+          riscoBase: base.riscoBase,
+          nivel: base.nivel,
+          icone: base.icone,
+        }),
+        tarde: normalizePeriodWeather({
+          label: "Tarde",
+          precipitationMm: chuvaMm / 2,
+          precipitationProbability: base.probabilidade,
+          windGustKmh: 0,
+          riscoLabel: base.riscoLabel,
+          riscoBase: base.riscoBase,
+          nivel: base.nivel,
+          icone: base.icone,
+        }),
+      },
     };
+  }
+
+  function getWeather(dateText, distrito, coordenada, realForecastMap) {
+    const real = realWeatherFor(dateText, distrito, realForecastMap);
+    if (real) return real;
+
+    return pseudoWeather(dateText, distrito, coordenada);
   }
 
   function calculateRisk(demanda, clima, sensibilidade) {
@@ -947,29 +1155,58 @@
       .filter((row) => row && row.dataProgramada);
   }
 
-  function currentMonthText() {
-    return new Date().toISOString().slice(0, 7);
+  function tooltipPeriodLines(weather) {
+    const manha = weather?.periodos?.manha || {};
+    const tarde = weather?.periodos?.tarde || {};
+
+    return [
+      `Prob. Chuva AM: ${Number(manha.precipitationProbability || 0).toFixed(0)}%`,
+      `Prob. Chuva PM: ${Number(tarde.precipitationProbability || 0).toFixed(0)}%`,
+      `Chuva AM: ${Number(manha.precipitationMm || 0).toFixed(1)} mm`,
+      `Chuva PM: ${Number(tarde.precipitationMm || 0).toFixed(1)} mm`,
+    ];
   }
 
-  function daysOfMonth(monthText) {
-    const [year, month] = monthText.split("-").map(Number);
-    const lastDay = new Date(year, month, 0).getDate();
-    const days = [];
+  function climateTooltip(date, weather, items) {
+    const lines = [
+      `Data: ${formatDatePt(date)}`,
+      `Risco: ${weather?.riscoLabel || "Sem dados"}`,
+      ...tooltipPeriodLines(weather),
+      `Chuva total: ${Number(weather?.chuvaMm || 0).toFixed(1)} mm`,
+      `Rajada vento: ${Number(weather?.ventoRajadaKmh || 0).toFixed(0)} km/h`,
+      `Atividades: ${items.length}`,
+    ];
 
-    for (let day = 1; day <= lastDay; day++) {
-      days.push(
-        `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
-          2,
-          "0",
-        )}`,
-      );
+    if (items.length) {
+      lines.push("");
+      items.slice(0, 8).forEach((item, index) => {
+        lines.push(
+          `${index + 1}. ${item.demanda.descricao || "Sem descrição"}`,
+        );
+      });
+
+      if (items.length > 8) {
+        lines.push(`+ ${items.length - 8} atividade(s)`);
+      }
     }
 
-    return days;
+    return lines.join("\n");
   }
 
-  function renderCalendar(monthText, distrito, rows, realForecastMap) {
-    const days = daysOfMonth(monthText);
+  function daysForCalendar(monthText, viewMode, weekReference) {
+    if (viewMode === "semanal") return weekRangeFromDate(weekReference);
+    return daysOfMonth(monthText);
+  }
+
+  function renderCalendar({
+    monthText,
+    viewMode,
+    weekReference,
+    distrito,
+    rows,
+    realForecastMap,
+  }) {
+    const days = daysForCalendar(monthText, viewMode, weekReference);
     const byDate = new Map();
 
     rows.forEach((row) => {
@@ -978,40 +1215,55 @@
     });
 
     return `
-    <div class="climate-calendar-grid">
+    <div class="climate-calendar-grid ${viewMode === "semanal" ? "is-weekly" : ""}">
       ${days
         .map((date) => {
           const items = byDate.get(date) || [];
 
-          const weather = distrito
-            ? getWeather(date, distrito, null, realForecastMap)
-            : {
-                riscoBase: "sem-dados",
-                riscoLabel: "Sem dados",
-                icone: "☁️",
-              };
+          const weather =
+            items[0]?.clima ||
+            (distrito
+              ? getWeather(date, distrito, null, realForecastMap)
+              : {
+                  riscoBase: "sem-dados",
+                  riscoLabel: "Sem dados",
+                  nivel: 0,
+                  chuvaMm: 0,
+                  probabilidade: 0,
+                  ventoRajadaKmh: 0,
+                  icone: "☁️",
+                  periodos: {
+                    manha: normalizePeriodWeather(null),
+                    tarde: normalizePeriodWeather(null),
+                  },
+                });
 
           const highestRisk = items.reduce(
             (max, item) => Math.max(max, item.risco.nivel || 0),
-            0,
+            Number(weather?.nivel || 0),
           );
 
-          const riskClass =
-            highestRisk >= 4
-              ? "critico"
-              : highestRisk === 3
-                ? "alto"
-                : highestRisk === 2
-                  ? "atencao"
-                  : weather.riscoBase;
+          const riskClass = riskClassFromLevel(
+            highestRisk,
+            weather?.riscoBase || "sem-dados",
+          );
 
           return `
-            <div class="climate-day climate-risk-${riskClass}">
+            <div
+              class="climate-day climate-risk-${riskClass}"
+              title="${escapeHtml(climateTooltip(date, weather, items))}"
+            >
               <div class="climate-day-top">
                 <strong>${date.slice(-2)}</strong>
-                <span>${items[0]?.clima?.icone || weather.icone}</span>
+                <span>${items[0]?.clima?.icone || weather.icone || "☁️"}</span>
               </div>
+
               <small>${items.length ? `${items.length} ativ.` : weather.riscoLabel}</small>
+
+              <div class="climate-day-metrics">
+                <b>${Number(weather.probabilidade || 0).toFixed(0)}%</b>
+                <em>${Number(weather.chuvaMm || 0).toFixed(1)} mm</em>
+              </div>
             </div>
           `;
         })
@@ -1020,27 +1272,37 @@
   `;
   }
 
-  function sameMonth(dateText, monthText) {
-    return String(dateText || "").slice(0, 7) === monthText;
-  }
-
   async function render({ container, demandas, config }) {
     container.innerHTML = `
-      <div class="climate-card">
-        <div class="climate-empty">
-          Carregando regras climáticas, distritos e coordenadas...
-        </div>
+    <div class="climate-card">
+      <div class="climate-empty">
+        Carregando regras climáticas, distritos, coordenadas e previsão...
       </div>
-    `;
+    </div>
+  `;
 
     const externalData = await loadExternalClimateData(config);
     const effectiveConfig = buildEffectiveConfig(config || {}, externalData);
 
-    const realForecastMap = await loadRealWeatherForecast(effectiveConfig);
+    const month = container.dataset.month || currentMonthText();
+    const viewMode = getClimateViewMode(container, effectiveConfig);
+    const weekReference =
+      container.dataset.weekReference ||
+      currentDateTextLocal(
+        effectiveConfig.weatherApi?.timezone || "America/Fortaleza",
+      );
+
+    const periodoFiltro = getPeriodFilter(container);
+    const selectedPeriodKeys = periodKeysFromFilter(periodoFiltro);
+    const selectedDateOrigin = getDateOriginFilter(container);
+
+    const realForecastMap = await loadRealWeatherForecast(
+      effectiveConfig,
+      selectedPeriodKeys,
+    );
 
     const rows = buildClimateRows(demandas, effectiveConfig, realForecastMap);
 
-    const month = container.dataset.month || currentMonthText();
     const selectedDistrictCode = container.dataset.district || "__ALL__";
 
     const selectedDistrict =
@@ -1050,11 +1312,18 @@
             (item) => item.codigo === selectedDistrictCode,
           ) || null;
 
-    const monthRows = rows.filter((row) =>
-      sameMonth(row.dataProgramada, month),
-    );
+    const scopedDateRows = rows.filter((row) => {
+      if (!rowMatchesDateOrigin(row, selectedDateOrigin)) return false;
 
-    const filteredRows = monthRows.filter((row) => {
+      return dateMatchesCurrentView(
+        row.dataProgramada,
+        month,
+        viewMode,
+        weekReference,
+      );
+    });
+
+    const filteredRows = scopedDateRows.filter((row) => {
       if (!selectedDistrict) return true;
       return row.localizacao.distrito?.codigo === selectedDistrict.codigo;
     });
@@ -1062,16 +1331,14 @@
     const riskRows = filteredRows
       .filter((row) => row.risco.nivel >= 2)
       .sort((a, b) => {
-        if (b.risco.nivel !== a.risco.nivel) {
+        if (b.risco.nivel !== a.risco.nivel)
           return b.risco.nivel - a.risco.nivel;
-        }
-
         return String(a.dataProgramada).localeCompare(String(b.dataProgramada));
       });
 
     const criticalRows = riskRows.filter((row) => row.risco.nivel >= 4);
     const highRows = riskRows.filter((row) => row.risco.nivel >= 3);
-    const unidentifiedRows = monthRows.filter(
+    const unidentifiedRows = scopedDateRows.filter(
       (row) => !row.localizacao.distrito,
     );
     const kmExactRows = filteredRows.filter((row) =>
@@ -1079,258 +1346,294 @@
     );
 
     const worstDay = riskRows[0];
+    const periodLabel = periodLabelFromFilter(periodoFiltro);
+    const calendarHeaderDate =
+      viewMode === "semanal"
+        ? `Semana de ${formatDatePt(weekReference)}`
+        : month;
 
     container.innerHTML = `
-      <div class="climate-page">
-        <div class="climate-hero">
-          <div>
-            <span class="climate-eyebrow">Clima & Programação Operacional</span>
-            <h2>Risco Climático da Eletrovia</h2>
-            
-          </div>
-
-          <div class="climate-filters">
-            <label>
-              <span>Distrito</span>
-              <select id="climateDistrict">
-                <option value="__ALL__" ${
-                  selectedDistrictCode === "__ALL__" ? "selected" : ""
-                }>Todos os distritos</option>
-                ${(effectiveConfig.distritos || [])
-                  .map(
-                    (distrito) =>
-                      `<option value="${escapeHtml(distrito.codigo)}" ${
-                        distrito.codigo === selectedDistrict?.codigo
-                          ? "selected"
-                          : ""
-                      }>${escapeHtml(distrito.nome)}</option>`,
-                  )
-                  .join("")}
-              </select>
-            </label>
-
-            <label>
-              <span>Mês</span>
-              <input id="climateMonth" type="month" value="${escapeHtml(month)}" />
-            </label>
-          </div>
+    <div class="climate-page">
+      <div class="climate-hero">
+        <div class="climate-title-area">
+          <span class="climate-eyebrow">Clima & Programação Operacional</span>
+          <h2>Risco Climático da Eletrovia</h2>
         </div>
 
-        <div class="climate-kpis">
-          <article>
-            <span>Total em risco</span>
-            <strong>${riskRows.length}</strong>
-            <small>atenção, alto ou crítico</small>
-          </article>
+        <div class="climate-filters climate-filters-advanced">
+          <label>
+            <span>Distrito</span>
+            <select id="climateDistrict">
+              <option value="__ALL__" ${
+                selectedDistrictCode === "__ALL__" ? "selected" : ""
+              }>Todos os distritos</option>
+              ${(effectiveConfig.distritos || [])
+                .map(
+                  (distrito) =>
+                    `<option value="${escapeHtml(distrito.codigo)}" ${
+                      distrito.codigo === selectedDistrict?.codigo
+                        ? "selected"
+                        : ""
+                    }>${escapeHtml(distrito.nome)}</option>`,
+                )
+                .join("")}
+            </select>
+          </label>
 
-          <article>
-            <span>Críticas</span>
-            <strong>${criticalRows.length}</strong>
-            <small>risco climático crítico</small>
-          </article>
+          <label>
+            <span>Visão</span>
+            <select id="climateViewMode">
+              <option value="mensal" ${viewMode === "mensal" ? "selected" : ""}>Mensal</option>
+              <option value="semanal" ${viewMode === "semanal" ? "selected" : ""}>Semanal</option>
+            </select>
+          </label>
 
-          <article>
-            <span>Com KM/coordenada</span>
-            <strong>${kmExactRows.length}</strong>
-            <small>base JSON, KM ou TU extraído</small>
-          </article>
+          <label>
+            <span>Mês</span>
+            <input id="climateMonth" type="month" value="${escapeHtml(month)}" />
+          </label>
 
-          <article>
-            <span>Sem distrito</span>
-            <strong>${unidentifiedRows.length}</strong>
-            <small>precisam regra de centro/local</small>
-          </article>
-        </div>
+          <label class="${viewMode === "semanal" ? "" : "is-muted-control"}">
+            <span>Semana referência</span>
+            <input id="climateWeekReference" type="date" value="${escapeHtml(weekReference)}" />
+          </label>
 
-        <div class="climate-layout">
-          <section class="climate-card climate-calendar-card">
-            <div class="climate-card-header">
-              <div>
-                <span>Calendário climático</span>
-                <strong>${escapeHtml(selectedDistrict?.nome || "Todos os distritos")}</strong>
-              </div>
-              <small>${escapeHtml(month)}</small>
-            </div>
+          <label>
+            <span>Período</span>
+            <select id="climatePeriodFilter">
+              <option value="todos" ${periodoFiltro === "todos" ? "selected" : ""}>Todos</option>
+              <option value="manha" ${periodoFiltro === "manha" ? "selected" : ""}>Manhã</option>
+              <option value="tarde" ${periodoFiltro === "tarde" ? "selected" : ""}>Tarde</option>
+            </select>
+          </label>
 
-            ${renderCalendar(month, selectedDistrict, filteredRows, realForecastMap)}
-
-            <div class="climate-legend">
-              <span><i class="legend-dot favoravel"></i>Favorável</span>
-              <span><i class="legend-dot atencao"></i>Atenção</span>
-              <span><i class="legend-dot alto"></i>Alto</span>
-              <span><i class="legend-dot critico"></i>Crítico</span>
-            </div>
-          </section>
-
-          <section class="climate-card climate-table-card">
-            <div class="climate-card-header climate-danger-header">
-              <div>
-                <span>Atividades programadas em dias de risco</span>
-                <strong>${riskRows.length} ocorrência(s)</strong>
-              </div>
-            </div>
-
-            <div class="climate-risk-table-wrap">
-              <table class="climate-risk-table">
-                <thead>
-                  <tr>
-                    <th>Data</th>
-                    <th>Risco</th>
-                    <th>Atividade / Descrição</th>
-                    <th>Distrito</th>
-                    <th>KM / Coordenada</th>
-                    <th>Vínculo</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  ${
-                    riskRows
-                      .slice(0, 100)
-                      .map((row) => {
-                        const demanda = row.demanda;
-                        const coord = row.localizacao.coordenada;
-
-                        const kmText = Number.isFinite(row.localizacao.km)
-                          ? Number(row.localizacao.km)
-                              .toFixed(3)
-                              .replace(".000", "")
-                          : "-";
-
-                        const coordText =
-                          coord?.latitude && coord?.longitude
-                            ? `${Number(coord.latitude).toFixed(5)}, ${Number(
-                                coord.longitude,
-                              ).toFixed(5)}`
-                            : "Sem coordenada";
-
-                        return `
-                          <tr>
-                            <td>
-                              <strong>${formatDatePt(row.dataProgramada)}</strong>
-                              <small>${escapeHtml(row.origemDataProgramada)}</small>
-                              <small>${escapeHtml(row.clima.icone)} ${
-                                row.clima.chuvaMm
-                              } mm • ${row.clima.probabilidade}%</small>
-                            </td>
-
-                            <td>
-                              <span class="climate-risk-pill climate-risk-${
-                                row.risco.classe
-                              }">
-                                ${escapeHtml(row.risco.label)}
-                              </span>
-                            </td>
-
-                            <td>
-                              <strong>${escapeHtml(demanda.ordem || demanda.id || "-")}</strong>
-                              <small>${escapeHtml(demanda.descricao || "-")}</small>
-                            </td>
-
-                            <td>
-                              <strong>${escapeHtml(
-                                row.localizacao.distrito?.nome ||
-                                  "Não identificado",
-                              )}</strong>
-                              <small>${escapeHtml(row.localizacao.distrito?.ga || "")}</small>
-                            </td>
-
-                            <td>
-                              <strong>${escapeHtml(kmText)}</strong>
-                              <small>${escapeHtml(coordText)}</small>
-                            </td>
-
-                            <td>${escapeHtml(row.localizacao.tipoVinculo)}</td>
-                          </tr>
-                        `;
-                      })
-                      .join("") ||
-                    `
-                      <tr>
-                        <td colspan="6">
-                          <div class="climate-empty">
-                            Nenhuma atividade em risco para o filtro selecionado.
-                          </div>
-                        </td>
-                      </tr>
-                    `
-                  }
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-
-        <div class="climate-bottom-grid">
-          <section class="climate-card climate-summary-card">
-            <div class="climate-card-header">
-              <div>
-                <span>Resumo executivo</span>
-                <strong>${riskRows.length} atividades em atenção climática</strong>
-              </div>
-            </div>
-
-            <div class="climate-summary-content">
-              <div>
-                <span class="climate-big-number">${riskRows.length}</span>
-                <small>Total de atividades com risco climático</small>
-              </div>
-
-              <ul>
-                <li><strong>${criticalRows.length}</strong> em nível crítico</li>
-                <li><strong>${highRows.length}</strong> em alto/crítico</li>
-                <li><strong>${kmExactRows.length}</strong> com KM/coordenada</li>
-                <li><strong>${unidentifiedRows.length}</strong> sem distrito identificado</li>
-              </ul>
-            </div>
-          </section>
-
-          <section class="climate-card climate-attention-card">
-            <div class="climate-alert-icon">!</div>
-
-            <div>
-              <span>Maior ponto de atenção</span>
-
-              <strong>
-                ${
-                  worstDay
-                    ? `${formatDatePt(worstDay.dataProgramada)} — ${
-                        worstDay.risco.label
-                      }`
-                    : "Sem risco relevante"
-                }
-              </strong>
-
-              <p>
-                ${
-                  worstDay
-                    ? `Atividade ${escapeHtml(
-                        worstDay.demanda.ordem || worstDay.demanda.id,
-                      )} em ${escapeHtml(
-                        worstDay.localizacao.distrito?.nome ||
-                          "distrito não identificado",
-                      )}.`
-                    : "Nenhuma atividade programada com risco climático alto ou crítico neste filtro."
-                }
-              </p>
-            </div>
-          </section>
-
-          <section class="climate-card climate-recommendation-card">
-            <div class="climate-shield">✓</div>
-
-            <div>
-              <span>Recomendação</span>
-              <strong>Reavaliar programação em dias de risco alto/crítico</strong>
-              <p>
-                Priorizar atividades críticas, externas, de trilho, TLS,
-                esmerilhamento e intervenções sensíveis à chuva.
-              </p>
-            </div>
-          </section>
+          <label>
+            <span>Status da data</span>
+            <select id="climateDateOriginFilter">
+              <option value="todos" ${selectedDateOrigin === "todos" ? "selected" : ""}>Todos</option>
+              <option value="Data planejada" ${selectedDateOrigin === "Data planejada" ? "selected" : ""}>Planejamento</option>
+              <option value="Data replanejada" ${selectedDateOrigin === "Data replanejada" ? "selected" : ""}>Replanejamento</option>
+              <option value="Vencimento" ${selectedDateOrigin === "Vencimento" ? "selected" : ""}>Vencimento</option>
+            </select>
+          </label>
         </div>
       </div>
-    `;
+
+      <div class="climate-kpis">
+        <article>
+          <span>Total em risco</span>
+          <strong>${riskRows.length}</strong>
+          <small>atenção, alto ou crítico</small>
+        </article>
+
+        <article>
+          <span>Críticas</span>
+          <strong>${criticalRows.length}</strong>
+          <small>risco climático crítico</small>
+        </article>
+
+        <article>
+          <span>Com KM/coordenada</span>
+          <strong>${kmExactRows.length}</strong>
+          <small>base JSON, KM ou TU extraído</small>
+        </article>
+
+        <article>
+          <span>Sem distrito</span>
+          <strong>${unidentifiedRows.length}</strong>
+          <small>precisam regra de centro/local</small>
+        </article>
+      </div>
+
+      <div class="climate-layout">
+        <section class="climate-card climate-calendar-card">
+          <div class="climate-card-header">
+            <div>
+              <span>Calendário climático</span>
+              <strong>${escapeHtml(selectedDistrict?.nome || "Todos os distritos")}</strong>
+            </div>
+            <small>${escapeHtml(calendarHeaderDate)} | ${escapeHtml(periodLabel)}</small>
+          </div>
+
+          ${renderCalendar({
+            monthText: month,
+            viewMode,
+            weekReference,
+            distrito: selectedDistrict,
+            rows: filteredRows,
+            realForecastMap,
+          })}
+
+          <div class="climate-legend">
+            <span><i class="legend-dot favoravel"></i>Favorável</span>
+            <span><i class="legend-dot atencao"></i>Atenção</span>
+            <span><i class="legend-dot alto"></i>Alto</span>
+            <span><i class="legend-dot critico"></i>Crítico</span>
+          </div>
+        </section>
+
+        <section class="climate-card climate-table-card">
+          <div class="climate-card-header climate-danger-header">
+            <div>
+              <span>Atividades programadas em dias de risco</span>
+              <strong>${riskRows.length} ocorrência(s)</strong>
+            </div>
+          </div>
+
+          <div class="climate-risk-table-wrap">
+            <table class="climate-risk-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Risco</th>
+                  <th>Atividade / Descrição</th>
+                  <th>Distrito</th>
+                  <th>KM / Coordenada</th>
+                  <th>Vínculo</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                ${
+                  riskRows
+                    .slice(0, 120)
+                    .map((row) => {
+                      const demanda = row.demanda;
+                      const coord = row.localizacao.coordenada;
+
+                      const kmText = Number.isFinite(row.localizacao.km)
+                        ? Number(row.localizacao.km)
+                            .toFixed(3)
+                            .replace(".000", "")
+                        : "-";
+
+                      const coordText =
+                        coord?.latitude && coord?.longitude
+                          ? `${Number(coord.latitude).toFixed(5)}, ${Number(
+                              coord.longitude,
+                            ).toFixed(5)}`
+                          : "Sem coordenada";
+
+                      return `
+                        <tr>
+                          <td>
+                            <strong>${formatDatePt(row.dataProgramada)}</strong>
+                            <small>${escapeHtml(row.clima.icone)} ${Number(row.clima.chuvaMm || 0).toFixed(1)} mm</small>
+                            <small>Prob. chuva ${Number(row.clima.probabilidade || 0).toFixed(0)}%</small>
+                            <small>Origem: ${escapeHtml(originLabel(row.origemDataProgramada))}</small>
+                          </td>
+
+                          <td>
+                            <span class="climate-risk-pill climate-risk-${row.risco.classe}">
+                              ${escapeHtml(row.risco.label)}
+                            </span>
+                          </td>
+
+                          <td>
+                            <strong>${escapeHtml(demanda.ordem || demanda.id || "-")}</strong>
+                            <small>${escapeHtml(demanda.descricao || "-")}</small>
+                          </td>
+
+                          <td>
+                            <strong>${escapeHtml(
+                              row.localizacao.distrito?.nome ||
+                                "Não identificado",
+                            )}</strong>
+                            <small>${escapeHtml(row.localizacao.distrito?.ga || "")}</small>
+                          </td>
+
+                          <td>
+                            <strong>${escapeHtml(kmText)}</strong>
+                            <small>${escapeHtml(coordText)}</small>
+                          </td>
+
+                          <td>${escapeHtml(row.localizacao.tipoVinculo)}</td>
+                        </tr>
+                      `;
+                    })
+                    .join("") ||
+                  `
+                    <tr>
+                      <td colspan="6">
+                        <div class="climate-empty">
+                          Nenhuma atividade em risco para o filtro selecionado.
+                        </div>
+                      </td>
+                    </tr>
+                  `
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div class="climate-bottom-grid">
+        <section class="climate-card climate-summary-card">
+          <div class="climate-card-header">
+            <div>
+              <span>Resumo executivo</span>
+              <strong>${riskRows.length} atividades em atenção climática</strong>
+            </div>
+          </div>
+
+          <div class="climate-summary-content">
+            <div>
+              <span class="climate-big-number">${riskRows.length}</span>
+              <small>Total de atividades com risco climático</small>
+            </div>
+
+            <ul>
+              <li><strong>${criticalRows.length}</strong> em nível crítico</li>
+              <li><strong>${highRows.length}</strong> em alto/crítico</li>
+              <li><strong>${kmExactRows.length}</strong> com KM/coordenada</li>
+              <li><strong>${unidentifiedRows.length}</strong> sem distrito identificado</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="climate-card climate-attention-card">
+          <div class="climate-alert-icon">!</div>
+
+          <div>
+            <span>Maior ponto de atenção</span>
+
+            <strong>
+              ${
+                worstDay
+                  ? `${formatDatePt(worstDay.dataProgramada)} — ${worstDay.risco.label}`
+                  : "Sem risco relevante"
+              }
+            </strong>
+
+            <p>
+              ${
+                worstDay
+                  ? `Atividade em ${escapeHtml(
+                      worstDay.localizacao.distrito?.nome ||
+                        "distrito não identificado",
+                    )}. Probabilidade ${Number(worstDay.clima.probabilidade || 0).toFixed(0)}%.`
+                  : "Nenhuma atividade programada com risco climático alto ou crítico neste filtro."
+              }
+            </p>
+          </div>
+        </section>
+
+        <section class="climate-card climate-recommendation-card">
+          <div class="climate-shield">✓</div>
+
+          <div>
+            <span>Recomendação</span>
+            <strong>Reavaliar programação em dias de risco alto/crítico</strong>
+            <p>
+              Priorizar atividades críticas, externas, de trilho, TLS,
+              esmerilhamento e intervenções sensíveis à chuva.
+            </p>
+          </div>
+        </section>
+      </div>
+    </div>
+  `;
 
     container
       .querySelector("#climateDistrict")
@@ -1340,13 +1643,45 @@
       });
 
     container
+      .querySelector("#climateViewMode")
+      ?.addEventListener("change", (event) => {
+        container.dataset.viewMode = event.target.value;
+        render({ container, demandas, config });
+      });
+
+    container
       .querySelector("#climateMonth")
       ?.addEventListener("change", (event) => {
         container.dataset.month = event.target.value;
         render({ container, demandas, config });
       });
-  }
 
+    container
+      .querySelector("#climateWeekReference")
+      ?.addEventListener("change", (event) => {
+        container.dataset.weekReference = event.target.value;
+        render({ container, demandas, config });
+      });
+
+    container
+      .querySelector("#climatePeriodFilter")
+      ?.addEventListener("change", (event) => {
+        container.dataset.periodo = event.target.value;
+
+        realWeatherCache = null;
+        realWeatherPromise = null;
+        realWeatherCacheKey = "";
+
+        render({ container, demandas, config });
+      });
+
+    container
+      .querySelector("#climateDateOriginFilter")
+      ?.addEventListener("change", (event) => {
+        container.dataset.origemData = event.target.value;
+        render({ container, demandas, config });
+      });
+  }
   global.CCEClimate = {
     render,
   };

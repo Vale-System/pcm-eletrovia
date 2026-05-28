@@ -89,6 +89,10 @@ Use um servidor estatico para permitir `fetch()` dos JSON:
 
 ```bash
 python -m http.server 4173 --bind 127.0.0.1
+
+python -m http.server 5188 --bind 127.0.0.1
+
+http://127.0.0.1:5188/
 ```
 
 Abra `http://127.0.0.1:4173/index.html`.

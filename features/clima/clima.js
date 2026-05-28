@@ -670,8 +670,57 @@
     return "Integral";
   }
 
-  function getDateOriginFilter(container) {
-    return container.dataset.origemData || "todos";
+  const DATE_ORIGIN_OPTIONS = [
+    {
+      value: "Data planejada",
+      label: "Planejamento",
+    },
+    {
+      value: "Data replanejada",
+      label: "Replanejamento",
+    },
+    {
+      value: "Vencimento",
+      label: "Vencimento",
+    },
+  ];
+
+  function getSelectedDateOrigins(container) {
+    const raw = container.dataset.origensData || "";
+
+    if (!raw || raw === "todos") {
+      return DATE_ORIGIN_OPTIONS.map((item) => item.value);
+    }
+
+    const values = raw
+      .split("|")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    return values.length
+      ? values
+      : DATE_ORIGIN_OPTIONS.map((item) => item.value);
+  }
+
+  function setSelectedDateOrigins(container, origins) {
+    const unique = Array.from(new Set(origins || []));
+
+    if (!unique.length || unique.length === DATE_ORIGIN_OPTIONS.length) {
+      container.dataset.origensData = "todos";
+      return;
+    }
+
+    container.dataset.origensData = unique.join("|");
+  }
+
+  function selectedDateOriginsLabel(origins) {
+    if (!origins?.length || origins.length === DATE_ORIGIN_OPTIONS.length) {
+      return "Todos";
+    }
+
+    return DATE_ORIGIN_OPTIONS.filter((item) => origins.includes(item.value))
+      .map((item) => item.label)
+      .join(" + ");
   }
 
   function originLabel(value) {
@@ -681,9 +730,9 @@
     return value || "-";
   }
 
-  function rowMatchesDateOrigin(row, selectedOrigin) {
-    if (!selectedOrigin || selectedOrigin === "todos") return true;
-    return row.origemDataProgramada === selectedOrigin;
+  function rowMatchesDateOrigin(row, selectedOrigins) {
+    if (!Array.isArray(selectedOrigins) || !selectedOrigins.length) return true;
+    return selectedOrigins.includes(row.origemDataProgramada);
   }
 
   function dateMatchesCurrentView(
@@ -813,6 +862,19 @@
     return String(distrito.codigo || distrito.sede || distrito.nome || "");
   }
 
+  function numberFromPeriod(period, keys, fallback = 0) {
+    for (const key of keys) {
+      const value = period?.[key];
+
+      if (value !== null && value !== undefined && value !== "") {
+        const number = Number(value);
+        if (Number.isFinite(number)) return number;
+      }
+    }
+
+    return fallback;
+  }
+
   function normalizePeriodWeather(period) {
     if (!period) {
       return {
@@ -830,10 +892,33 @@
 
     return {
       label: period.label || "-",
-      precipitationMm: Number(period.precipitationMm || 0),
-      precipitationProbability: Number(period.precipitationProbability || 0),
-      windGustKmh: Number(period.windGustKmh || 0),
-      precipitationHours: Number(period.precipitationHours || 0),
+
+      precipitationMm: numberFromPeriod(period, [
+        "precipitationMm",
+        "chuvaMm",
+        "precipitation",
+        "precipitation_sum",
+      ]),
+
+      precipitationProbability: numberFromPeriod(period, [
+        "precipitationProbability",
+        "probabilidade",
+        "probabilidadeChuva",
+        "precipitation_probability",
+        "precipitation_probability_max",
+      ]),
+
+      windGustKmh: numberFromPeriod(period, [
+        "windGustKmh",
+        "ventoRajadaKmh",
+        "wind_gusts_10m",
+      ]),
+
+      precipitationHours: numberFromPeriod(period, [
+        "precipitationHours",
+        "horasChuva",
+      ]),
+
       riscoLabel: period.riscoLabel || "Sem dados",
       riscoBase: period.riscoBase || "sem-dados",
       nivel: Number(period.nivel || 0),
@@ -1155,42 +1240,128 @@
       .filter((row) => row && row.dataProgramada);
   }
 
-  function tooltipPeriodLines(weather) {
-    const manha = weather?.periodos?.manha || {};
-    const tarde = weather?.periodos?.tarde || {};
-
-    return [
-      `Prob. Chuva AM: ${Number(manha.precipitationProbability || 0).toFixed(0)}%`,
-      `Prob. Chuva PM: ${Number(tarde.precipitationProbability || 0).toFixed(0)}%`,
-      `Chuva AM: ${Number(manha.precipitationMm || 0).toFixed(1)} mm`,
-      `Chuva PM: ${Number(tarde.precipitationMm || 0).toFixed(1)} mm`,
-    ];
+  function cleanTooltipDescription(value) {
+    return String(value || "Sem descrição")
+      .replace(/\bID-\S+/gi, "")
+      .replace(/\bOM\s*\d+\b/gi, "")
+      .replace(/\b\d{8,}\b/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
-  function climateTooltip(date, weather, items) {
-    const lines = [
-      `Data: ${formatDatePt(date)}`,
-      `Risco: ${weather?.riscoLabel || "Sem dados"}`,
-      ...tooltipPeriodLines(weather),
-      `Chuva total: ${Number(weather?.chuvaMm || 0).toFixed(1)} mm`,
-      `Rajada vento: ${Number(weather?.ventoRajadaKmh || 0).toFixed(0)} km/h`,
-      `Atividades: ${items.length}`,
-    ];
+  function climateTooltipHtml(date, weather, items) {
+    const manha = normalizePeriodWeather(weather?.periodos?.manha);
+    const tarde = normalizePeriodWeather(weather?.periodos?.tarde);
 
-    if (items.length) {
-      lines.push("");
-      items.slice(0, 8).forEach((item, index) => {
-        lines.push(
-          `${index + 1}. ${item.demanda.descricao || "Sem descrição"}`,
-        );
-      });
+    const probAM = Number(manha.precipitationProbability || 0).toFixed(0);
+    const probPM = Number(tarde.precipitationProbability || 0).toFixed(0);
+    const mmAM = Number(manha.precipitationMm || 0).toFixed(1);
+    const mmPM = Number(tarde.precipitationMm || 0).toFixed(1);
+    const mmTotal = Number(weather?.chuvaMm || 0).toFixed(1);
+    const vento = Number(weather?.ventoRajadaKmh || 0).toFixed(0);
+    const risco = weather?.riscoLabel || "Sem dados";
+    const riscoBase = weather?.riscoBase || "sem-dados";
 
-      if (items.length > 8) {
-        lines.push(`+ ${items.length - 8} atividade(s)`);
-      }
-    }
+    const riscoColors = {
+      critico: { bg: "#fee2e2", color: "#b91c1c", border: "#f3aaa5" },
+      alto: { bg: "#ffedd5", color: "#b45309", border: "#ffc18d" },
+      atencao: { bg: "#fef3c7", color: "#9a6500", border: "#f1d391" },
+      favoravel: { bg: "#dcfce7", color: "#08773e", border: "#bde7c9" },
+    };
+    const rc = riscoColors[riscoBase] || {
+      bg: "#f3f5f4",
+      color: "#58726b",
+      border: "#d6ddda",
+    };
 
-    return lines.join("\n");
+    const periodsEqual = probAM === probPM && mmAM === mmPM;
+
+    const periodRows = periodsEqual
+      ? `
+        <tr>
+          <td style="color:#6b7280;font-size:10px;padding:3px 0 3px 0;white-space:nowrap;">☔ Prob. chuva</td>
+          <td style="text-align:right;font-weight:700;font-size:11px;padding:3px 0 3px 8px;">${probAM}%</td>
+          <td style="text-align:right;font-size:10px;color:#9ca3af;padding:3px 0 3px 4px;">AM = PM</td>
+        </tr>
+        <tr>
+          <td style="color:#6b7280;font-size:10px;padding:3px 0;white-space:nowrap;">🌧️ Chuva</td>
+          <td style="text-align:right;font-weight:700;font-size:11px;padding:3px 0 3px 8px;">${mmAM} mm</td>
+          <td style="text-align:right;font-size:10px;color:#9ca3af;padding:3px 0 3px 4px;">AM = PM</td>
+        </tr>`
+      : `
+        <tr>
+          <td style="color:#6b7280;font-size:10px;padding:3px 0;white-space:nowrap;">☔ Prob. AM</td>
+          <td style="text-align:right;font-weight:700;font-size:11px;padding:3px 0 3px 8px;">${probAM}%</td>
+          <td style="text-align:right;font-size:10px;color:#9ca3af;padding:3px 0 3px 4px;"></td>
+        </tr>
+        <tr>
+          <td style="color:#6b7280;font-size:10px;padding:3px 0;white-space:nowrap;">☔ Prob. PM</td>
+          <td style="text-align:right;font-weight:700;font-size:11px;padding:3px 0 3px 8px;">${probPM}%</td>
+          <td style="text-align:right;font-size:10px;color:#9ca3af;padding:3px 0 3px 4px;"></td>
+        </tr>
+        <tr>
+          <td style="color:#6b7280;font-size:10px;padding:3px 0;white-space:nowrap;">🌧️ Chuva AM</td>
+          <td style="text-align:right;font-weight:700;font-size:11px;padding:3px 0 3px 8px;">${mmAM} mm</td>
+          <td style="text-align:right;font-size:10px;color:#9ca3af;padding:3px 0 3px 4px;"></td>
+        </tr>
+        <tr>
+          <td style="color:#6b7280;font-size:10px;padding:3px 0;white-space:nowrap;">🌧️ Chuva PM</td>
+          <td style="text-align:right;font-weight:700;font-size:11px;padding:3px 0 3px 8px;">${mmPM} mm</td>
+          <td style="text-align:right;font-size:10px;color:#9ca3af;padding:3px 0 3px 4px;"></td>
+        </tr>`;
+
+    return `
+      <div style="
+        min-width:210px;max-width:270px;
+        background:#1e293b;
+        color:#f1f5f9;
+        border-radius:14px;
+        padding:0;
+        box-shadow:0 12px 32px rgba(0,0,0,0.35);
+        font-family:inherit;
+        overflow:hidden;
+        pointer-events:none;
+      ">
+        <div style="
+          background:${rc.bg};
+          border-bottom:1px solid ${rc.border};
+          padding:10px 14px 9px;
+          display:flex;
+          align-items:center;
+          gap:10px;
+        ">
+          <span style="font-size:22px;line-height:1;">${weather?.icone || "☁️"}</span>
+          <div>
+            <div style="font-size:10px;color:${rc.color};font-weight:800;text-transform:uppercase;letter-spacing:0.05em;">${escapeHtml(risco)}</div>
+            <div style="font-size:13px;font-weight:900;color:#0f172a;">${formatDatePt(date)}</div>
+          </div>
+          <div style="margin-left:auto;text-align:right;">
+            <div style="font-size:10px;color:#64748b;">Atividades</div>
+            <div style="font-size:16px;font-weight:900;color:#0f172a;">${items.length}</div>
+          </div>
+        </div>
+
+        <div style="padding:10px 14px 12px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tbody>
+              ${periodRows}
+              <tr style="border-top:1px solid #334155;">
+                <td style="color:#94a3b8;font-size:10px;padding:6px 0 3px;white-space:nowrap;">💧 Total chuva</td>
+                <td style="text-align:right;font-weight:700;font-size:11px;padding:6px 0 3px 8px;">${mmTotal} mm</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td style="color:#94a3b8;font-size:10px;padding:3px 0;white-space:nowrap;">💨 Rajada vento</td>
+                <td style="text-align:right;font-weight:700;font-size:11px;padding:3px 0 3px 8px;">${vento} km/h</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+      .replace(/\s*\n\s*/g, "")
+      .trim();
   }
 
   function daysForCalendar(monthText, viewMode, weekReference) {
@@ -1215,7 +1386,7 @@
     });
 
     return `
-    <div class="climate-calendar-grid ${viewMode === "semanal" ? "is-weekly" : ""}">
+    <div class="climate-calendar-grid ${viewMode === "semanal" ? "is-weekly" : "is-monthly"}">
       ${days
         .map((date) => {
           const items = byDate.get(date) || [];
@@ -1251,7 +1422,7 @@
           return `
             <div
               class="climate-day climate-risk-${riskClass}"
-              title="${escapeHtml(climateTooltip(date, weather, items))}"
+              data-tooltip="${escapeHtml(climateTooltipHtml(date, weather, items))}"
             >
               <div class="climate-day-top">
                 <strong>${date.slice(-2)}</strong>
@@ -1270,6 +1441,822 @@
         .join("")}
     </div>
   `;
+  }
+
+  function initClimateTooltips(container) {
+    let tooltipEl = document.getElementById("cce-climate-tooltip");
+
+    if (!tooltipEl) {
+      tooltipEl = document.createElement("div");
+      tooltipEl.id = "cce-climate-tooltip";
+      tooltipEl.style.cssText = [
+        "position:fixed",
+        "z-index:9999",
+        "pointer-events:none",
+        "opacity:0",
+        "transition:opacity 0.15s ease",
+        "max-width:280px",
+      ].join(";");
+      document.body.appendChild(tooltipEl);
+    }
+
+    const days = container.querySelectorAll("[data-tooltip]");
+
+    days.forEach((day) => {
+      day.addEventListener("mouseenter", (event) => {
+        const html = day.dataset.tooltip;
+        if (!html) return;
+
+        tooltipEl.innerHTML = html;
+        tooltipEl.style.opacity = "1";
+        positionTooltip(event, tooltipEl);
+      });
+
+      day.addEventListener("mousemove", (event) => {
+        positionTooltip(event, tooltipEl);
+      });
+
+      day.addEventListener("mouseleave", () => {
+        tooltipEl.style.opacity = "0";
+      });
+    });
+
+    function positionTooltip(event, el) {
+      const margin = 14;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const rect = el.getBoundingClientRect();
+      const w = rect.width || 270;
+      const h = rect.height || 180;
+
+      let x = event.clientX + margin;
+      let y = event.clientY + margin;
+
+      if (x + w > vw - 8) x = event.clientX - w - margin;
+      if (y + h > vh - 8) y = event.clientY - h - margin;
+
+      el.style.left = `${Math.max(8, x)}px`;
+      el.style.top = `${Math.max(8, y)}px`;
+    }
+  }
+
+  function renderExecutiveView({
+    filteredRows,
+    riskRows,
+    criticalRows,
+    kmExactRows,
+    month,
+    effectiveConfig,
+    realForecastMap,
+    selectedDistrict,
+  }) {
+    function dayOfWeekShort(dateText) {
+      const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+      return days[new Date(`${dateText}T12:00:00`).getDay()];
+    }
+
+    function getDateRange(dates) {
+      if (!dates.length) return "";
+      const sorted = [...dates].sort();
+      const start = sorted[0];
+      const end = sorted[sorted.length - 1];
+      if (start === end) return formatDatePt(start).slice(0, 5);
+      const [, sm, sd] = start.split("-");
+      const [, em, ed] = end.split("-");
+      if (sm === em) return `${sd}–${ed}/${sm}`;
+      return `${formatDatePt(start).slice(0, 5)}–${formatDatePt(end).slice(0, 5)}`;
+    }
+
+    function buildRanges(dates) {
+      if (!dates.length) return [];
+      const ranges = [];
+      let current = [dates[0]];
+      for (let i = 1; i < dates.length; i++) {
+        const prev = new Date(`${dates[i - 1]}T12:00:00`);
+        const curr = new Date(`${dates[i]}T12:00:00`);
+        const diff = Math.round((curr - prev) / 86400000);
+        if (diff <= 1) {
+          current.push(dates[i]);
+        } else {
+          ranges.push(current);
+          current = [dates[i]];
+        }
+      }
+      ranges.push(current);
+      return ranges;
+    }
+
+    const ACTIVITY_TYPES = [
+      {
+        key: "esmeril",
+        label: "Esmerilhamento",
+        keywords: ["ESMERIL"],
+      },
+      {
+        key: "trilho",
+        label: "Trilho / TLS",
+        keywords: ["TRILHO", "TLS", "DORMENTE", "SUBS TRILH"],
+      },
+      {
+        key: "eletrica",
+        label: "Elétrica",
+        keywords: ["ELETR", "CATEN", "SUBESTAC", "CABINE", "TRANSF"],
+      },
+      {
+        key: "inspecao",
+        label: "Inspeção / Roço",
+        keywords: ["INSPE", "ROCO", "ROÇO", "PODA", "VISTORI"],
+      },
+      { key: "normal", label: "Normal", keywords: [] },
+    ];
+
+    function classifyRow(row) {
+      const text = normalizeText(
+        `${row.demanda.descricao || ""} ${row.demanda.tipoOM || ""} ${row.demanda.localInstalacao || ""}`,
+      );
+      for (const type of ACTIVITY_TYPES) {
+        if (type.keywords.some((kw) => text.includes(kw))) return type.key;
+      }
+      return "normal";
+    }
+
+    // Favorable days
+    const districtsForFavorable = selectedDistrict
+      ? [selectedDistrict]
+      : (effectiveConfig.distritos || []).filter(
+          (d) =>
+            !normalizeText(`${d.codigo || ""} ${d.sede || ""}`).includes(
+              "RFSP",
+            ),
+        );
+
+    const allDays = daysOfMonth(month);
+
+    const diasFavoraveis = allDays.filter((date) => {
+      if (!districtsForFavorable.length) return false;
+      const worstNivel = Math.max(
+        ...districtsForFavorable.map((d) => {
+          const w = getWeather(date, d, null, realForecastMap);
+          return w.nivel || 0;
+        }),
+      );
+      return worstNivel <= 1;
+    });
+
+    // Activity count per day
+    const byDateCount = {};
+    for (const row of filteredRows) {
+      const d = row.dataProgramada;
+      byDateCount[d] = (byDateCount[d] || 0) + 1;
+    }
+
+    // Risk by date (for banners)
+    const byDate = {};
+    for (const row of riskRows) {
+      const d = row.dataProgramada;
+      if (!byDate[d])
+        byDate[d] = {
+          criticos: 0,
+          altos: 0,
+          total: 0,
+          probMax: 0,
+          ventoMax: 0,
+          rows: [],
+        };
+      byDate[d].total += 1;
+      if (row.risco.nivel >= 4) byDate[d].criticos += 1;
+      if (row.risco.nivel >= 3) byDate[d].altos += 1;
+      byDate[d].probMax = Math.max(
+        byDate[d].probMax,
+        row.clima.probabilidade || 0,
+      );
+      byDate[d].ventoMax = Math.max(
+        byDate[d].ventoMax,
+        row.clima.ventoRajadaKmh || 0,
+      );
+      byDate[d].rows.push(row);
+    }
+
+    const sortedRiskDates = Object.keys(byDate).sort();
+    const dateRanges = buildRanges(sortedRiskDates);
+
+    const scoredRanges = dateRanges
+      .map((dates) => ({
+        dates,
+        criticos: dates.reduce((s, d) => s + (byDate[d]?.criticos || 0), 0),
+        altos: dates.reduce((s, d) => s + (byDate[d]?.altos || 0), 0),
+        total: dates.reduce((s, d) => s + (byDate[d]?.total || 0), 0),
+        probMax: Math.max(...dates.map((d) => byDate[d]?.probMax || 0)),
+        ventoMax: Math.max(...dates.map((d) => byDate[d]?.ventoMax || 0)),
+      }))
+      .sort(
+        (a, b) =>
+          b.criticos - a.criticos ||
+          b.altos - a.altos ||
+          b.total - a.total,
+      );
+
+    const topRange = scoredRanges[0] || null;
+    const secondRange = scoredRanges[1] || null;
+
+    // Intelligence matrix
+    const intelMatrix = {};
+    for (const type of ACTIVITY_TYPES)
+      intelMatrix[type.key] = { atencao: 0, alto: 0, critico: 0 };
+    for (const row of riskRows) {
+      const typeKey = classifyRow(row);
+      const risco = row.risco.classe;
+      if (
+        intelMatrix[typeKey] &&
+        (risco === "atencao" || risco === "alto" || risco === "critico")
+      ) {
+        intelMatrix[typeKey][risco] += 1;
+      }
+    }
+
+    // District risk map
+    const distRiskMap = {};
+    for (const row of riskRows) {
+      const nome = row.localizacao.distrito?.nome || "Não identificado";
+      if (!distRiskMap[nome]) distRiskMap[nome] = { count: 0, maxNivel: 0 };
+      distRiskMap[nome].count += 1;
+      distRiskMap[nome].maxNivel = Math.max(
+        distRiskMap[nome].maxNivel,
+        row.risco.nivel,
+      );
+    }
+    const top6Distritos = Object.entries(distRiskMap)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 6);
+
+    // Capacity calculations
+    const totalEmRisco = riskRows.length;
+    const diasFavoraveisCount = diasFavoraveis.length;
+    const mediaAtivPorDia =
+      allDays.length > 0 ? filteredRows.length / allDays.length : 0;
+    const capacidadeRealocacao = Math.round(
+      diasFavoraveisCount * mediaAtivPorDia,
+    );
+    const deficit = Math.max(0, totalEmRisco - capacidadeRealocacao);
+
+    const sensiveisAChuva = riskRows.filter(
+      (r) => r.sensibilidade === "Alta",
+    ).length;
+
+    // Quick indicators
+    const mediaChuvaRisco =
+      riskRows.length > 0
+        ? (
+            riskRows.reduce((s, r) => s + (r.clima.chuvaMm || 0), 0) /
+            riskRows.length
+          ).toFixed(1)
+        : "0.0";
+
+    const rajadaMaxRow =
+      riskRows.length > 0
+        ? riskRows.reduce((best, r) =>
+            (r.clima.ventoRajadaKmh || 0) > (best.clima.ventoRajadaKmh || 0)
+              ? r
+              : best,
+          )
+        : null;
+    const rajadaMax = rajadaMaxRow
+      ? Number(rajadaMaxRow.clima.ventoRajadaKmh || 0).toFixed(0)
+      : "0";
+    const rajadaMaxDayStr = rajadaMaxRow?.dataProgramada
+      ? ` (dia ${rajadaMaxRow.dataProgramada.slice(-2)})`
+      : "";
+
+    const distCriticosByDate = {};
+    for (const row of criticalRows) {
+      const d = row.dataProgramada;
+      if (!distCriticosByDate[d]) distCriticosByDate[d] = new Set();
+      if (row.localizacao.distrito?.nome)
+        distCriticosByDate[d].add(row.localizacao.distrito.nome);
+    }
+    const maxDistCritico = Math.max(
+      0,
+      ...Object.values(distCriticosByDate).map((s) => s.size),
+    );
+    const totalDistritos = (effectiveConfig.distritos || []).filter(
+      (d) =>
+        !normalizeText(`${d.codigo || ""} ${d.sede || ""}`).includes("RFSP"),
+    ).length;
+
+    const semKm = filteredRows.filter(
+      (r) => !Number.isFinite(r.localizacao.km),
+    ).length;
+    const pctSemKm =
+      filteredRows.length > 0
+        ? Math.round((semKm / filteredRows.length) * 100)
+        : 0;
+
+    // Forecast district
+    const forecastDistrict =
+      selectedDistrict ||
+      (() => {
+        const topNome = top6Distritos[0]?.[0];
+        if (topNome)
+          return (
+            (effectiveConfig.distritos || []).find((d) => d.nome === topNome) ||
+            null
+          );
+        return (effectiveConfig.distritos || [])[0] || null;
+      })();
+
+    const forecastDays = allDays.slice(0, 16).map((date) => {
+      const w = forecastDistrict
+        ? getWeather(date, forecastDistrict, null, realForecastMap)
+        : {
+            riscoBase: "sem-dados",
+            nivel: 0,
+            probabilidade: 0,
+            icone: "☁️",
+            riscoLabel: "Sem dados",
+            chuvaMm: 0,
+          };
+      return { date, weather: w, actCount: byDateCount[date] || 0 };
+    });
+
+    // Banner data
+    function getBannerData(range, isFirst) {
+      if (!range) return null;
+      const dateStr = getDateRange(range.dates);
+      const topTiposKeys = [
+        ...new Set(
+          range.dates.flatMap((d) =>
+            (byDate[d]?.rows || [])
+              .filter((r) => r.sensibilidade === "Alta")
+              .map((r) => classifyRow(r)),
+          ),
+        ),
+      ]
+        .filter((k) => k !== "normal")
+        .slice(0, 3);
+      const topTiposLabels = topTiposKeys.map(
+        (k) => ACTIVITY_TYPES.find((t) => t.key === k)?.label || k,
+      );
+      const prob = Math.round(range.probMax);
+      const vento = Math.round(range.ventoMax);
+
+      if (isFirst) {
+        return {
+          title: `Janela crítica: ${dateStr} · Prob. chuva >${prob}%${vento > 0 ? ` · Vento rajada ${vento} km/h previsto` : ""}`,
+          body: `${range.criticos || range.altos} atividades de alto/crítico${topTiposLabels.length ? ` com ${topTiposLabels.join(", ")}` : ""} programadas nessa janela. Recomenda-se revisão imediata.`,
+          level: "critico",
+          badge: "CRÍTICO",
+          icon: "⚠️",
+        };
+      } else {
+        return {
+          title: `Próxima janela de atenção: ${dateStr} · ${range.total} atividades afetadas`,
+          body: `Prob. chuva ${prob}%${forecastDistrict ? ` em ${forecastDistrict.nome}` : ""}. Avaliar remanejamento${topTiposLabels.length ? ` de ${topTiposLabels[0]}` : ""}.`,
+          level: "atencao",
+          badge: "ATENÇÃO",
+          icon: "🌧️",
+        };
+      }
+    }
+
+    const banner1 = getBannerData(topRange, true);
+    const banner2 = getBannerData(secondRange, false);
+
+    // Activity type labels for context
+    const topTipoLabels = [
+      ...new Set(
+        riskRows
+          .filter((r) => r.sensibilidade === "Alta")
+          .map((r) => classifyRow(r))
+          .filter((k) => k !== "normal")
+          .map((k) => ACTIVITY_TYPES.find((t) => t.key === k)?.label || k),
+      ),
+    ].slice(0, 3);
+
+    // Sorted table
+    const sensOrder = { Alta: 2, Média: 1, Normal: 0 };
+    const execTableRows = [...riskRows].sort((a, b) => {
+      if (b.risco.nivel !== a.risco.nivel) return b.risco.nivel - a.risco.nivel;
+      const sa = sensOrder[a.sensibilidade] ?? 0;
+      const sb = sensOrder[b.sensibilidade] ?? 0;
+      if (sb !== sa) return sb - sa;
+      return String(a.dataProgramada).localeCompare(String(b.dataProgramada));
+    });
+
+    // Recommendation chips + text
+    const topDistNomes = top6Distritos.slice(0, 3).map(([nome]) => nome);
+
+    const recParts = [];
+    if (deficit > 0) {
+      const exemDias = diasFavoraveis
+        .slice(0, 4)
+        .map((d) => `dia ${d.slice(-2)}`)
+        .join(", ");
+      recParts.push(
+        `Realocar ${deficit} atividades críticas sensíveis para janelas favoráveis (${exemDias || "nenhuma identificada"}).`,
+      );
+    } else if (diasFavoraveisCount > 0) {
+      recParts.push(
+        `A capacidade de realocação (${capacidadeRealocacao} ativ.) cobre o volume em risco.`,
+      );
+    }
+    if (topTipoLabels.length) {
+      recParts.push(
+        `Bloquear autorização de ${topTipoLabels.join(", ")} nos dias críticos.`,
+      );
+    }
+    const recText =
+      recParts.join(" ") ||
+      "Monitorar previsão e revisar programação em dias de risco alto ou crítico.";
+
+    const chips = [
+      topRange?.dates.length
+        ? `Bloquear dias ${getDateRange(topRange.dates)}`
+        : null,
+      diasFavoraveis.length
+        ? `Priorizar janela ${getDateRange(diasFavoraveis.slice(0, 5))}`
+        : null,
+      topTipoLabels.length ? topTipoLabels.join(" · ") : null,
+      topDistNomes.length
+        ? `Alertar ${topDistNomes.slice(0, 2).join(" e ")}`
+        : null,
+      semKm > 0 ? `Geocodificar ${semKm} OS sem KM` : null,
+    ].filter(Boolean);
+
+    // Presentation constants
+    const maxDistBar = top6Distritos[0]?.[1]?.count || 1;
+    const progBarMaxVal = Math.max(
+      diasFavoraveisCount,
+      capacidadeRealocacao,
+      totalEmRisco,
+      1,
+    );
+    const matrixRiskCols = ["atencao", "alto", "critico"];
+    const matrixColLabels = { atencao: "Atenção", alto: "Alto", critico: "Crítico" };
+    const matrixColColors = {
+      atencao: { bg: "#fef9e7", color: "#9a6500", border: "#f1d391" },
+      alto: { bg: "#fff3e4", color: "#b45309", border: "#ffc18d" },
+      critico: { bg: "#fef2f2", color: "#b91c1c", border: "#f3aaa5" },
+    };
+
+    return `
+      <div class="climate-executive-view">
+
+        ${(banner1 || banner2) ? `
+        <div class="climate-exec-banners">
+          ${banner1 ? `
+          <div class="climate-exec-banner climate-exec-banner-${banner1.level}">
+            <span class="climate-exec-banner-icon">${banner1.icon}</span>
+            <div class="climate-exec-banner-body">
+              <strong>${escapeHtml(banner1.title)}</strong>
+              <span>${escapeHtml(banner1.body)}</span>
+            </div>
+            <span class="climate-exec-badge climate-exec-badge-${banner1.level}">${banner1.badge}</span>
+          </div>` : ""}
+          ${banner2 ? `
+          <div class="climate-exec-banner climate-exec-banner-${banner2.level}">
+            <span class="climate-exec-banner-icon">${banner2.icon}</span>
+            <div class="climate-exec-banner-body">
+              <strong>${escapeHtml(banner2.title)}</strong>
+              <span>${escapeHtml(banner2.body)}</span>
+            </div>
+            <span class="climate-exec-badge climate-exec-badge-${banner2.level}">${banner2.badge}</span>
+          </div>` : ""}
+        </div>
+        ` : ""}
+
+        <div class="climate-exec-kpis">
+          <article class="climate-exec-kpi-total">
+            <div class="climate-exec-kpi-head">
+              <span class="climate-exec-kpi-icon">⚡</span>
+              <span>Total em risco</span>
+            </div>
+            <strong>${riskRows.length}</strong>
+            <small>atenção, alto ou crítico</small>
+          </article>
+          <article class="climate-exec-kpi-item">
+            <div class="climate-exec-kpi-head">
+              <span class="climate-exec-kpi-icon">🔥</span>
+              <span>Críticas</span>
+            </div>
+            <strong class="exec-color-critico">${criticalRows.length}</strong>
+            <small>risco crítico confirmado</small>
+          </article>
+          <article class="climate-exec-kpi-item">
+            <div class="climate-exec-kpi-head">
+              <span class="climate-exec-kpi-icon">🌧️</span>
+              <span>Sensíveis à chuva</span>
+            </div>
+            <strong class="exec-color-alto">${sensiveisAChuva}</strong>
+            <small>${topTipoLabels.length ? topTipoLabels.join(", ") : "alta sensibilidade"}</small>
+            ${sensiveisAChuva > 0 ? `<span class="climate-exec-kpi-tag">Prioridade máxima</span>` : ""}
+          </article>
+          <article class="climate-exec-kpi-item">
+            <div class="climate-exec-kpi-head">
+              <span class="climate-exec-kpi-icon">📍</span>
+              <span>Com KM/coordenada</span>
+            </div>
+            <strong>${kmExactRows.length}</strong>
+            <small>precisão geoespacial</small>
+            ${filteredRows.length > 0 ? `<span class="climate-exec-kpi-sub">${Math.round((kmExactRows.length / filteredRows.length) * 100)}% do total</span>` : ""}
+          </article>
+          <article class="climate-exec-kpi-item">
+            <div class="climate-exec-kpi-head">
+              <span class="climate-exec-kpi-icon">🗓️</span>
+              <span>Janelas disponíveis</span>
+            </div>
+            <strong class="exec-color-favoravel">${diasFavoraveisCount}</strong>
+            <small>dias favoráveis no mês</small>
+            ${diasFavoraveis.length > 0 ? `<span class="climate-exec-kpi-sub">Dias ${diasFavoraveis.slice(0, 4).map((d) => d.slice(-2)).join(", ")}${diasFavoraveis.length > 4 ? "..." : ""}</span>` : ""}
+          </article>
+        </div>
+
+        <div class="climate-exec-grid-2">
+          <div class="climate-exec-left-col">
+
+            <div class="climate-card">
+              <div class="climate-card-header">
+                <div>
+                  <span>Previsão detalhada</span>
+                  <strong>Próximos 16 dias — ${escapeHtml(forecastDistrict?.nome || "Sem distrito")}</strong>
+                </div>
+                <small>Fonte: Open-Meteo</small>
+              </div>
+              <div class="climate-exec-forecast-strip">
+                ${forecastDays.map(({ date, weather, actCount }) => `
+                  <div class="climate-exec-fday climate-risk-${weather.riscoBase || "sem-dados"}"
+                    title="${escapeHtml(formatDatePt(date))} — ${escapeHtml(weather.riscoLabel)} ${Number(weather.probabilidade || 0).toFixed(0)}%">
+                    <span class="climate-exec-fday-dow">${dayOfWeekShort(date)}</span>
+                    <span class="climate-exec-fday-icon">${weather.icone || "☁️"}</span>
+                    <span class="climate-exec-fday-prob">${Number(weather.probabilidade || 0).toFixed(0)}%</span>
+                    <span class="climate-exec-fday-mm">${Number(weather.chuvaMm || 0).toFixed(0)}mm</span>
+                    <span class="climate-exec-fday-acts">${actCount > 0 ? `${actCount} atv.` : "—"}</span>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+
+            <div class="climate-card">
+              <div class="climate-card-header">
+                <div>
+                  <span>Exposição por distrito</span>
+                  <strong>Atividades críticas + alto</strong>
+                </div>
+              </div>
+              <div class="climate-exec-dist-bars">
+                ${top6Distritos.length > 0
+                  ? top6Distritos
+                      .map(([nome, info]) => {
+                        const pct = Math.round((info.count / maxDistBar) * 100);
+                        const barClass = riskClassFromLevel(info.maxNivel);
+                        return `
+                          <div class="climate-exec-bar-row">
+                            <span class="climate-exec-bar-label" title="${escapeHtml(nome)}">${escapeHtml(nome)}</span>
+                            <div class="climate-exec-bar-track">
+                              <div class="climate-exec-bar-fill climate-exec-bar-${barClass}" style="width:${pct}%">
+                                <span class="climate-exec-bar-inside">${info.count}</span>
+                              </div>
+                            </div>
+                            <span class="climate-exec-bar-val">${info.count}</span>
+                          </div>
+                        `;
+                      })
+                      .join("")
+                  : `<div class="climate-empty">Nenhum distrito em risco.</div>`}
+              </div>
+            </div>
+
+          </div>
+
+          <div class="climate-exec-right-col">
+            <div class="climate-card climate-exec-table-card">
+              <div class="climate-card-header climate-exec-risk-header">
+                <div>
+                  <span>Matriz de risco</span>
+                  <strong>Atividades em janela crítica — ordenadas por impacto</strong>
+                </div>
+                <span class="climate-exec-total-badge">${execTableRows.length}<br><small>total</small></span>
+              </div>
+              <div class="climate-exec-table-wrap">
+                <table class="climate-exec-risk-table">
+                  <thead>
+                    <tr>
+                      <th>Data / Clima</th>
+                      <th>Risco</th>
+                      <th>Atividade</th>
+                      <th>KM</th>
+                      <th>Sens.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${execTableRows
+                        .slice(0, 80)
+                        .map((row) => {
+                          const coord = row.localizacao.coordenada;
+                          const kmText = Number.isFinite(row.localizacao.km)
+                            ? Number(row.localizacao.km)
+                                .toFixed(3)
+                                .replace(".000", "")
+                            : "—";
+                          const coordText =
+                            coord?.latitude && coord?.longitude
+                              ? `${Number(coord.latitude).toFixed(2)}°, ${Number(coord.longitude).toFixed(2)}°`
+                              : "";
+                          const manha = row.clima.periodos?.manha;
+                          const tarde = row.clima.periodos?.tarde;
+                          const probAM = Number(
+                            manha?.precipitationProbability ||
+                              row.clima.probabilidade ||
+                              0,
+                          ).toFixed(0);
+                          const probPM = Number(
+                            tarde?.precipitationProbability ||
+                              row.clima.probabilidade ||
+                              0,
+                          ).toFixed(0);
+                          const probLine =
+                            probAM === probPM
+                              ? `${probAM}% AM=PM`
+                              : `AM ${probAM}% / PM ${probPM}%`;
+                          const sensKey =
+                            row.sensibilidade === "Alta"
+                              ? "alta"
+                              : row.sensibilidade === "Média"
+                                ? "media"
+                                : "normal";
+                          return `
+                            <tr>
+                              <td class="exec-td-date">
+                                <strong>${formatDatePt(row.dataProgramada).slice(0, 5)}</strong>
+                                <span class="exec-td-icon">${row.clima.icone || "☁️"} ${Number(row.clima.chuvaMm || 0).toFixed(0)}mm</span>
+                                <span class="exec-td-prob">${probLine}</span>
+                              </td>
+                              <td>
+                                <span class="climate-risk-pill climate-risk-${row.risco.classe}">${escapeHtml(row.risco.label.toUpperCase())}</span>
+                              </td>
+                              <td class="exec-td-activ">
+                                <strong>${escapeHtml(row.demanda.ordem || row.demanda.id || "-")}</strong>
+                                <span>${escapeHtml(row.demanda.descricao || "-")}</span>
+                                <small>${escapeHtml(row.localizacao.distrito?.nome || "Não identificado")}${row.localizacao.distrito?.ga ? ` · ${row.localizacao.distrito.ga}` : ""}</small>
+                              </td>
+                              <td class="exec-td-km">
+                                <strong>${escapeHtml(kmText)}</strong>
+                                ${coordText ? `<small>${escapeHtml(coordText)}</small>` : ""}
+                              </td>
+                              <td>
+                                <span class="exec-sens exec-sens-${sensKey}">${escapeHtml(row.sensibilidade)}</span>
+                              </td>
+                            </tr>
+                          `;
+                        })
+                        .join("") ||
+                      `<tr><td colspan="5"><div class="climate-empty">Nenhuma atividade em risco.</div></td></tr>`}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="climate-exec-grid-2">
+          <div class="climate-card climate-exec-intel-card">
+            <div class="climate-card-header">
+              <div>
+                <span>Inteligência de risco</span>
+                <strong>Matriz sensibilidade × nível climático</strong>
+              </div>
+            </div>
+            <p class="climate-exec-matrix-desc">Qtd. atividades por cruzamento de sensibilidade e risco climático atual</p>
+            <div class="climate-exec-matrix-wrap">
+              <table class="climate-exec-matrix">
+                <thead>
+                  <tr>
+                    <th></th>
+                    ${matrixRiskCols
+                        .map(
+                          (col) =>
+                            `<th style="color:${matrixColColors[col].color};">${matrixColLabels[col]}</th>`,
+                        )
+                        .join("")}
+                  </tr>
+                </thead>
+                <tbody>
+                  ${ACTIVITY_TYPES.map((type) => {
+                      const rowData = intelMatrix[type.key] || {};
+                      return `
+                        <tr>
+                          <td class="climate-exec-matrix-label">${escapeHtml(type.label)}</td>
+                          ${matrixRiskCols
+                              .map((col) => {
+                                const count = rowData[col] || 0;
+                                return `<td class="climate-exec-matrix-cell" style="${count > 0 ? `background:${matrixColColors[col].bg};border:1px solid ${matrixColColors[col].border};color:${matrixColColors[col].color};` : ""}">${count > 0 ? `<strong>${count}</strong><small>atividades</small>` : `<span style="color:#d1d5db;">—</span>`}</td>`;
+                              })
+                              .join("")}
+                        </tr>
+                      `;
+                    }).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="climate-card climate-exec-windows-card">
+            <div class="climate-card-header">
+              <div>
+                <span>Gestão de janelas</span>
+                <strong>Capacidade de realocação no mês</strong>
+              </div>
+            </div>
+            <div class="climate-exec-windows">
+
+              <div class="climate-exec-wb-list">
+                <div class="climate-exec-wb-row">
+                  <span class="climate-exec-wb-label">Dias favoráveis disponíveis</span>
+                  <div class="climate-exec-wb-right">
+                    <div class="climate-exec-wb-track">
+                      <div class="climate-exec-wb-fill wbf-favoravel" style="width:${Math.min(100, Math.round((diasFavoraveisCount / progBarMaxVal) * 100))}%"></div>
+                    </div>
+                    <span class="climate-exec-wb-val exec-color-favoravel">${diasFavoraveisCount} dias</span>
+                  </div>
+                </div>
+                <div class="climate-exec-wb-row">
+                  <span class="climate-exec-wb-label">Capacidade teórica de realocação</span>
+                  <div class="climate-exec-wb-right">
+                    <div class="climate-exec-wb-track">
+                      <div class="climate-exec-wb-fill wbf-azul" style="width:${Math.min(100, Math.round((capacidadeRealocacao / progBarMaxVal) * 100))}%"></div>
+                    </div>
+                    <span class="climate-exec-wb-val">~${capacidadeRealocacao} atividades</span>
+                  </div>
+                </div>
+                <div class="climate-exec-wb-row">
+                  <span class="climate-exec-wb-label">Déficit estimado (sem janelas)</span>
+                  <div class="climate-exec-wb-right">
+                    <div class="climate-exec-wb-track">
+                      <div class="climate-exec-wb-fill wbf-critico" style="width:${Math.min(100, Math.round((deficit / progBarMaxVal) * 100))}%"></div>
+                    </div>
+                    <span class="climate-exec-wb-val exec-color-critico">${deficit} atividades</span>
+                  </div>
+                </div>
+              </div>
+
+              ${diasFavoraveis.length > 0 ? `
+              <div class="climate-exec-fav-section">
+                <span class="climate-exec-fav-label">Janelas favoráveis identificadas</span>
+                <div class="climate-exec-fav-pills">
+                  ${diasFavoraveis
+                      .slice(0, 10)
+                      .map((date) => {
+                        const w = forecastDistrict
+                          ? getWeather(date, forecastDistrict, null, realForecastMap)
+                          : { icone: "☀️", probabilidade: 0 };
+                        return `<span class="climate-exec-fav-pill" title="${escapeHtml(formatDatePt(date))}">Dia ${date.slice(-2)} ${w.icone || "☀️"} ${Number(w.probabilidade || 0).toFixed(0)}%</span>`;
+                      })
+                      .join("")}
+                </div>
+              </div>` : ""}
+
+              <div class="climate-exec-indicators">
+                <span class="climate-exec-fav-label">Indicadores adicionais</span>
+                <div class="climate-exec-ind-row">
+                  <span>Média de chuva no período crítico</span>
+                  <span class="exec-ind-val exec-color-alto">${mediaChuvaRisco} mm/dia</span>
+                </div>
+                <div class="climate-exec-ind-row">
+                  <span>Rajada máxima prevista</span>
+                  <span class="exec-ind-val exec-color-alto">${rajadaMax} km/h${escapeHtml(rajadaMaxDayStr)}</span>
+                </div>
+                <div class="climate-exec-ind-row">
+                  <span>Distritos com risco crítico simultâneo</span>
+                  <span class="exec-ind-val exec-color-critico">${maxDistCritico}${totalDistritos > 0 ? ` de ${totalDistritos}` : ""}</span>
+                </div>
+                <div class="climate-exec-ind-row">
+                  <span>% atividades sem KM/localização</span>
+                  <span class="exec-ind-val exec-color-alto">${pctSemKm}%${semKm > 0 ? ` (${semKm} OS)` : ""}</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <div class="climate-exec-rec">
+          <div class="climate-exec-rec-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <path d="M12 2 5 5v6c0 5 3.3 9.4 7 11 3.7-1.6 7-6 7-11V5Z"/>
+              <path d="m9 12 2 2 4-5"/>
+            </svg>
+          </div>
+          <div class="climate-exec-rec-body">
+            <span>Recomendação do sistema</span>
+            <p>${escapeHtml(recText)}</p>
+            ${chips.length > 0 ? `
+            <div class="climate-exec-rec-chips">
+              ${chips.map((c) => `<span class="climate-exec-rec-chip">${escapeHtml(c)}</span>`).join("")}
+            </div>` : ""}
+          </div>
+        </div>
+
+      </div>
+    `;
   }
 
   async function render({ container, demandas, config }) {
@@ -1294,7 +2281,7 @@
 
     const periodoFiltro = getPeriodFilter(container);
     const selectedPeriodKeys = periodKeysFromFilter(periodoFiltro);
-    const selectedDateOrigin = getDateOriginFilter(container);
+    const selectedDateOrigins = getSelectedDateOrigins(container);
 
     const realForecastMap = await loadRealWeatherForecast(
       effectiveConfig,
@@ -1313,7 +2300,7 @@
           ) || null;
 
     const scopedDateRows = rows.filter((row) => {
-      if (!rowMatchesDateOrigin(row, selectedDateOrigin)) return false;
+      if (!rowMatchesDateOrigin(row, selectedDateOrigins)) return false;
 
       return dateMatchesCurrentView(
         row.dataProgramada,
@@ -1351,6 +2338,8 @@
       viewMode === "semanal"
         ? `Semana de ${formatDatePt(weekReference)}`
         : month;
+
+    const activeTab = container.dataset.activeTab || "calendario";
 
     container.innerHTML = `
     <div class="climate-page">
@@ -1407,18 +2396,48 @@
             </select>
           </label>
 
-          <label>
+          <div class="climate-multi-field">
             <span>Status da data</span>
-            <select id="climateDateOriginFilter">
-              <option value="todos" ${selectedDateOrigin === "todos" ? "selected" : ""}>Todos</option>
-              <option value="Data planejada" ${selectedDateOrigin === "Data planejada" ? "selected" : ""}>Planejamento</option>
-              <option value="Data replanejada" ${selectedDateOrigin === "Data replanejada" ? "selected" : ""}>Replanejamento</option>
-              <option value="Vencimento" ${selectedDateOrigin === "Vencimento" ? "selected" : ""}>Vencimento</option>
-            </select>
-          </label>
+
+            <div class="climate-multi-select" id="climateDateOriginMulti">
+              <button class="climate-multi-button" type="button" id="climateDateOriginButton">
+                ${escapeHtml(selectedDateOriginsLabel(selectedDateOrigins))}
+              </button>
+
+              <div class="climate-multi-panel">
+                ${DATE_ORIGIN_OPTIONS.map(
+                  (option) => `
+                    <label>
+                      <input
+                        type="checkbox"
+                        data-climate-date-origin="${escapeHtml(option.value)}"
+                        ${selectedDateOrigins.includes(option.value) ? "checked" : ""}
+                      />
+                      ${escapeHtml(option.label)}
+                    </label>
+                  `,
+                ).join("")}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      <div class="climate-tabs" role="tablist">
+        <button class="climate-tab ${activeTab === "calendario" ? "is-active" : ""}" data-climate-tab="calendario" role="tab" type="button">Calendário</button>
+        <button class="climate-tab ${activeTab === "executivo" ? "is-active" : ""}" data-climate-tab="executivo" role="tab" type="button">Visão Executiva</button>
+      </div>
+
+      ${activeTab === "executivo" ? renderExecutiveView({
+        filteredRows,
+        riskRows,
+        criticalRows,
+        kmExactRows,
+        month,
+        effectiveConfig,
+        realForecastMap,
+        selectedDistrict,
+      }) : `
       <div class="climate-kpis">
         <article>
           <span>Total em risco</span>
@@ -1520,7 +2539,7 @@
                             <strong>${formatDatePt(row.dataProgramada)}</strong>
                             <small>${escapeHtml(row.clima.icone)} ${Number(row.clima.chuvaMm || 0).toFixed(1)} mm</small>
                             <small>Prob. chuva ${Number(row.clima.probabilidade || 0).toFixed(0)}%</small>
-                            <small>Origem: ${escapeHtml(originLabel(row.origemDataProgramada))}</small>
+                            <small>${escapeHtml(originLabel(row.origemDataProgramada))}</small>
                           </td>
 
                           <td>
@@ -1632,8 +2651,18 @@
           </div>
         </section>
       </div>
+      `}
     </div>
   `;
+
+    initClimateTooltips(container);
+
+    container.querySelectorAll("[data-climate-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        container.dataset.activeTab = btn.dataset.climateTab;
+        render({ container, demandas, config });
+      });
+    });
 
     container
       .querySelector("#climateDistrict")
@@ -1676,10 +2705,23 @@
       });
 
     container
-      .querySelector("#climateDateOriginFilter")
-      ?.addEventListener("change", (event) => {
-        container.dataset.origemData = event.target.value;
-        render({ container, demandas, config });
+      .querySelector("#climateDateOriginButton")
+      ?.addEventListener("click", () => {
+        const multi = container.querySelector("#climateDateOriginMulti");
+        multi?.classList.toggle("is-open");
+      });
+
+    container
+      .querySelectorAll("[data-climate-date-origin]")
+      .forEach((input) => {
+        input.addEventListener("change", () => {
+          const selected = Array.from(
+            container.querySelectorAll("[data-climate-date-origin]:checked"),
+          ).map((item) => item.dataset.climateDateOrigin);
+
+          setSelectedDateOrigins(container, selected);
+          render({ container, demandas, config });
+        });
       });
   }
   global.CCEClimate = {

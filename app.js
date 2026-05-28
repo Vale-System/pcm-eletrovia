@@ -240,6 +240,8 @@
         '<path d="M12 2 5 5v6c0 5 3.3 9.4 7 11 3.7-1.6 7-6 7-11V5Z"></path><path d="m9 12 2 2 4-5"></path>',
       chart:
         '<path d="M4 19V5"></path><path d="M4 19h17"></path><path d="m8 16 3-5 4 3 4-8"></path>',
+      "cloud-rain":
+        '<path d="M20 16.6A4.5 4.5 0 0 0 17 8h-1.3A6 6 0 0 0 4.2 10.3 4 4 0 0 0 5 18h12"></path><path d="M8 19v2"></path><path d="M12 19v2"></path><path d="M16 19v2"></path>',
       settings:
         '<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V22a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H22a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1Z"></path>',
       logs: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h5"></path>',
@@ -1011,6 +1013,18 @@
       supervisao: item.Supervisao || item.supervisao || "",
       centroTrabalho: item.CentroTrabalho || item.centro_trabalho || "",
       localInstalacao: item.LocalInstalacao || item.local_instalacao || "",
+      km:
+        item.Km ||
+        item.KM ||
+        item.km ||
+        item.Quilometro ||
+        item.Quilômetro ||
+        item.quilometro ||
+        item.Quilometragem ||
+        item.quilometragem ||
+        item.KmReferencia ||
+        item.kmReferencia ||
+        "",
 
       statusSistema: item.StatusSistema || item.status_sistema || "",
       statusUsuario: item.StatusUsuario || item.status_usuario || "",
@@ -1565,6 +1579,7 @@
       supervisao: baseDemand.supervisao || delta.supervisao,
       centroTrabalho: baseDemand.centroTrabalho || delta.centroTrabalho,
       localInstalacao: baseDemand.localInstalacao || delta.localInstalacao,
+      km: baseDemand.km || delta.km || "",
       competencia: normalizeCompetencia(
         baseDemand.competencia || delta.competencia,
       ),
@@ -1810,6 +1825,7 @@
       competencia: normalizeCompetencia(demanda.competencia),
       prioridade: normalizePrioridade(demanda.prioridade),
       critico: normalizeCritico(demanda.critico),
+      km: demanda.km || demanda.Km || demanda.KM || "",
       planejadorCurto: demanda.planejadorCurto || "",
       planejadorCurtoEmail: demanda.planejadorCurtoEmail || "",
       planejadorCurtoMatricula: demanda.planejadorCurtoMatricula || "",
@@ -2323,6 +2339,7 @@
       });
 
       await loadDatabase();
+      global.CCEClimaFeature?.limparCache?.();
       await autoSyncRealizadosFromSharePoint();
 
       state.pageSize = Number(state.db.parametros?.pageSizeDefault || 12);
@@ -5427,6 +5444,25 @@
     await refreshAfterSave("Registro salvo com sucesso.");
   }
 
+  function renderClimateRisk() {
+    const container = $("#climateRiskPanel");
+
+    if (!container) return;
+
+    if (!global.CCEClimate?.render) {
+      container.innerHTML =
+        '<div class="empty-detail"><strong>Módulo climático indisponível</strong><span>Verifique se os arquivos features/clima foram carregados.</span></div>';
+      return;
+    }
+
+    global.CCEClimate.render({
+      container,
+      demandas: state.db?.demandas || [],
+      config: global.CCEClimateConfig || {},
+      usuario: state.currentUser,
+    });
+  }
+
   function renderCurrentView() {
     syncNavigation(state.currentView);
     if (state.currentView === "carteira") renderCarteira();
@@ -5439,6 +5475,7 @@
       renderQualityDivergences();
     if (state.currentView === "notificacoes") renderNotifications();
     if (state.currentView === "historico-carteira") renderPortfolioHistory();
+    if (state.currentView === "clima") renderClimateRisk();
     if (state.currentView === "indicadores") {
       renderIndicatorFilterVisibility();
       if (state.indicatorFiltersVisible && !state.indicatorFiltersReady) {
@@ -5447,6 +5484,7 @@
       }
       renderIndicators();
     }
+
     if (state.currentView === "administracao") renderAdmin();
     if (state.currentView === "logs") renderLogs();
     if (state.currentView === "saude-integracao") renderIntegrationHealth();

@@ -8,11 +8,29 @@
     <link rel="shortcut icon" type="image/png" href="assets/favicon.png?v=2" />
     <link rel="apple-touch-icon" href="assets/favicon.png?v=2" />
     <link rel="stylesheet" href="styles.css?v=20260515-login-responsive-02" />
+    <link
+      rel="stylesheet"
+      href="features/clima/clima.css?v=20260527-clima-02"
+    />
     <script defer src="assets/vendor/xlsx.full.min.js?v=20260507-01"></script>
-    <script defer src="data/sample-data.js?v=20260515-carteira-grupo-01"></script>
-    <script defer src="sharepoint-adapter.js?v=20260515-carteira-grupo-01"></script>
-    <script defer src="supabase-adapter.js?v=20260515-carteira-grupo-01"></script>
-    <script defer src="app.js?v=20260515-login-responsive-02"></script>
+    <script
+      defer
+      src="data/sample-data.js?v=20260515-carteira-grupo-01"
+    ></script>
+    <script
+      defer
+      src="sharepoint-adapter.js?v=20260515-carteira-grupo-01"
+    ></script>
+    <script
+      defer
+      src="supabase-adapter.js?v=20260515-carteira-grupo-01"
+    ></script>
+    <script
+      defer
+      src="features/clima/clima-config.js?v=20260527-clima-01"
+    ></script>
+    <script defer src="features/clima/clima.js?v=20260527-clima-01"></script>
+    <script defer src="app.js?v=20260527-clima-01"></script>
   </head>
   <body>
     <section
@@ -207,7 +225,11 @@
               aria-expanded="false"
               aria-controls="navQualidadeSubmenu"
             >
-              <span class="nav-icon" data-icon="shield" aria-hidden="true"></span>
+              <span
+                class="nav-icon"
+                data-icon="shield"
+                aria-hidden="true"
+              ></span>
               <span class="nav-text">Qualidade</span>
               <span
                 class="nav-caret"
@@ -245,10 +267,27 @@
               </button>
             </div>
           </div>
-          <button class="nav-item nav-item-stacked" data-view="indicadores" type="button">
+          <button
+            class="nav-item nav-item-stacked"
+            data-view="clima"
+            type="button"
+          >
+            <span
+              class="nav-icon"
+              data-icon="cloud-rain"
+              aria-hidden="true"
+            ></span>
+            <span class="nav-text">Risco Climático</span>
+          </button>
+          <button
+            class="nav-item nav-item-stacked"
+            data-view="indicadores"
+            type="button"
+          >
             <span class="nav-icon" data-icon="chart" aria-hidden="true"></span>
             <span class="nav-text">Indicadores</span>
           </button>
+
           <div class="nav-group" data-nav-group="administracao">
             <button
               class="nav-item nav-group-toggle nav-item-stacked"
@@ -1022,7 +1061,9 @@
             <div class="panel-toolbar">
               <div>
                 <h2>Conflitos encontrados</h2>
-                <span id="qualityDivergenceCount">0 divergências encontradas</span>
+                <span id="qualityDivergenceCount"
+                  >0 divergências encontradas</span
+                >
               </div>
             </div>
 
@@ -1217,7 +1258,9 @@
             </div>
           </section>
         </section>
-
+        <section class="view" id="view-clima" data-view-panel="clima">
+          <div id="climateRiskPanel"></div>
+        </section>
         <section
           class="view"
           id="view-indicadores"
@@ -1381,7 +1424,10 @@
             </div>
           </div>
 
-          <div class="integration-health-grid" id="integrationHealthCards"></div>
+          <div
+            class="integration-health-grid"
+            id="integrationHealthCards"
+          ></div>
 
           <section class="integration-health-layout">
             <div class="table-panel">

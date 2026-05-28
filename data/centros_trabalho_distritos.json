@@ -1,0 +1,18 @@
+[
+  {
+    "centroTrabalho": "CESSL2",
+    "distrito": "São Luís - MA",
+    "sede": "TFPM",
+    "escopo": "distrito",
+    "ativo": true,
+    "influenciaClima": true
+  },
+  {
+    "centroTrabalho": "EXEMPLO_FERROVIA_TODA",
+    "distrito": "",
+    "sede": "",
+    "escopo": "ferrovia_toda",
+    "ativo": true,
+    "influenciaClima": false
+  }
+]

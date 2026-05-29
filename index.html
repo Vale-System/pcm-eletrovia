@@ -7,11 +7,11 @@
     <link rel="icon" type="image/png" href="assets/favicon.png?v=2" />
     <link rel="shortcut icon" type="image/png" href="assets/favicon.png?v=2" />
     <link rel="apple-touch-icon" href="assets/favicon.png?v=2" />
-    <link rel="stylesheet" href="styles.css?v=20260529-01" />
+    <link rel="stylesheet" href="styles.css?v=20260529-02" />
     <link rel="stylesheet" href="features/clima/clima.css?v=20260529-01" />
     <link
       rel="stylesheet"
-      href="features/indicadores/indicadores-taxonomia.css?v=20260529-02"
+      href="features/indicadores/indicadores-taxonomia.css?v=20260529-03"
     />
     <script defer src="assets/vendor/xlsx.full.min.js?v=20260507-01"></script>
     <script
@@ -35,7 +35,7 @@
       defer
       src="features/indicadores/indicadores-taxonomia.js?v=20260529-02"
     ></script>
-    <script defer src="app.js?v=20260529-02"></script>
+    <script defer src="app.js?v=20260529-05"></script>
   </head>
   <body>
     <section
@@ -315,7 +315,7 @@
                 data-view="indicadores-taxonomia"
                 type="button"
               >
-                Taxonomia de Atividades
+                Processos de Atividade
               </button>
             </div>
           </div>
@@ -1358,31 +1358,90 @@
               </button>
             </div>
           </div>
-          <div class="indicator-grid" id="indicatorGrid"></div>
-          <div class="charts-grid">
-            <section class="chart-panel">
-              <h3>Demandas por Gerência</h3>
-              <div id="lossByCenter"></div>
+          <!-- KPI cards strip -->
+          <div class="ind-kpi-strip" id="indicatorGrid"></div>
+
+          <!-- Row 1: Aderencia + Donut + Semaforo -->
+          <div class="ind-row ind-row-322">
+            <section class="chart-panel ind-panel-gauge">
+              <header class="chart-panel-head">
+                <h3>Aderência Operacional</h3>
+                <small>realizadas vs total da carteira</small>
+              </header>
+              <div class="chart-body" id="indicAdherenceRow"></div>
             </section>
+
             <section class="chart-panel">
-              <h3>Demandas por Supervisão</h3>
-              <div id="lossReasons"></div>
+              <header class="chart-panel-head">
+                <h3>Status Operacional</h3>
+                <small>composição atual da carteira</small>
+              </header>
+              <div class="chart-body ind-donut-wrap">
+                <canvas id="statusDonut"></canvas>
+                <div id="statusDonutLegend" class="ind-donut-legend"></div>
+              </div>
             </section>
+
             <section class="chart-panel">
-              <h3>Demandas por Centro</h3>
-              <div id="replanRanking"></div>
+              <header class="chart-panel-head">
+                <h3>Semáforo por Gerência</h3>
+                <small>aderência por grupo de trabalho</small>
+              </header>
+              <div id="chartSemaforo" class="chart-body"></div>
             </section>
+          </div>
+
+          <!-- Row 2: Gerencia + Tipo OM -->
+          <div class="ind-row ind-row-22">
             <section class="chart-panel">
-              <h3>Vencimentos Próximos</h3>
-              <div id="dueSoonList"></div>
+              <header class="chart-panel-head">
+                <h3>Distribuição por Gerência</h3>
+                <small>volume de ordens por GA</small>
+              </header>
+              <div id="chartGerencia" class="chart-body"></div>
             </section>
+
             <section class="chart-panel">
-              <h3>Status Operacional</h3>
-              <div id="statusChart"></div>
+              <header class="chart-panel-head">
+                <h3>Distribuição por Tipo OM</h3>
+                <small>classificação das ordens de manutenção</small>
+              </header>
+              <div id="chartTipoOM" class="chart-body"></div>
             </section>
+          </div>
+
+          <!-- Row 3: Competencia + Vencimentos -->
+          <div class="ind-row ind-row-64">
             <section class="chart-panel">
-              <h3>Demandas por Competência</h3>
-              <div id="competenceChart"></div>
+              <header class="chart-panel-head">
+                <h3>Volume por Competência</h3>
+                <small>distribuição mensal da carteira</small>
+              </header>
+              <div id="chartCompetencia" class="chart-body"></div>
+            </section>
+
+            <section class="chart-panel">
+              <header class="chart-panel-head">
+                <h3>Vencimentos Próximos</h3>
+                <small>próximos 20 dias — ordenado por urgência</small>
+              </header>
+              <div id="dueSoonList" class="chart-body ind-due-body"></div>
+            </section>
+          </div>
+
+          <!-- Row 4: Replanejamento full width -->
+          <div class="ind-row ind-row-1">
+            <section class="chart-panel">
+              <header class="chart-panel-head">
+                <h3>Replanejamentos por Supervisão</h3>
+                <small
+                  >supervisões com maior volume de alterações de data</small
+                >
+              </header>
+              <div
+                id="chartReplanSupervisao"
+                class="chart-body ind-replan-body"
+              ></div>
             </section>
           </div>
         </section>
@@ -1393,10 +1452,11 @@
         >
           <div class="page-heading">
             <div>
-              <h2>Taxonomia de Atividades</h2>
+              <h2>Processos de Atividade</h2>
               <p class="subtitle">
-                Classificação por disciplina ferroviária — Via Permanente,
-                Eletroeletrônica, Força &amp; Energia e Infraestrutura.
+                Classificação técnica por disciplina ferroviária — Via
+                Permanente, Eletroeletrônica, Força &amp; Energia,
+                Infraestrutura e Estaleiro de Solda.
               </p>
             </div>
           </div>

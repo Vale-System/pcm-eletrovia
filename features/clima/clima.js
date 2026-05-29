@@ -93,6 +93,10 @@
       demanda.Quilometro,
       demanda.quilometragem,
       demanda.Quilometragem,
+      // KM início vindo do enriquecimento com itens_lineares.json (base_futuras)
+      demanda.kmInicio,
+      demanda.KmInicio,
+      demanda.km_inicio,
     ];
 
     for (const value of candidates) {

@@ -1147,6 +1147,182 @@
     return mapa;
   }
 
+  function getItemLinearData(itemLinear) {
+    if (!itemLinear) {
+      return {
+        textoItem: "",
+        kmInicio: "",
+        kmFim: "",
+      };
+    }
+
+    const textoItem = pickField(itemLinear, [
+      "Texto item",
+      "Texto Item",
+      "TEXTO ITEM",
+      "texto item",
+      "texto_item",
+      "TEXTO_ITEM",
+      "textoItem",
+      "TextoItem",
+      "descricao",
+      "Descrição",
+      "DESCRICAO",
+    ]);
+
+    const kmInicio = pickField(itemLinear, [
+      "Km Inicio",
+      "Km Início",
+      "KM Inicio",
+      "KM Início",
+      "KM_INICIO",
+      "KM INICIO",
+      "KMINICIO",
+      "km_inicio",
+      "kmInicio",
+      "KmInicial",
+      "kmInicial",
+    ]);
+
+    const kmFim = pickField(itemLinear, [
+      "Km Fim",
+      "KM Fim",
+      "KM FIM",
+      "KM_FIM",
+      "KMFIM",
+      "km_fim",
+      "kmFim",
+      "KmFinal",
+      "kmFinal",
+    ]);
+
+    return {
+      textoItem,
+      kmInicio: formatKmFerroviario(kmInicio),
+      kmFim: formatKmFerroviario(kmFim),
+    };
+  }
+
+  function demandIdForItemLinearLookup(demanda) {
+    return String(
+      demanda?.id ||
+        demanda?.ID_Demanda_Controle ||
+        demanda?.Id_Demanda_Controle ||
+        demanda?.id_demanda_controle ||
+        demanda?.IdDemandaControle ||
+        demanda?.idDemandaInformado ||
+        "",
+    ).trim();
+  }
+
+  function shouldEnrichDemandWithItemLinear(demanda) {
+    const idDemandaControle = demandIdForItemLinearLookup(demanda);
+
+    if (!/^ID-[^-]+-[^-]+-/i.test(idDemandaControle)) {
+      return false;
+    }
+
+    const origem = normalizeText(
+      [
+        demanda?.origem,
+        demanda?.fontesConsolidadas,
+        demanda?.tipoDemanda,
+        demanda?.fonteQualidade,
+      ].join(" "),
+    );
+
+    return (
+      origem.includes("FUTUR") ||
+      String(demanda?.tipoDemanda || "").toUpperCase() === "FUTURA" ||
+      !String(demanda?.ordem || "").trim()
+    );
+  }
+
+  function enrichDemandWithItemLinear(
+    demanda,
+    mapaItensLineares,
+    options = {},
+  ) {
+    if (!demanda || !mapaItensLineares?.size) return demanda;
+
+    if (!shouldEnrichDemandWithItemLinear(demanda)) {
+      return demanda;
+    }
+
+    const idDemandaControle = demandIdForItemLinearLookup(demanda);
+    const { plano, item } = extractPlanoItemFromFutureId(idDemandaControle);
+    const key = makePlanoItemKey(plano, item);
+
+    if (!key) return demanda;
+
+    const itemLinear = mapaItensLineares.get(key);
+
+    if (!itemLinear) return demanda;
+
+    const { textoItem, kmInicio, kmFim } = getItemLinearData(itemLinear);
+
+    const kmInicioAtual = formatKmFerroviario(
+      demanda.kmInicio ||
+        demanda.KmInicio ||
+        demanda.km_inicio ||
+        demanda["Km Inicio"] ||
+        demanda["Km Início"] ||
+        "",
+    );
+
+    const kmFimAtual = formatKmFerroviario(
+      demanda.kmFim ||
+        demanda.KmFim ||
+        demanda.km_fim ||
+        demanda["Km Fim"] ||
+        "",
+    );
+
+    return {
+      ...demanda,
+
+      // Para registro que veio só do banco, não sobrescreve descrição já existente.
+      // Só completa caso esteja vazia.
+      ...(options.preencherDescricaoSeVazia && textoItem && !demanda.descricao
+        ? {
+            descricao: textoItem,
+            Descricao: textoItem,
+          }
+        : {}),
+
+      // Regra principal:
+      // Se já tiver KM no registro, mantém.
+      // Se não tiver, busca no itens_lineares pelo plano + item.
+      ...(kmInicioAtual
+        ? {
+            kmInicio: kmInicioAtual,
+            KmInicio: kmInicioAtual,
+            km_inicio: kmInicioAtual,
+          }
+        : kmInicio
+          ? {
+              kmInicio,
+              KmInicio: kmInicio,
+              km_inicio: kmInicio,
+            }
+          : {}),
+
+      ...(kmFimAtual
+        ? {
+            kmFim: kmFimAtual,
+            KmFim: kmFimAtual,
+            km_fim: kmFimAtual,
+          }
+        : kmFim
+          ? {
+              kmFim,
+              KmFim: kmFim,
+              km_fim: kmFim,
+            }
+          : {}),
+    };
+  }
+
   function enrichBaseFuturasWithItensLineares(
     baseFuturasRaw,
     itensLinearesRaw,
@@ -1179,41 +1355,7 @@
         return futura;
       }
 
-      const textoItem = pickField(itemLinear, [
-        "Texto item",
-        "Texto Item",
-        "TEXTO ITEM",
-        "texto item",
-        "texto_item",
-        "TEXTO_ITEM",
-        "textoItem",
-        "TextoItem",
-        "descricao",
-        "Descrição",
-        "DESCRICAO",
-      ]);
-
-      const kmInicio = pickField(itemLinear, [
-        "Km Inicio",
-        "Km Início",
-        "KM Inicio",
-        "KM Início",
-        "KM_INICIO",
-        "km_inicio",
-        "kmInicio",
-        "KmInicial",
-        "kmInicial",
-      ]);
-
-      const kmFim = pickField(itemLinear, [
-        "Km Fim",
-        "KM Fim",
-        "KM_FIM",
-        "km_fim",
-        "kmFim",
-        "KmFinal",
-        "kmFinal",
-      ]);
+      const { textoItem, kmInicio, kmFim } = getItemLinearData(itemLinear);
 
       return {
         ...futura,
@@ -1231,17 +1373,17 @@
         // Não altera local, centro de trabalho, gerência, supervisão nem qualquer outro dado.
         ...(kmInicio
           ? {
-              KmInicio: formatKmFerroviario(kmInicio),
-              kmInicio: formatKmFerroviario(kmInicio),
-              km_inicio: formatKmFerroviario(kmInicio),
+              KmInicio: kmInicio,
+              kmInicio: kmInicio,
+              km_inicio: kmInicio,
             }
           : {}),
 
         ...(kmFim
           ? {
-              KmFim: formatKmFerroviario(kmFim),
-              kmFim: formatKmFerroviario(kmFim),
-              km_fim: formatKmFerroviario(kmFim),
+              KmFim: kmFim,
+              kmFim: kmFim,
+              km_fim: kmFim,
             }
           : {}),
       };
@@ -1937,9 +2079,11 @@
       supervisao: baseDemand.supervisao || delta.supervisao,
       centroTrabalho: baseDemand.centroTrabalho || delta.centroTrabalho,
       localInstalacao: baseDemand.localInstalacao || delta.localInstalacao,
-      km: baseDemand.km || delta.km || "",
-      kmInicio: baseDemand.kmInicio || delta.kmInicio || "",
-      kmFim: baseDemand.kmFim || delta.kmFim || "",
+      km: formatKmFerroviario(baseDemand.km || delta.km || ""),
+      kmInicio: formatKmFerroviario(
+        baseDemand.kmInicio || delta.kmInicio || "",
+      ),
+      kmFim: formatKmFerroviario(baseDemand.kmFim || delta.kmFim || ""),
       competencia: normalizeCompetencia(
         baseDemand.competencia || delta.competencia,
       ),
@@ -2078,6 +2222,10 @@
 
     const baseSources = await loadBaseSourcesFromJson();
 
+    const mapaItensLineares = buildItensLinearesMap(
+      baseSources.itensLineares || [],
+    );
+
     const base = mergeBaseOrdensEFuturas(
       baseSources.baseOrdens,
       baseSources.baseFuturas,
@@ -2119,7 +2267,14 @@
 
     const demandasSomenteSupabase = (supabaseData.demandas || [])
       .filter((item) => !baseIds.has(item.id))
-      .map((item) => enrichDemandWithCentroTrabalho(item, mapaCentrosTrabalho));
+      .map((item) =>
+        enrichDemandWithCentroTrabalho(
+          enrichDemandWithItemLinear(item, mapaItensLineares, {
+            preencherDescricaoSeVazia: true,
+          }),
+          mapaCentrosTrabalho,
+        ),
+      );
 
     const demandasAntesRealizados = [
       ...demandasSomenteSupabase,
@@ -2132,6 +2287,11 @@
     ).map(normalizeDemandRecord);
 
     const demandas = consolidateCarteiraByRealizedOrder(demandasComRealizados)
+      .map((demanda) =>
+        enrichDemandWithItemLinear(demanda, mapaItensLineares, {
+          preencherDescricaoSeVazia: true,
+        }),
+      )
       .map((demanda) =>
         enrichDemandWithCentroTrabalho(demanda, mapaCentrosTrabalho),
       )
@@ -2728,7 +2888,8 @@
       hydrateStaticUi();
       renderLoginState();
       renderRole();
-      renderCurrentView();
+      // Defer heavy initial render so login-screen fade happens first
+      requestAnimationFrame(() => renderCurrentView());
 
       await state.repo.addLog?.({
         usuario: user.email,
@@ -5851,8 +6012,35 @@
     });
   }
 
+  function syncActiveViewPanel(view = state.currentView) {
+    $$("[data-view-panel]").forEach((panel) => {
+      const isActive = panel.dataset.viewPanel === view;
+
+      panel.classList.toggle("is-active", isActive);
+
+      // Garante que view inativa não ocupe espaço no layout.
+      // Isso evita o problema de uma tela ficar empurrando a outra para baixo.
+      panel.hidden = !isActive;
+    });
+  }
+
+  function scrollWorkspaceToTop() {
+    const workspace = $(".workspace");
+
+    if (workspace) {
+      workspace.scrollTop = 0;
+    }
+
+    global.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
+  }
+
   function renderCurrentView() {
     syncNavigation(state.currentView);
+    syncActiveViewPanel(state.currentView);
     if (state.currentView === "carteira") renderCarteira();
     if (state.currentView === "lote") renderBatch();
     if (state.currentView === "futuras") renderFutureDemandas();
@@ -5883,8 +6071,14 @@
   }
 
   async function refreshAfterSave(message = "Registro salvo com sucesso.") {
-    await refreshAll();
-    showToast(message, "success");
+    const loading = showLoadingToast("Salvando e sincronizando...");
+    try {
+      await refreshAll();
+      loading.dismiss(message);
+    } catch (err) {
+      loading.error("Erro ao sincronizar após salvar.");
+      throw err;
+    }
   }
 
   async function refreshAll() {
@@ -5920,9 +6114,8 @@
       state.navGroups[key] = key === groupKey;
     });
     syncNavigation(view);
-    $$("[data-view-panel]").forEach((panel) =>
-      panel.classList.toggle("is-active", panel.dataset.viewPanel === view),
-    );
+    syncActiveViewPanel(view);
+    scrollWorkspaceToTop();
     renderCurrentView();
   }
 
@@ -7265,7 +7458,7 @@
                       |
                       ${escapeHtml(suggestion.target.localInstalacao || "-")}
                       |
-                      ${escapeHtml(suggestion.target.competencia || "-")}
+                      Venc.: ${formatDate(suggestion.target.vencimento)}
                     </div>
                   </div>
 
@@ -7285,6 +7478,15 @@
 
       applyPermissions();
     }, 50);
+  }
+
+  function sameVencimentoDate(a, b) {
+    const left = dateText(a);
+    const right = dateText(b);
+
+    if (!left || !right) return false;
+
+    return left === right;
   }
 
   function tokenOverlap(a, b) {
@@ -7308,17 +7510,34 @@
 
   function linkSuggestions(future) {
     if (future.ordem) return [];
+
     return state.db.demandas
       .filter((item) => item.ordem && item.id !== future.id)
       .map((target) => {
         let score = 0;
+
+        // Centro de trabalho continua sendo um forte indicador operacional.
         if (target.centroTrabalho === future.centroTrabalho) score += 30;
+
+        // Local de instalação continua sendo outro forte indicador técnico.
         if (target.localInstalacao === future.localInstalacao) score += 30;
-        if (target.competencia === future.competencia) score += 20;
+
+        // REGRA AJUSTADA:
+        // Antes comparava competência.
+        // Agora compara a data de vencimento da demanda futura com a data de vencimento da OM.
+        if (sameVencimentoDate(target.vencimento, future.vencimento)) {
+          score += 20;
+        }
+
+        // Similaridade textual permanece igual.
         score += Math.round(
           tokenOverlap(future.descricao, target.descricao) * 20,
         );
-        return { target, score };
+
+        return {
+          target,
+          score,
+        };
       })
       .filter((item) => item.score >= 45)
       .sort((a, b) => b.score - a.score);
@@ -7410,22 +7629,33 @@
     }, {});
   }
 
-  function renderBars(element, counts) {
+  function renderBars(element, counts, limitOrOpts = {}) {
+    const opts =
+      typeof limitOrOpts === "number"
+        ? { limit: limitOrOpts }
+        : limitOrOpts || {};
+    const limit = opts.limit ?? 10;
+    const showPercent = opts.showPercent ?? false;
+    if (!element) return;
     const entries = Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 6);
+      .slice(0, limit);
+    const total = entries.reduce((s, [, c]) => s + c, 0);
     const max = Math.max(1, ...entries.map(([, count]) => count));
     element.innerHTML =
       entries
-        .map(
-          ([label, count]) => `
-        <div class="bar-row">
-          <span>${escapeHtml(label)}</span>
-          <div class="bar-track"><div class="bar-value" style="width: ${(count / max) * 100}%"></div></div>
-          <strong>${count}</strong>
-        </div>
-      `,
-        )
+        .map(([label, count]) => {
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+          const barPct = Math.round((count / max) * 100);
+          const countLabel = showPercent ? `${pct}%` : String(count);
+          return `
+              <div class="bar-row">
+                <span class="bar-row-label" title="${escapeHtml(label)}">${escapeHtml(label || "—")}</span>
+                <div class="bar-track"><div class="bar-value" style="width:${barPct}%"></div></div>
+                <strong class="bar-row-count">${countLabel}</strong>
+              </div>
+            `;
+        })
         .join("") || '<span class="muted">Sem dados no recorte.</span>';
   }
 
@@ -7622,20 +7852,20 @@
       (item) => toDate(item.vencimento) < today && !item.dataRealizada,
     );
 
-    const pct = (n, total) =>
-      total > 0 ? Math.round((n / total) * 100) : 0;
+    const pct = (n, total) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
     const adherenceRate = pct(stats.realizadas, stats.total);
     const overdueRate = pct(overdue.length, stats.total);
     const withLoss = demands.filter((d) => d.perda).length;
     const lossRate = pct(withLoss, stats.total);
+    const replanRate = pct(stats.replanejadas, stats.total);
 
-    // ── KPI grid ──────────────────────────────────────────────────
+    // ── KPI cards ──────────────────────────────────────────
     const kpiCards = [
       {
         label: "Total",
         value: stats.total,
-        note: "demandas no filtro atual",
+        note: "no filtro atual",
         accent: "",
       },
       {
@@ -7653,14 +7883,15 @@
       {
         label: "Realizadas",
         value: stats.realizadas,
-        note: `${adherenceRate}% de aderência`,
-        accent: adherenceRate >= 80 ? "ok" : adherenceRate >= 50 ? "warn" : "danger",
+        note: `${adherenceRate}% aderência`,
+        accent:
+          adherenceRate >= 80 ? "ok" : adherenceRate >= 50 ? "warn" : "danger",
       },
       {
         label: "Replanejadas",
         value: stats.replanejadas,
-        note: `${pct(stats.replanejadas, stats.total)}% com alteração`,
-        accent: "",
+        note: `${replanRate}% do total`,
+        accent: replanRate > 20 ? "warn" : "",
       },
       {
         label: "Vencidas",
@@ -7671,75 +7902,249 @@
       {
         label: "Com Perda",
         value: withLoss,
-        note: `${lossRate}% com perda registrada`,
+        note: `${lossRate}% do total`,
         accent: withLoss > 0 ? "warn" : "",
       },
       {
-        label: "Vencendo em 20d",
+        label: "Vence em 20d",
         value: dueSoon.length,
-        note: "requerem atenção imediata",
+        note: "atenção imediata",
         accent: dueSoon.length > 0 ? "warn" : "",
       },
     ];
 
-    $("#indicatorGrid").innerHTML = kpiCards
-      .map(
-        ({ label, value, note, accent }) =>
-          `<article class="indicator-card${accent ? " indicator-card--" + accent : ""}">` +
-          `<span>${label}</span>` +
-          `<strong>${value}</strong>` +
-          `<small>${note}</small>` +
-          `</article>`,
-      )
-      .join("");
+    const indicatorGrid = $("#indicatorGrid");
+    if (indicatorGrid) {
+      indicatorGrid.innerHTML = kpiCards
+        .map(
+          ({ label, value, note, accent }) =>
+            `<article class="indicator-card${accent ? " indicator-card--" + accent : ""}">` +
+            `<span>${label}</span><strong>${value}</strong><small>${note}</small></article>`,
+        )
+        .join("");
+    }
 
-    // ── Gráficos de distribuição ──────────────────────────────────
+    // ── Adherence gauge panel (vertical, 3 KPIs stacked) ─────
+    const adherRow = $("#indicAdherenceRow");
+    if (adherRow) {
+      const mkAdh = (label, rate, suffix, cls) => {
+        const barW = Math.min(Math.max(rate, 0), 100);
+        return (
+          `<div class="ind-adh-card">` +
+          `<div class="ind-adh-label">${label}</div>` +
+          `<strong class="ind-adh-value ind-adh-value--${cls}">${rate}%</strong>` +
+          `<div class="ind-adh-bar-track"><div class="ind-adh-bar-fill ind-adh-bar-fill--${cls}" style="width:${barW}%"></div></div>` +
+          `<small class="ind-adh-note">${suffix}</small></div>`
+        );
+      };
+      adherRow.innerHTML =
+        mkAdh(
+          "Aderência (realizadas)",
+          adherenceRate,
+          `${stats.realizadas.toLocaleString("pt-BR")} de ${stats.total.toLocaleString("pt-BR")} ordens realizadas`,
+          adherenceRate >= 80 ? "ok" : adherenceRate >= 50 ? "warn" : "danger",
+        ) +
+        mkAdh(
+          "Replanejamento",
+          replanRate,
+          `${stats.replanejadas.toLocaleString("pt-BR")} ordens com alteração de data`,
+          replanRate > 20 ? "warn" : "ok",
+        ) +
+        mkAdh(
+          "Perda registrada",
+          lossRate,
+          `${withLoss.toLocaleString("pt-BR")} ordens com perda documentada`,
+          lossRate > 10 ? "danger" : lossRate > 3 ? "warn" : "ok",
+        );
+    }
+
+    // ── Gerência bars ────────────────────────────────────
     renderBars(
-      $("#lossByCenter"),
-      countBy(demands, (item) => item.gerencia),
-    );
-    renderBars(
-      $("#lossReasons"),
-      countBy(demands, (item) => item.supervisao),
-    );
-    renderBars(
-      $("#replanRanking"),
-      countBy(demands, (item) => item.centroTrabalho),
+      $("#chartGerencia"),
+      countBy(demands, (d) => d.gerencia),
+      10,
     );
 
-    // ── Lista de vencimentos próximos ─────────────────────────────
-    const dueHtml = dueSoon.slice(0, 8).map((item) => {
-      const due = toDate(item.vencimento);
-      const daysLeft = due ? Math.round((due - today) / 86400000) : null;
-      const urgClass =
-        daysLeft !== null && daysLeft <= 5 ? "due-item--urgent" : "";
-      return `
-        <div class="due-item ${urgClass}">
-          <div class="due-item-date">
-            <strong>${formatDate(item.vencimento)}</strong>
-            ${daysLeft !== null ? `<small>${daysLeft === 0 ? "hoje" : daysLeft + "d"}</small>` : ""}
-          </div>
-          <div class="due-item-body">
-            <span>${escapeHtml(item.ordem || item.id)} — ${escapeHtml(item.descricao)}</span>
-            <small>${escapeHtml(item.gerencia || "")}${item.supervisao ? " · " + item.supervisao : ""}${item.centroTrabalho ? " · " + item.centroTrabalho : ""}</small>
-          </div>
-          ${statusChipGroup(statusListOf(item))}
-        </div>
-      `;
+    // ── Tipo OM bars ─────────────────────────────────────
+    renderBars(
+      $("#chartTipoOM"),
+      countBy(demands, (d) => d.tipoOM || "Não inf."),
+      10,
+    );
+
+    // ── Replan por supervisão bars ───────────────────────
+    const replanDemands = demands.filter((d) => d.dataReplanejadaAtual);
+    renderBars(
+      $("#chartReplanSupervisao"),
+      countBy(replanDemands, (d) => d.supervisao),
+      8,
+    );
+
+    // ── Competência bars ──────────────────────────────────
+    renderBars(
+      $("#chartCompetencia"),
+      countBy(demands, (d) => d.competencia),
+      10,
+    );
+
+    // ── Status donut canvas ───────────────────────────────
+    renderStatusDonut(demands, stats);
+
+    // ── Semáforo por gerência ─────────────────────────────
+    renderSemaforo(demands, overdue, today);
+
+    // ── Vencimentos próximos ──────────────────────────────
+    const dueEl = $("#dueSoonList");
+    if (dueEl) {
+      const dueHtml = dueSoon.slice(0, 8).map((item) => {
+        const due = toDate(item.vencimento);
+        const daysLeft = due ? Math.round((due - today) / 86400000) : null;
+        const urgClass =
+          daysLeft !== null && daysLeft <= 5 ? "due-item--urgent" : "";
+        return (
+          `<div class="due-item ${urgClass}">` +
+          `<div class="due-item-date"><strong>${formatDate(item.vencimento)}</strong>` +
+          `${daysLeft !== null ? `<small>${daysLeft === 0 ? "hoje" : daysLeft + "d"}</small>` : ""}</div>` +
+          `<div class="due-item-body">` +
+          `<span>${escapeHtml(item.ordem || item.id)} — ${escapeHtml(item.descricao)}</span>` +
+          `<small>${escapeHtml(item.gerencia || "")}${item.supervisao ? " · " + item.supervisao : ""}</small></div>` +
+          `${statusChipGroup(statusListOf(item))}</div>`
+        );
+      });
+      dueEl.innerHTML =
+        dueHtml.join("") ||
+        '<span class="muted">Nenhum vencimento nos próximos 20 dias.</span>';
+    }
+  }
+
+  function renderStatusDonut(demands, stats) {
+    const canvas = document.getElementById("statusDonut");
+    const legendEl = $("#statusDonutLegend");
+    if (!canvas || !legendEl) return;
+
+    const slices = [
+      { label: "Realizadas", value: stats.realizadas, color: "#16a34a" },
+      { label: "Planejadas", value: stats.planejadas, color: "#2563eb" },
+      { label: "Replanejadas", value: stats.replanejadas, color: "#d97706" },
+      { label: "A Planejar", value: stats.aPlanejar, color: "#9ca3af" },
+    ].filter((s) => s.value > 0);
+
+    const total = slices.reduce((s, x) => s + x.value, 0);
+    const ctx = canvas.getContext("2d");
+    const W = 140,
+      cx = W / 2,
+      cy = W / 2,
+      R = 58,
+      r = 34;
+    canvas.width = W;
+    canvas.height = W;
+    ctx.clearRect(0, 0, W, W);
+
+    let angle = -Math.PI / 2;
+    slices.forEach((sl) => {
+      const sweep = (sl.value / Math.max(total, 1)) * 2 * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R, angle, angle + sweep);
+      ctx.closePath();
+      ctx.fillStyle = sl.color;
+      ctx.fill();
+      angle += sweep;
     });
-    $("#dueSoonList").innerHTML =
-      dueHtml.join("") ||
-      '<span class="muted">Nenhum vencimento nos próximos 20 dias.</span>';
 
-    // ── Status e Competência ──────────────────────────────────────
-    renderBars(
-      $("#statusChart"),
-      countBy(demands, (item) => primaryStatusOf(item)),
-    );
-    renderBars(
-      $("#competenceChart"),
-      countBy(demands, (item) => item.competencia),
-    );
+    // Donut hole
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+
+    // Center label
+    ctx.fillStyle = "#111827";
+    ctx.font = "bold 18px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(total.toLocaleString("pt-BR"), cx, cy - 5);
+    ctx.font = "500 9px system-ui";
+    ctx.fillStyle = "#6b7280";
+    ctx.fillText("demandas", cx, cy + 11);
+
+    // Legend
+    legendEl.innerHTML = slices
+      .map((sl) => {
+        const p = total > 0 ? Math.round((sl.value / total) * 100) : 0;
+        return (
+          `<div class="ind-donut-item">` +
+          `<span class="ind-donut-dot" style="background:${sl.color}"></span>` +
+          `<span>${escapeHtml(sl.label)}</span>` +
+          `<span class="ind-donut-val">${sl.value} <small style="color:#9ca3af">${p}%</small></span>` +
+          `</div>`
+        );
+      })
+      .join("");
+  }
+
+  function renderSemaforo(demands, overdue, today) {
+    const el = $("#chartSemaforo");
+    if (!el) return;
+
+    const overdueIds = new Set(overdue.map((d) => d.id));
+    const gerencias = [
+      ...new Set(demands.map((d) => d.gerencia).filter(Boolean)),
+    ];
+
+    const rows = gerencias
+      .map((ger) => {
+        const demandasGer = demands.filter((d) => d.gerencia === ger);
+        const total = demandasGer.length;
+        const realizadas = demandasGer.filter((d) => d.dataRealizada).length;
+        const vencidas = demandasGer.filter((d) => overdueIds.has(d.id)).length;
+        const aderencia =
+          total > 0 ? Math.round((realizadas / total) * 100) : 0;
+        const status =
+          aderencia >= 80 ? "ok" : aderencia >= 50 ? "warn" : "danger";
+        const barColor =
+          status === "ok"
+            ? "#16a34a"
+            : status === "warn"
+              ? "#d97706"
+              : "#dc2626";
+        const pill =
+          aderencia >= 80 ? "ok" : aderencia >= 50 ? "warn" : "danger";
+        const pillLabel =
+          aderencia >= 80 ? "OK" : aderencia >= 50 ? "Atenção" : "Crítico";
+        return {
+          ger,
+          total,
+          realizadas,
+          vencidas,
+          aderencia,
+          status,
+          barColor,
+          pill,
+          pillLabel,
+        };
+      })
+      .sort((a, b) => a.aderencia - b.aderencia);
+
+    if (!rows.length) {
+      el.innerHTML = '<span class="muted">Sem dados no recorte.</span>';
+      return;
+    }
+
+    el.innerHTML =
+      `<div class="ind-semaforo-row">` +
+      rows
+        .map(
+          (r) =>
+            `<div class="ind-semaforo-item">` +
+            `<span class="ind-semaforo-label" title="${escapeHtml(r.ger)}">${escapeHtml(r.ger || "—")}</span>` +
+            `<div class="ind-semaforo-bar-track"><div class="ind-semaforo-bar-fill" style="width:${r.aderencia}%;background:${r.barColor}"></div></div>` +
+            `<span class="ind-semaforo-count">${r.realizadas}/${r.total}</span>` +
+            `<span class="ind-semaforo-pill ind-semaforo-pill--${r.pill}">${r.pillLabel}</span>` +
+            `</div>`,
+        )
+        .join("") +
+      `</div>`;
   }
 
   function renderTaxonomia() {
@@ -7833,7 +8238,7 @@
         ${cardsResumo}
       </section>
 
-      <section class="taxo-discipline-stack">
+      <section class="taxo-discipline-grid">
         ${cardsDisciplinas}
       </section>
     </div>
@@ -7841,16 +8246,13 @@
   }
 
   function buildTaxonomiaKpiCard({ icon, label, value, note }) {
-    return `
-    <article class="taxo-kpi-card">
-      <div class="taxo-kpi-icon">
-        ${taxonomiaIconSvg(icon)}
-      </div>
-      <span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(value)}</strong>
-      <small>${escapeHtml(note)}</small>
-    </article>
-  `;
+    return (
+      `<article class="taxo-kpi-card">` +
+      `<div class="taxo-kpi-label">${escapeHtml(label)}</div>` +
+      `<div class="taxo-kpi-value">${escapeHtml(String(value))}</div>` +
+      `<div class="taxo-kpi-note">${escapeHtml(note)}</div>` +
+      `</article>`
+    );
   }
 
   function buildTaxonomiaDisciplinaCard({
@@ -7882,40 +8284,31 @@
       contagemSubtipos,
     );
 
-    const subtipoCards = buildTaxonomiaSubtipoCards({
+    const subtipoContent = buildTaxonomiaSubtipoCards({
       disciplina,
       subtiposOrdenados,
       contagemSubtipos,
       totalDisciplina,
     });
 
-    return `
-    <article class="taxo-discipline-card taxo-${meta.key}">
-      <header class="taxo-discipline-header">
-        <div class="taxo-discipline-icon">
-          ${taxonomiaIconSvg(meta.icon)}
-        </div>
-
-        <div class="taxo-discipline-title">
-          <h3>${escapeHtml(disciplina)}</h3>
-          <p>
-            ${formatTaxonomiaNumber(totalDisciplina)}
-            ordens — ${escapeHtml(meta.descricao)}
-          </p>
-        </div>
-
-        <strong class="taxo-discipline-percent">
-          ${percentualDisciplina}%
-        </strong>
-      </header>
-
-      ${
-        totalDisciplina
-          ? `<div class="taxo-subtype-grid">${subtipoCards}</div>`
-          : `<div class="taxo-empty-discipline">Nenhuma ordem classificada nesta disciplina no recorte atual.</div>`
-      }
-    </article>
-  `;
+    return (
+      `<article class="taxo-discipline-card taxo-${meta.key}">` +
+      `<header class="taxo-discipline-header">` +
+      `<div class="taxo-discipline-icon">${taxonomiaIconSvg(meta.icon)}</div>` +
+      `<div class="taxo-discipline-title">` +
+      `<h3>${escapeHtml(disciplina)}</h3>` +
+      `<p>${escapeHtml(String(totalDisciplina.toLocaleString("pt-BR")))} ordens — ${escapeHtml(meta.descricao)}</p>` +
+      `</div>` +
+      `<div class="taxo-discipline-meta">` +
+      `<strong class="taxo-discipline-percent">${percentualDisciplina}%</strong>` +
+      `<small class="taxo-discipline-count">${totalDisciplina.toLocaleString("pt-BR")} OS</small>` +
+      `</div>` +
+      `</header>` +
+      (totalDisciplina
+        ? `<div class="taxo-subtipo-list">${subtipoContent}</div>`
+        : `<div class="taxo-empty-discipline">Nenhuma ordem classificada nesta disciplina no recorte atual.</div>`) +
+      `</article>`
+    );
   }
 
   function buildTaxonomiaSubtipoCards({
@@ -7929,61 +8322,43 @@
         subtipo,
         quantidade: contagemSubtipos[subtipo] || 0,
       }))
-      .filter((item) => item.quantidade > 0);
+      .filter((item) => item.quantidade > 0)
+      .sort((a, b) => b.quantidade - a.quantidade);
 
     if (!linhas.length) {
-      return `
-      <div class="taxo-subtype-cell is-general">
-        <span class="taxo-subtype-title">Geral / Sem subtipo</span>
-        <strong class="taxo-subtype-value">${formatTaxonomiaNumber(totalDisciplina)}</strong>
-        <span class="taxo-subtype-percent">100% da disciplina</span>
-        <div class="taxo-bar-track">
-          <div class="taxo-bar-value" style="width: 100%"></div>
-        </div>
-      </div>
-    `;
+      return (
+        `<div class="taxo-subtipo-row">` +
+        `<span class="taxo-subtipo-label is-general">Geral / Sem subtipo</span>` +
+        `<div class="taxo-subtipo-bar-track"><div class="taxo-subtipo-bar-fill is-general" style="width:100%"></div></div>` +
+        `<span class="taxo-subtipo-num">${formatTaxonomiaNumber(totalDisciplina)}</span>` +
+        `<span class="taxo-subtipo-pct is-general">100%</span>` +
+        `</div>`
+      );
     }
 
     const maiorValor = Math.max(1, ...linhas.map((item) => item.quantidade));
 
-    const cards = linhas
+    return linhas
       .map((item) => {
         const percentual = taxonomiaPercentual(
           item.quantidade,
           totalDisciplina,
           1,
         );
-
-        const largura = Math.max(3, (item.quantidade / maiorValor) * 100);
+        const largura = Math.max(2, (item.quantidade / maiorValor) * 100);
         const isGeneral = item.subtipo === "Geral";
         const titulo = taxonomiaTituloSubtipo(disciplina, item.subtipo);
 
-        return `
-        <div class="taxo-subtype-cell ${isGeneral ? "is-general" : ""}">
-          <span class="taxo-subtype-title">${escapeHtml(titulo)}</span>
-          <strong class="taxo-subtype-value">${formatTaxonomiaNumber(item.quantidade)}</strong>
-          <span class="taxo-subtype-percent">
-            ${percentual}% ${isGeneral ? "— aguarda refinamento" : "da disciplina"}
-          </span>
-          <div class="taxo-bar-track">
-            <div class="taxo-bar-value" style="width: ${largura}%"></div>
-          </div>
-        </div>
-      `;
+        return (
+          `<div class="taxo-subtipo-row">` +
+          `<span class="taxo-subtipo-label ${isGeneral ? "is-general" : ""}" title="${escapeHtml(titulo)}">${escapeHtml(titulo)}</span>` +
+          `<div class="taxo-subtipo-bar-track"><div class="taxo-subtipo-bar-fill ${isGeneral ? "is-general" : ""}" style="width:${largura}%"></div></div>` +
+          `<span class="taxo-subtipo-num">${formatTaxonomiaNumber(item.quantidade)}</span>` +
+          `<span class="taxo-subtipo-pct ${isGeneral ? "is-general" : ""}">${percentual}%</span>` +
+          `</div>`
+        );
       })
       .join("");
-
-    const resto = linhas.length % 3;
-    const vazios = resto
-      ? Array.from({ length: 3 - resto })
-          .map(
-            () =>
-              `<div class="taxo-subtype-cell taxo-subtype-cell-empty"></div>`,
-          )
-          .join("")
-      : "";
-
-    return cards + vazios;
   }
 
   function taxonomiaSubtiposOrdenados(definicaoDisciplina, contagemSubtipos) {
@@ -8014,27 +8389,32 @@
       "Via Permanente": {
         key: "via",
         icon: "rail",
+        iconTi: "train",
         descricao: "trilhos, dormentes, AMV, geometria, soldagem",
       },
       Eletroeletrônica: {
         key: "eletro",
         icon: "cpu",
+        iconTi: "cpu",
         descricao: "sinalização, ATC, MCH elétrica, telecom, telemetria",
       },
       "Força & Energia": {
         key: "energia",
         icon: "bolt",
+        iconTi: "bolt",
         descricao: "subestações, iluminação, cancelas, proteção catódica, UPS",
       },
       Infraestrutura: {
         key: "infra",
         icon: "mountain",
+        iconTi: "building-bridge",
         descricao:
           "aterros, bueiros, drenagem, roço, passagens em nível, acessos",
       },
       "Estaleiro de Solda": {
         key: "solda",
         icon: "tool",
+        iconTi: "flame",
         descricao: "soldagem de trilhos, rolo motor e apoio operacional",
       },
     };
@@ -8043,6 +8423,7 @@
       meta[disciplina] || {
         key: "generic",
         icon: "grid",
+        iconTi: "layout-grid",
         descricao: "atividades classificadas automaticamente",
       }
     );
@@ -8077,19 +8458,43 @@
     const icons = {
       database:
         '<ellipse cx="12" cy="5" rx="7" ry="3"></ellipse><path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5"></path><path d="M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"></path>',
+
       tag: '<path d="M20 12 12 20 4 12V4h8l8 8Z"></path><circle cx="9" cy="9" r="1.5"></circle>',
-      grid: '<rect x="4" y="4" width="6" height="6"></rect><rect x="14" y="4" width="6" height="6"></rect><rect x="4" y="14" width="6" height="6"></rect><rect x="14" y="14" width="6" height="6"></rect>',
+
+      grid: '<rect x="4" y="4" width="6" height="6" rx="1"></rect><rect x="14" y="4" width="6" height="6" rx="1"></rect><rect x="4" y="14" width="6" height="6" rx="1"></rect><rect x="14" y="14" width="6" height="6" rx="1"></rect>',
+
       check: '<path d="M20 6 9 17l-5-5"></path>',
-      rail: '<path d="M6 4h12v10H6z"></path><path d="M8 18h8"></path><path d="M9 14l-3 6"></path><path d="M15 14l3 6"></path><path d="M9 8h6"></path>',
-      cpu: '<rect x="7" y="7" width="10" height="10" rx="2"></rect><path d="M9 1v4"></path><path d="M15 1v4"></path><path d="M9 19v4"></path><path d="M15 19v4"></path><path d="M1 9h4"></path><path d="M1 15h4"></path><path d="M19 9h4"></path><path d="M19 15h4"></path>',
-      bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"></path>',
-      mountain: '<path d="m3 19 7-14 4 8 2-4 5 10H3Z"></path>',
+
+      rail: '<path d="M7 4h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"></path><path d="M8 8h8"></path><path d="M9 14l-3 6"></path><path d="M15 14l3 6"></path><path d="M8 20h8"></path>',
+
+      cpu: '<rect x="7" y="7" width="10" height="10" rx="2"></rect><rect x="10" y="10" width="4" height="4" rx="1"></rect><path d="M9 2v3"></path><path d="M15 2v3"></path><path d="M9 19v3"></path><path d="M15 19v3"></path><path d="M2 9h3"></path><path d="M2 15h3"></path><path d="M19 9h3"></path><path d="M19 15h3"></path>',
+
+      bolt: '<path d="M13 2 4 14h7l-1 8 10-13h-7l0-7Z"></path>',
+
+      mountain:
+        '<path d="M3 19 9.5 7l4 7 2.5-4 5 9H3Z"></path><path d="M9.5 7 12 12"></path>',
+
       tool: '<path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.4 2.4-3-3 2.4-2.4Z"></path>',
     };
 
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icons[name] || icons.grid}</svg>`;
-  }
+    const svgContent = icons[name] || icons.grid;
 
+    return `
+    <svg
+      class="taxo-inline-icon"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="2.15"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      ${svgContent}
+    </svg>
+  `;
+  }
   function renderAdmin() {
     if (!canAdmin()) {
       $("#adminContent").innerHTML =
@@ -9374,9 +9779,15 @@
     $("#modalSave").addEventListener("click", saveAction);
     $("#exportCsv").addEventListener("click", exportCurrentCarteira);
     $("#refreshData").addEventListener("click", async () => {
-      await state.repo.reset();
-      await refreshAll();
-      showToast("Dados atualizados do Supabase e JSON.", "success");
+      const loading = showLoadingToast("Atualizando base de dados...");
+      try {
+        await state.repo.reset();
+        await refreshAll();
+        loading.dismiss("Base atualizada com sucesso.");
+      } catch (err) {
+        loading.error("Erro ao atualizar. Tente novamente.");
+        console.error("[refreshData]", err);
+      }
     });
     $("#validateBatch").addEventListener("click", validateBatchFile);
     $("#clearBatch").addEventListener("click", () => {
@@ -9796,7 +10207,9 @@
       if (!event.target.matches("[data-multi-option]")) return;
       collectIndicatorFilters();
       buildIndicatorFilterOptions();
-      renderIndicators();
+      // Debounce to avoid re-render storm on multi-select
+      global.clearTimeout(state.indicatorSearchTimer);
+      state.indicatorSearchTimer = global.setTimeout(renderIndicators, 120);
     });
     $("#indicatorFilterPanel")?.addEventListener("input", (event) => {
       if (event.target.matches("[data-multi-search]")) {

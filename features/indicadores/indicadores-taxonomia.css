@@ -1,322 +1,328 @@
-/* ==========================================================
-   TAXONOMIA DE ATIVIDADES — VISUAL EXECUTIVO FUNDO BRANCO
-   Escopo isolado: somente .taxo-*
-   ========================================================== */
+/* ================================================================
+   PROCESSOS DE ATIVIDADE
+   Layout 2×2: VP|EE / F&E|Infra / Solda (full width)
+   Visual executivo compacto — CTO edition
+   ================================================================ */
 
 #taxonomiaPanel {
-  color: #1f2933;
+  color: var(--gray-950, #0f172a);
+  font-family: var(--font, system-ui, sans-serif);
 }
 
+/* ── Shell ───────────────────────────────────────────────────── */
 .taxo-shell {
-  display: grid;
-  gap: 18px;
-  padding-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 20px;
 }
 
+/* ── KPI strip (4 cards inline) ──────────────────────────────── */
 .taxo-summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(190px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .taxo-kpi-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 10px;
-  row-gap: 2px;
-  align-items: start;
-  min-height: 80px;
-  padding: 14px 16px 12px;
-  border: 1px solid #dfe7df;
-  border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 9px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  transition: border-color 0.12s;
 }
-
 .taxo-kpi-card:hover {
-  border-color: #c7d8cc;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.075);
+  border-color: #94a3b8;
 }
 
-.taxo-kpi-icon {
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
+.taxo-kpi-label {
   color: #64748b;
-}
-
-.taxo-kpi-icon svg {
-  width: 16px;
-  height: 16px;
-  stroke: currentColor;
-  stroke-width: 2;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.taxo-kpi-card span {
-  align-self: center;
-  min-width: 0;
-  color: #475569;
-  font-size: 0.78rem;
+  font-size: 9.5px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
 }
 
-.taxo-kpi-card strong {
-  grid-column: 1 / -1;
-  margin-top: 3px;
+.taxo-kpi-value {
   color: #0f172a;
-  font-size: 1.6rem;
+  font-size: 19px;
   font-weight: 950;
-  line-height: 1;
+  line-height: 1.05;
   letter-spacing: -0.04em;
 }
 
-.taxo-kpi-card small {
-  grid-column: 1 / -1;
-  color: #64748b;
-  font-size: 0.72rem;
+.taxo-kpi-note {
+  color: #94a3b8;
+  font-size: 9.5px;
   font-weight: 700;
+  margin-top: 2px;
 }
 
-.taxo-discipline-stack {
+/* ── 2×2 Discipline grid ─────────────────────────────────────── */
+.taxo-discipline-grid {
   display: grid;
-  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.taxo-discipline-card {
-  --taxo-accent: #65a30d;
-  --taxo-accent-soft: #ecfccb;
+/* Last child (Estaleiro de Solda) spans full width */
+.taxo-discipline-grid > .taxo-discipline-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
 
-  overflow: hidden;
-  border: 1px solid #d8dfd7;
-  border-radius: 16px;
+/* ── Individual discipline card ──────────────────────────────── */
+.taxo-discipline-card {
+  --taxo-accent: #16a34a;
+  --taxo-accent-soft: #f0fdf4;
+  --taxo-accent-border: #bbf7d0;
+  --taxo-accent-muted: #dcfce7;
+
   background: #ffffff;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .taxo-discipline-card.taxo-via {
-  --taxo-accent: #4d8f12;
-  --taxo-accent-soft: #edf8df;
+  --taxo-accent: #16a34a;
+  --taxo-accent-soft: #f0fdf4;
+  --taxo-accent-border: #bbf7d0;
+  --taxo-accent-muted: #dcfce7;
 }
-
 .taxo-discipline-card.taxo-eletro {
-  --taxo-accent: #1976d2;
-  --taxo-accent-soft: #e8f3ff;
+  --taxo-accent: #1d4ed8;
+  --taxo-accent-soft: #eff6ff;
+  --taxo-accent-border: #bfdbfe;
+  --taxo-accent-muted: #dbeafe;
 }
-
 .taxo-discipline-card.taxo-energia {
-  --taxo-accent: #c77a00;
-  --taxo-accent-soft: #fff4da;
-}
-
-.taxo-discipline-card.taxo-infra {
-  --taxo-accent: #6554d9;
-  --taxo-accent-soft: #efedff;
-}
-
-.taxo-discipline-card.taxo-solda {
   --taxo-accent: #b45309;
-  --taxo-accent-soft: #fff7ed;
+  --taxo-accent-soft: #fffbeb;
+  --taxo-accent-border: #fde68a;
+  --taxo-accent-muted: #fef3c7;
+}
+.taxo-discipline-card.taxo-infra {
+  --taxo-accent: #6d28d9;
+  --taxo-accent-soft: #f5f3ff;
+  --taxo-accent-border: #ddd6fe;
+  --taxo-accent-muted: #ede9fe;
+}
+.taxo-discipline-card.taxo-solda {
+  --taxo-accent: #b91c1c;
+  --taxo-accent-soft: #fff1f2;
+  --taxo-accent-border: #fecdd3;
+  --taxo-accent-muted: #fee2e2;
 }
 
+/* ── Card header ─────────────────────────────────────────────── */
 .taxo-discipline-header {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 12px;
+  display: flex;
   align-items: center;
-  min-height: 60px;
-  padding: 14px 18px;
-  border-bottom: 1px solid #e2e8df;
-  background: #fafcfa;
+  gap: 10px;
+  padding: 10px 13px 9px;
+  background: var(--taxo-accent-soft);
+  border-bottom: 1px solid var(--taxo-accent-border);
+  flex-shrink: 0;
 }
 
 .taxo-discipline-icon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: var(--taxo-accent-soft);
-  color: var(--taxo-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: var(--taxo-accent);
+  color: #ffffff !important;
+  flex-shrink: 0;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12);
 }
 
+.taxo-discipline-icon .taxo-inline-icon,
 .taxo-discipline-icon svg {
-  width: 20px;
-  height: 20px;
-  stroke: currentColor;
-  stroke-width: 2.15;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  width: 18px;
+  height: 18px;
+  display: block;
+  color: #ffffff !important;
+  fill: none !important;
+  stroke: #ffffff !important;
+  stroke-width: 2.15 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.taxo-discipline-icon .taxo-inline-icon *,
+.taxo-discipline-icon svg * {
+  fill: none !important;
+  stroke: #ffffff !important;
+  stroke-width: 2.15 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
 }
 
 .taxo-discipline-title {
+  flex: 1;
   min-width: 0;
 }
 
 .taxo-discipline-title h3 {
   margin: 0;
-  color: #1e293b;
-  font-size: 0.96rem;
+  color: #0f172a;
+  font-size: 12px;
   font-weight: 900;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .taxo-discipline-title p {
-  margin: 3px 0 0;
-  color: #64748b;
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 1.35;
+  margin: 1px 0 0;
+  color: #475569;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taxo-discipline-meta {
+  text-align: right;
+  flex-shrink: 0;
 }
 
 .taxo-discipline-percent {
-  min-width: 72px;
+  display: block;
   color: var(--taxo-accent);
-  font-size: 1.6rem;
+  font-size: 17px;
   font-weight: 950;
   line-height: 1;
-  text-align: right;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.04em;
 }
 
-.taxo-subtype-grid {
+.taxo-discipline-count {
+  display: block;
+  color: #94a3b8;
+  font-size: 9.5px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+/* ── Subtype rows ────────────────────────────────────────────── */
+.taxo-subtipo-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 5px 13px 9px;
+  overflow: hidden;
+}
+
+.taxo-subtipo-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(100px, 1.5fr) 1fr 46px 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.taxo-subtype-cell {
-  min-height: 72px;
-  padding: 10px 14px 9px;
-  border-right: 1px solid #e2e8df;
-  border-bottom: 1px solid #e2e8df;
-  background: #ffffff;
+.taxo-subtipo-row:last-child {
+  border-bottom: none;
 }
 
-.taxo-subtype-cell:nth-child(3n) {
-  border-right: 0;
+.taxo-subtipo-label {
+  color: #334155;
+  font-size: 10.5px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.taxo-subtype-cell:nth-last-child(-n + 3) {
-  border-bottom: 0;
+.taxo-subtipo-label.is-general {
+  color: #94a3b8;
+  font-style: italic;
 }
 
-.taxo-subtype-cell:hover {
-  background: #fbfdfb;
+.taxo-subtipo-bar-track {
+  height: 5px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
 }
 
-.taxo-subtype-cell-empty {
-  background: #fcfcfb;
+.taxo-subtipo-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--taxo-accent);
+  min-width: 2px;
+  opacity: 0.85;
 }
 
-.taxo-subtype-cell-empty:hover {
-  background: #fcfcfb;
+.taxo-subtipo-bar-fill.is-general {
+  background: #cbd5e1;
 }
 
-.taxo-subtype-title {
-  display: block;
-  min-height: 28px;
-  color: #475569;
-  font-size: 0.76rem;
-  font-weight: 850;
-  line-height: 1.3;
+.taxo-subtipo-num {
+  text-align: right;
+  color: #1e293b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
 }
 
-.taxo-subtype-value {
-  display: block;
-  margin-top: 3px;
-  color: #1f2937;
-  font-size: 1.2rem;
-  font-weight: 950;
-  line-height: 1;
-  letter-spacing: -0.03em;
-}
-
-.taxo-subtype-percent {
-  display: block;
-  margin-top: 2px;
-  color: #64748b;
-  font-size: 0.7rem;
+.taxo-subtipo-pct {
+  text-align: right;
+  color: var(--taxo-accent);
+  font-size: 9.5px;
   font-weight: 800;
 }
 
-.taxo-subtype-cell.is-general .taxo-subtype-percent {
-  color: #7c6f5b;
-}
-
-.taxo-bar-track {
-  overflow: hidden;
-  height: 4px;
-  margin-top: 10px;
-  border-radius: 999px;
-  background: #edf2ed;
-}
-
-.taxo-bar-value {
-  width: 0;
-  height: 100%;
-  min-width: 8px;
-  border-radius: inherit;
-  background: var(--taxo-accent);
-}
-
-.taxo-subtype-cell.is-general .taxo-bar-value {
-  background: #9ca3af;
+.taxo-subtipo-pct.is-general {
+  color: #94a3b8;
 }
 
 .taxo-empty-discipline {
-  padding: 18px;
-  color: #64748b;
-  font-size: 0.86rem;
-  font-weight: 700;
+  padding: 10px 13px;
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 600;
 }
 
+/* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 1280px) {
   .taxo-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
-  .taxo-subtype-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 900px) {
+  .taxo-discipline-grid {
+    grid-template-columns: 1fr;
   }
-
-  .taxo-subtype-cell:nth-child(3n) {
-    border-right: 1px solid #e2e8df;
-  }
-
-  .taxo-subtype-cell:nth-child(2n) {
-    border-right: 0;
+  .taxo-discipline-grid > .taxo-discipline-card:last-child:nth-child(odd) {
+    grid-column: 1;
   }
 }
 
 @media (max-width: 760px) {
   .taxo-summary-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
-
   .taxo-discipline-header {
-    grid-template-columns: auto minmax(0, 1fr);
+    flex-wrap: wrap;
   }
-
-  .taxo-discipline-percent {
-    grid-column: 1 / -1;
-    min-width: 0;
-    text-align: left;
+  .taxo-discipline-meta {
+    display: none;
   }
-
-  .taxo-subtype-grid {
-    grid-template-columns: 1fr;
+  .taxo-subtipo-row {
+    grid-template-columns: 1fr 46px 36px;
   }
-
-  .taxo-subtype-cell,
-  .taxo-subtype-cell:nth-child(2n),
-  .taxo-subtype-cell:nth-child(3n) {
-    border-right: 0;
+  .taxo-subtipo-bar-track {
+    display: none;
   }
 }

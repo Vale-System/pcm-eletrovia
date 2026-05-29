@@ -142,6 +142,7 @@
       "qualidade-centros",
       "qualidade-divergencias",
     ],
+    indicadores: ["indicadores", "indicadores-taxonomia"],
     administracao: ["administracao", "logs", "saude-integracao"],
   };
 
@@ -153,9 +154,11 @@
     navGroups: {
       carteira: true,
       qualidade: false,
+      indicadores: false,
       administracao: false,
     },
     adminTab: "usuarios",
+    indicadorTab: "indicadores",
     selectedDemandId: "",
     page: 1,
     pageSize: 12,
@@ -5484,6 +5487,9 @@
       }
       renderIndicators();
     }
+    if (state.currentView === "indicadores-taxonomia") {
+      renderTaxonomia();
+    }
 
     if (state.currentView === "administracao") renderAdmin();
     if (state.currentView === "logs") renderLogs();
@@ -7280,6 +7286,354 @@
     );
   }
 
+  function renderTaxonomia() {
+    const el = $("#taxonomiaPanel");
+    if (!el) return;
+
+    if (!global.CCETaxonomia?.classificar) {
+      el.innerHTML = `
+      <div class="empty-detail">
+        <strong>Módulo de taxonomia indisponível</strong>
+        <span>Verifique se o arquivo features/indicadores/indicadores-taxonomia.js foi carregado antes do app.js.</span>
+      </div>
+    `;
+      return;
+    }
+
+    const demandasOriginais = state.db?.demandas || [];
+    const demandas = global.CCETaxonomia.classificar(demandasOriginais);
+    const disciplinas = global.CCETaxonomia.DISCIPLINAS || {};
+
+    const total = demandas.length;
+    const porDisciplina = countBy(demandas, (item) => item.disciplina);
+
+    el.innerHTML = buildTaxonomiaHtml(
+      demandas,
+      porDisciplina,
+      disciplinas,
+      total,
+    );
+  }
+
+  function buildTaxonomiaHtml(demandas, porDisciplina, disciplinas, total) {
+    const ordemDisciplinas = [
+      "Via Permanente",
+      "Eletroeletrônica",
+      "Força & Energia",
+      "Infraestrutura",
+      "Estaleiro de Solda",
+    ];
+
+    const tiposDistintos = taxonomiaTiposDistintos(demandas);
+    const classificadas = demandas.filter((item) => item.disciplina).length;
+    const percentualClassificadas = taxonomiaPercentual(
+      classificadas,
+      total,
+      0,
+    );
+
+    const cardsResumo = [
+      buildTaxonomiaKpiCard({
+        icon: "database",
+        label: "Total carteira",
+        value: formatTaxonomiaNumber(total),
+        note: "ordens de serviço analisadas",
+      }),
+      buildTaxonomiaKpiCard({
+        icon: "tag",
+        label: "Tipos distintos",
+        value: formatTaxonomiaNumber(tiposDistintos),
+        note: "descrições únicas identificadas",
+      }),
+      buildTaxonomiaKpiCard({
+        icon: "grid",
+        label: "Disciplinas",
+        value: ordemDisciplinas.length,
+        note: "Via Perm • EE • F&E • Infra • Solda",
+      }),
+      buildTaxonomiaKpiCard({
+        icon: "check",
+        label: "Classificadas",
+        value: `${percentualClassificadas}%`,
+        note: `${formatTaxonomiaNumber(total - classificadas)} sem disciplina técnica`,
+      }),
+    ].join("");
+
+    const cardsDisciplinas = ordemDisciplinas
+      .map((disciplina) =>
+        buildTaxonomiaDisciplinaCard({
+          disciplina,
+          demandas,
+          definicaoDisciplina: disciplinas[disciplina],
+          totalGeral: total,
+          totalDisciplina: porDisciplina[disciplina] || 0,
+        }),
+      )
+      .join("");
+
+    return `
+    <div class="taxo-shell">
+      <section class="taxo-summary-grid">
+        ${cardsResumo}
+      </section>
+
+      <section class="taxo-discipline-stack">
+        ${cardsDisciplinas}
+      </section>
+    </div>
+  `;
+  }
+
+  function buildTaxonomiaKpiCard({ icon, label, value, note }) {
+    return `
+    <article class="taxo-kpi-card">
+      <div class="taxo-kpi-icon">
+        ${taxonomiaIconSvg(icon)}
+      </div>
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      <small>${escapeHtml(note)}</small>
+    </article>
+  `;
+  }
+
+  function buildTaxonomiaDisciplinaCard({
+    disciplina,
+    demandas,
+    definicaoDisciplina,
+    totalGeral,
+    totalDisciplina,
+  }) {
+    const meta = taxonomiaMetaDisciplina(disciplina);
+
+    const demandasDisciplina = demandas.filter(
+      (item) => item.disciplina === disciplina,
+    );
+
+    const percentualDisciplina = taxonomiaPercentual(
+      totalDisciplina,
+      totalGeral,
+      1,
+    );
+
+    const contagemSubtipos = countBy(
+      demandasDisciplina,
+      (item) => item.subtipo || "Geral",
+    );
+
+    const subtiposOrdenados = taxonomiaSubtiposOrdenados(
+      definicaoDisciplina,
+      contagemSubtipos,
+    );
+
+    const subtipoCards = buildTaxonomiaSubtipoCards({
+      disciplina,
+      subtiposOrdenados,
+      contagemSubtipos,
+      totalDisciplina,
+    });
+
+    return `
+    <article class="taxo-discipline-card taxo-${meta.key}">
+      <header class="taxo-discipline-header">
+        <div class="taxo-discipline-icon">
+          ${taxonomiaIconSvg(meta.icon)}
+        </div>
+
+        <div class="taxo-discipline-title">
+          <h3>${escapeHtml(disciplina)}</h3>
+          <p>
+            ${formatTaxonomiaNumber(totalDisciplina)}
+            ordens — ${escapeHtml(meta.descricao)}
+          </p>
+        </div>
+
+        <strong class="taxo-discipline-percent">
+          ${percentualDisciplina}%
+        </strong>
+      </header>
+
+      ${
+        totalDisciplina
+          ? `<div class="taxo-subtype-grid">${subtipoCards}</div>`
+          : `<div class="taxo-empty-discipline">Nenhuma ordem classificada nesta disciplina no recorte atual.</div>`
+      }
+    </article>
+  `;
+  }
+
+  function buildTaxonomiaSubtipoCards({
+    disciplina,
+    subtiposOrdenados,
+    contagemSubtipos,
+    totalDisciplina,
+  }) {
+    const linhas = subtiposOrdenados
+      .map((subtipo) => ({
+        subtipo,
+        quantidade: contagemSubtipos[subtipo] || 0,
+      }))
+      .filter((item) => item.quantidade > 0);
+
+    if (!linhas.length) {
+      return `
+      <div class="taxo-subtype-cell is-general">
+        <span class="taxo-subtype-title">Geral / Sem subtipo</span>
+        <strong class="taxo-subtype-value">${formatTaxonomiaNumber(totalDisciplina)}</strong>
+        <span class="taxo-subtype-percent">100% da disciplina</span>
+        <div class="taxo-bar-track">
+          <div class="taxo-bar-value" style="width: 100%"></div>
+        </div>
+      </div>
+    `;
+    }
+
+    const maiorValor = Math.max(1, ...linhas.map((item) => item.quantidade));
+
+    const cards = linhas
+      .map((item) => {
+        const percentual = taxonomiaPercentual(
+          item.quantidade,
+          totalDisciplina,
+          1,
+        );
+
+        const largura = Math.max(3, (item.quantidade / maiorValor) * 100);
+        const isGeneral = item.subtipo === "Geral";
+        const titulo = taxonomiaTituloSubtipo(disciplina, item.subtipo);
+
+        return `
+        <div class="taxo-subtype-cell ${isGeneral ? "is-general" : ""}">
+          <span class="taxo-subtype-title">${escapeHtml(titulo)}</span>
+          <strong class="taxo-subtype-value">${formatTaxonomiaNumber(item.quantidade)}</strong>
+          <span class="taxo-subtype-percent">
+            ${percentual}% ${isGeneral ? "— aguarda refinamento" : "da disciplina"}
+          </span>
+          <div class="taxo-bar-track">
+            <div class="taxo-bar-value" style="width: ${largura}%"></div>
+          </div>
+        </div>
+      `;
+      })
+      .join("");
+
+    const resto = linhas.length % 3;
+    const vazios = resto
+      ? Array.from({ length: 3 - resto })
+          .map(
+            () =>
+              `<div class="taxo-subtype-cell taxo-subtype-cell-empty"></div>`,
+          )
+          .join("")
+      : "";
+
+    return cards + vazios;
+  }
+
+  function taxonomiaSubtiposOrdenados(definicaoDisciplina, contagemSubtipos) {
+    const base = definicaoDisciplina?.subtipos || ["Geral"];
+    const extras = Object.keys(contagemSubtipos).filter(
+      (subtipo) => !base.includes(subtipo),
+    );
+
+    return [...base, ...extras];
+  }
+
+  function taxonomiaTituloSubtipo(disciplina, subtipo) {
+    if (subtipo !== "Geral") return subtipo;
+
+    const labels = {
+      "Via Permanente": "Geral / Planos sem subtipo",
+      Eletroeletrônica: "Geral / Centros ECEE sem subtipo",
+      "Força & Energia": "Geral / Centros ECFE sem subtipo",
+      Infraestrutura: "Geral / Centros CIV/CIF sem subtipo",
+      "Estaleiro de Solda": "Geral / CES sem subtipo",
+    };
+
+    return labels[disciplina] || "Geral / Sem subtipo";
+  }
+
+  function taxonomiaMetaDisciplina(disciplina) {
+    const meta = {
+      "Via Permanente": {
+        key: "via",
+        icon: "rail",
+        descricao: "trilhos, dormentes, AMV, geometria, soldagem",
+      },
+      Eletroeletrônica: {
+        key: "eletro",
+        icon: "cpu",
+        descricao: "sinalização, ATC, MCH elétrica, telecom, telemetria",
+      },
+      "Força & Energia": {
+        key: "energia",
+        icon: "bolt",
+        descricao: "subestações, iluminação, cancelas, proteção catódica, UPS",
+      },
+      Infraestrutura: {
+        key: "infra",
+        icon: "mountain",
+        descricao:
+          "aterros, bueiros, drenagem, roço, passagens em nível, acessos",
+      },
+      "Estaleiro de Solda": {
+        key: "solda",
+        icon: "tool",
+        descricao: "soldagem de trilhos, rolo motor e apoio operacional",
+      },
+    };
+
+    return (
+      meta[disciplina] || {
+        key: "generic",
+        icon: "grid",
+        descricao: "atividades classificadas automaticamente",
+      }
+    );
+  }
+
+  function taxonomiaTiposDistintos(demandas) {
+    const descricoes = new Set(
+      demandas
+        .map((item) => normalizeText(item.descricao || item.textoBreve || ""))
+        .filter(Boolean),
+    );
+
+    return descricoes.size;
+  }
+
+  function formatTaxonomiaNumber(value) {
+    return new Intl.NumberFormat("pt-BR").format(Number(value) || 0);
+  }
+
+  function taxonomiaPercentual(valor, total, casas = 0) {
+    if (!total) return casas ? "0,0" : "0";
+
+    const numero = (Number(valor) / Number(total)) * 100;
+
+    return new Intl.NumberFormat("pt-BR", {
+      minimumFractionDigits: casas,
+      maximumFractionDigits: casas,
+    }).format(numero);
+  }
+
+  function taxonomiaIconSvg(name) {
+    const icons = {
+      database:
+        '<ellipse cx="12" cy="5" rx="7" ry="3"></ellipse><path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5"></path><path d="M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"></path>',
+      tag: '<path d="M20 12 12 20 4 12V4h8l8 8Z"></path><circle cx="9" cy="9" r="1.5"></circle>',
+      grid: '<rect x="4" y="4" width="6" height="6"></rect><rect x="14" y="4" width="6" height="6"></rect><rect x="4" y="14" width="6" height="6"></rect><rect x="14" y="14" width="6" height="6"></rect>',
+      check: '<path d="M20 6 9 17l-5-5"></path>',
+      rail: '<path d="M6 4h12v10H6z"></path><path d="M8 18h8"></path><path d="M9 14l-3 6"></path><path d="M15 14l3 6"></path><path d="M9 8h6"></path>',
+      cpu: '<rect x="7" y="7" width="10" height="10" rx="2"></rect><path d="M9 1v4"></path><path d="M15 1v4"></path><path d="M9 19v4"></path><path d="M15 19v4"></path><path d="M1 9h4"></path><path d="M1 15h4"></path><path d="M19 9h4"></path><path d="M19 15h4"></path>',
+      bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"></path>',
+      mountain: '<path d="m3 19 7-14 4 8 2-4 5 10H3Z"></path>',
+      tool: '<path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.4 2.4-3-3 2.4-2.4Z"></path>',
+    };
+
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icons[name] || icons.grid}</svg>`;
+  }
+
   function renderAdmin() {
     if (!canAdmin()) {
       $("#adminContent").innerHTML =
@@ -8378,17 +8732,26 @@
     });
 
     $("#mainNav").addEventListener("click", (event) => {
+      const subItem = event.target.closest(".nav-subitem[data-view]");
+
+      if (subItem) {
+        switchView(subItem.dataset.view);
+        return;
+      }
+
       const groupToggle = event.target.closest("[data-nav-group-toggle]");
+
       if (groupToggle?.dataset.navGroupToggle) {
         const groupKey = groupToggle.dataset.navGroupToggle;
-        const nextOpen = !state.navGroups[groupKey];
+        const targetView =
+          groupToggle.dataset.view || NAV_GROUPS[groupKey]?.[0];
 
         Object.keys(state.navGroups).forEach((key) => {
-          state.navGroups[key] = key === groupKey ? nextOpen : false;
+          state.navGroups[key] = key === groupKey;
         });
 
-        if (nextOpen && navGroupForView(state.currentView) !== groupKey) {
-          switchView(groupToggle.dataset.view || NAV_GROUPS[groupKey]?.[0]);
+        if (targetView) {
+          switchView(targetView);
           return;
         }
 
@@ -8397,7 +8760,10 @@
       }
 
       const button = event.target.closest("[data-view]");
-      if (button) switchView(button.dataset.view);
+
+      if (button) {
+        switchView(button.dataset.view);
+      }
     });
 
     $("#userSelect").addEventListener("change", async (event) => {

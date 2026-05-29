@@ -1,0 +1,322 @@
+/* ==========================================================
+   TAXONOMIA DE ATIVIDADES — VISUAL EXECUTIVO FUNDO BRANCO
+   Escopo isolado: somente .taxo-*
+   ========================================================== */
+
+#taxonomiaPanel {
+  color: #1f2933;
+}
+
+.taxo-shell {
+  display: grid;
+  gap: 18px;
+  padding-bottom: 24px;
+}
+
+.taxo-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.taxo-kpi-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 3px;
+  align-items: start;
+  min-height: 104px;
+  padding: 18px 18px 16px;
+  border: 1px solid #dfe7df;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.055);
+}
+
+.taxo-kpi-card:hover {
+  border-color: #c7d8cc;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.075);
+}
+
+.taxo-kpi-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: #475569;
+}
+
+.taxo-kpi-icon svg {
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.taxo-kpi-card span {
+  align-self: center;
+  min-width: 0;
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.taxo-kpi-card strong {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  color: #0f172a;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.taxo-kpi-card small {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.taxo-discipline-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.taxo-discipline-card {
+  --taxo-accent: #65a30d;
+  --taxo-accent-soft: #ecfccb;
+
+  overflow: hidden;
+  border: 1px solid #d8dfd7;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+}
+
+.taxo-discipline-card.taxo-via {
+  --taxo-accent: #4d8f12;
+  --taxo-accent-soft: #edf8df;
+}
+
+.taxo-discipline-card.taxo-eletro {
+  --taxo-accent: #1976d2;
+  --taxo-accent-soft: #e8f3ff;
+}
+
+.taxo-discipline-card.taxo-energia {
+  --taxo-accent: #c77a00;
+  --taxo-accent-soft: #fff4da;
+}
+
+.taxo-discipline-card.taxo-infra {
+  --taxo-accent: #6554d9;
+  --taxo-accent-soft: #efedff;
+}
+
+.taxo-discipline-card.taxo-solda {
+  --taxo-accent: #b45309;
+  --taxo-accent-soft: #fff7ed;
+}
+
+.taxo-discipline-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 76px;
+  padding: 20px 22px;
+  border-bottom: 1px solid #e2e8df;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.88), rgba(255, 255, 255, 1)),
+    #ffffff;
+}
+
+.taxo-discipline-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--taxo-accent-soft);
+  color: var(--taxo-accent);
+}
+
+.taxo-discipline-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  stroke-width: 2.15;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.taxo-discipline-title {
+  min-width: 0;
+}
+
+.taxo-discipline-title h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.16rem;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.taxo-discipline-title p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.taxo-discipline-percent {
+  min-width: 96px;
+  color: var(--taxo-accent);
+  font-size: 2rem;
+  font-weight: 950;
+  line-height: 1;
+  text-align: right;
+  letter-spacing: -0.055em;
+}
+
+.taxo-subtype-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.taxo-subtype-cell {
+  min-height: 100px;
+  padding: 14px 18px 13px;
+  border-right: 1px solid #e2e8df;
+  border-bottom: 1px solid #e2e8df;
+  background: #ffffff;
+}
+
+.taxo-subtype-cell:nth-child(3n) {
+  border-right: 0;
+}
+
+.taxo-subtype-cell:nth-last-child(-n + 3) {
+  border-bottom: 0;
+}
+
+.taxo-subtype-cell:hover {
+  background: #fbfdfb;
+}
+
+.taxo-subtype-cell-empty {
+  background: #fcfcfb;
+}
+
+.taxo-subtype-cell-empty:hover {
+  background: #fcfcfb;
+}
+
+.taxo-subtype-title {
+  display: block;
+  min-height: 34px;
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.taxo-subtype-value {
+  display: block;
+  margin-top: 5px;
+  color: #1f2937;
+  font-size: 1.46rem;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.taxo-subtype-percent {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.taxo-subtype-cell.is-general .taxo-subtype-percent {
+  color: #7c6f5b;
+}
+
+.taxo-bar-track {
+  overflow: hidden;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: #edf2ed;
+}
+
+.taxo-bar-value {
+  width: 0;
+  height: 100%;
+  min-width: 8px;
+  border-radius: inherit;
+  background: var(--taxo-accent);
+}
+
+.taxo-subtype-cell.is-general .taxo-bar-value {
+  background: #9ca3af;
+}
+
+.taxo-empty-discipline {
+  padding: 18px;
+  color: #64748b;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+@media (max-width: 1280px) {
+  .taxo-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .taxo-subtype-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .taxo-subtype-cell:nth-child(3n) {
+    border-right: 1px solid #e2e8df;
+  }
+
+  .taxo-subtype-cell:nth-child(2n) {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .taxo-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .taxo-discipline-header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .taxo-discipline-percent {
+    grid-column: 1 / -1;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .taxo-subtype-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .taxo-subtype-cell,
+  .taxo-subtype-cell:nth-child(2n),
+  .taxo-subtype-cell:nth-child(3n) {
+    border-right: 0;
+  }
+}

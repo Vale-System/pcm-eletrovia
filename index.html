@@ -12,6 +12,10 @@
       rel="stylesheet"
       href="features/clima/clima.css?v=20260528-clima-09"
     />
+    <link
+      rel="stylesheet"
+      href="features/indicadores/indicadores-taxonomia.css?v=20260529-taxo-02"
+    />
     <script defer src="assets/vendor/xlsx.full.min.js?v=20260507-01"></script>
     <script
       defer
@@ -30,7 +34,11 @@
       src="features/clima/clima-config.js?v=20260527-clima-02"
     ></script>
     <script defer src="features/clima/clima.js?v=20260528-clima-09"></script>
-    <script defer src="app.js?v=20260528-clima-04"></script>
+    <script
+      defer
+      src="features/indicadores/indicadores-taxonomia.js?v=20260529-taxo-02"
+    ></script>
+    <script defer src="app.js?v=20260529-taxo-04"></script>
   </head>
   <body>
     <section
@@ -279,14 +287,41 @@
             ></span>
             <span class="nav-text">Risco Climático</span>
           </button>
-          <button
-            class="nav-item nav-item-stacked"
-            data-view="indicadores"
-            type="button"
-          >
-            <span class="nav-icon" data-icon="chart" aria-hidden="true"></span>
-            <span class="nav-text">Indicadores</span>
-          </button>
+          <div class="nav-group" data-nav-group="indicadores">
+            <button
+              class="nav-item nav-group-toggle nav-item-stacked"
+              data-nav-group-toggle="indicadores"
+              data-view="indicadores"
+              type="button"
+              aria-expanded="false"
+              aria-controls="navIndicadoresSubmenu"
+            >
+              <span
+                class="nav-icon"
+                data-icon="chart"
+                aria-hidden="true"
+              ></span>
+              <span class="nav-text">Indicadores</span>
+              <span
+                class="nav-caret"
+                data-icon="chevron-down"
+                aria-hidden="true"
+              ></span>
+            </button>
+
+            <div class="nav-submenu" id="navIndicadoresSubmenu">
+              <button class="nav-subitem" data-view="indicadores" type="button">
+                Painel Geral
+              </button>
+              <button
+                class="nav-subitem"
+                data-view="indicadores-taxonomia"
+                type="button"
+              >
+                Taxonomia de Atividades
+              </button>
+            </div>
+          </div>
 
           <div class="nav-group" data-nav-group="administracao">
             <button
@@ -1343,7 +1378,23 @@
             </section>
           </div>
         </section>
+        <section
+          class="view"
+          id="view-indicadores-taxonomia"
+          data-view-panel="indicadores-taxonomia"
+        >
+          <div class="page-heading">
+            <div>
+              <h2>Taxonomia de Atividades</h2>
+              <p class="subtitle">
+                Classificação por disciplina ferroviária — Via Permanente,
+                Eletroeletrônica, Força &amp; Energia e Infraestrutura.
+              </p>
+            </div>
+          </div>
 
+          <div id="taxonomiaPanel"></div>
+        </section>
         <section
           class="view"
           id="view-administracao"

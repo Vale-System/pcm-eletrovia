@@ -151,39 +151,88 @@ jobs:
               with urllib.request.urlopen(req) as resp:
                   return json.loads(resp.read().decode("utf-8"))
 
-          def api_get_bytes(url):
+          def api_get_bytes(url, max_attempts=12):
               class NoRedirect(urllib.request.HTTPRedirectHandler):
                   def redirect_request(self, req, fp, code, msg, headers_response, newurl):
                       return None
 
               opener = urllib.request.build_opener(NoRedirect)
 
-              req = urllib.request.Request(url, headers=headers)
+              retry_codes = {403, 404, 408, 409, 425, 429, 500, 502, 503, 504}
+              last_error = None
 
-              try:
-                  with opener.open(req) as resp:
-                      return resp.read()
+              for attempt in range(1, max_attempts + 1):
+                  try:
+                      req = urllib.request.Request(url, headers=headers)
 
-              except urllib.error.HTTPError as e:
-                  if e.code in (301, 302, 303, 307, 308):
-                      location = e.headers.get("Location")
-
-                      if not location:
-                          raise Exception("GitHub retornou redirecionamento sem Location.")
-
-                      print("Artifact gerou URL temporária. Baixando arquivo redirecionado sem Authorization.")
-
-                      req2 = urllib.request.Request(
-                          location,
-                          headers={
-                              "User-Agent": "pcm-base-importer"
-                          }
-                      )
-
-                      with urllib.request.urlopen(req2) as resp:
+                      with opener.open(req, timeout=90) as resp:
                           return resp.read()
 
-                  raise
+                  except urllib.error.HTTPError as e:
+                      last_error = e
+
+                      if e.code in (301, 302, 303, 307, 308):
+                          location = e.headers.get("Location")
+
+                          if not location:
+                              raise Exception("GitHub retornou redirecionamento sem Location.")
+
+                          print(
+                              f"Artifact gerou URL temporária. "
+                              f"Tentativa {attempt}/{max_attempts}. "
+                              f"Baixando redirecionado sem Authorization."
+                          )
+
+                          try:
+                              req2 = urllib.request.Request(
+                                  location,
+                                  headers={
+                                      "User-Agent": "pcm-base-importer"
+                                  }
+                              )
+
+                              with urllib.request.urlopen(req2, timeout=120) as resp:
+                                  return resp.read()
+
+                          except urllib.error.HTTPError as e2:
+                              last_error = e2
+
+                              if e2.code not in retry_codes:
+                                  raise
+
+                              wait = min(60, attempt * 6)
+                              print(
+                                  f"Download redirecionado retornou HTTP {e2.code}. "
+                                  f"Tentando novamente em {wait}s..."
+                              )
+                              time.sleep(wait)
+                              continue
+
+                      if e.code not in retry_codes:
+                          raise
+
+                      wait = min(60, attempt * 6)
+                      print(
+                          f"Download do artifact retornou HTTP {e.code}. "
+                          f"Tentativa {attempt}/{max_attempts}. "
+                          f"Aguardando {wait}s..."
+                      )
+                      time.sleep(wait)
+
+                  except Exception as e:
+                      last_error = e
+                      wait = min(60, attempt * 6)
+                      print(
+                          f"Falha temporária ao baixar artifact. "
+                          f"Tentativa {attempt}/{max_attempts}. "
+                          f"Erro: {e}. Aguardando {wait}s..."
+                      )
+                      time.sleep(wait)
+
+              raise Exception(
+                  f"Não foi possível baixar o artifact após {max_attempts} tentativas. "
+                  f"Último erro: {last_error}"
+              )
 
           def listar_artifacts():
               artifacts = []
@@ -258,6 +307,12 @@ jobs:
               artifact_id = artifact["id"]
               zip_url = f"https://api.github.com/repos/{repo}/actions/artifacts/{artifact_id}/zip"
 
+              print(
+                  f"Baixando artifact {index}/{total_parts} "
+                  f"ID={artifact_id} "
+                  f"Nome={artifact.get('name', '')}"
+              )
+
               zip_bytes = api_get_bytes(zip_url)
 
               with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
@@ -296,32 +351,32 @@ jobs:
           LOTE_ID: ${{ github.event.client_payload.lote_id }}
         run: |
           set -e
-      
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-      
+
           echo "Arquivo alvo recebido no payload: $TARGET_PATH"
           echo "Base recebida no payload: $BASE_NAME"
           echo "Lote recebido no payload: $LOTE_ID"
-      
+
           if [ ! -f "$TARGET_PATH" ]; then
             echo "ERRO: arquivo alvo não existe depois da montagem: $TARGET_PATH"
             echo "Arquivos encontrados no repositório:"
             find . -maxdepth 4 -type f | sort
             exit 1
           fi
-      
+
           echo "SHA256 do JSON montado:"
           sha256sum "$TARGET_PATH" || true
-      
+
           echo "Tamanho do JSON montado:"
           wc -c "$TARGET_PATH" || true
-      
+
           META_DIR="base/_sync"
           mkdir -p "$META_DIR"
-      
+
           META_FILE="$META_DIR/${BASE_NAME}.json"
-      
+
           cat > "$META_FILE" <<EOF
           {
             "base_name": "$BASE_NAME",
@@ -332,32 +387,32 @@ jobs:
             "size_bytes": $(wc -c < "$TARGET_PATH")
           }
           EOF
-      
+
           echo "Arquivo de controle criado em: $META_FILE"
-      
+
           echo "Status antes do commit:"
           git status --short
-      
+
           git add "$TARGET_PATH" "$META_FILE"
-      
+
           if [ -z "$(git status --porcelain)" ]; then
             echo "Nenhuma diferença detectada no JSON nem no controle. Criando commit vazio para forçar rebuild."
             git commit --allow-empty -m "Força atualização ${BASE_NAME} - ${LOTE_ID}"
           else
             git commit -m "Atualiza ${BASE_NAME} - ${LOTE_ID}"
           fi
-      
+
           for tentativa in 1 2 3; do
             echo "Tentativa de push: $tentativa"
-      
+
             if git pull --rebase origin main && git push origin main; then
               echo "Push realizado com sucesso."
               exit 0
             fi
-      
+
             echo "Falha no push. Tentando novamente em 10 segundos..."
             sleep 10
           done
-      
+
           echo "Não foi possível realizar o push após 3 tentativas."
           exit 1

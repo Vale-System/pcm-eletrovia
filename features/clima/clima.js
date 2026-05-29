@@ -1509,7 +1509,9 @@
     effectiveConfig,
     realForecastMap,
     selectedDistrict,
+    quinzena,
   }) {
+    const quinzenaNum = quinzena === "2" ? 2 : 1;
     function dayOfWeekShort(dateText) {
       const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
       return days[new Date(`${dateText}T12:00:00`).getDay()];
@@ -1764,7 +1766,11 @@
         return (effectiveConfig.distritos || [])[0] || null;
       })();
 
-    const forecastDays = allDays.slice(0, 16).map((date) => {
+    const firstQDays = allDays.filter((d) => parseInt(d.slice(-2), 10) <= 15);
+    const secondQDays = allDays.filter((d) => parseInt(d.slice(-2), 10) > 15);
+    const stripDays = quinzenaNum === 2 ? secondQDays : firstQDays;
+
+    const forecastDays = stripDays.map((date) => {
       const w = forecastDistrict
         ? getWeather(date, forecastDistrict, null, realForecastMap)
         : {
@@ -1976,10 +1982,13 @@
             <div class="climate-card">
               <div class="climate-card-header">
                 <div>
-                  <span>Previsão detalhada</span>
-                  <strong>Próximos 16 dias — ${escapeHtml(forecastDistrict?.nome || "Sem distrito")}</strong>
+                  <span>Previsão detalhada — ${escapeHtml(forecastDistrict?.nome || "Sem distrito")}</span>
+                  <strong>${quinzenaNum === 1 ? `Dias 01–15 de ${escapeHtml(month)}` : `Dias 16–${allDays.length} de ${escapeHtml(month)}`}</strong>
                 </div>
-                <small>Fonte: Open-Meteo</small>
+                <div class="climate-exec-qswitch">
+                  <button class="climate-exec-qbtn ${quinzenaNum === 1 ? "is-active" : ""}" data-quinzena="1" type="button">1ª Quinzena</button>
+                  <button class="climate-exec-qbtn ${quinzenaNum === 2 ? "is-active" : ""}" data-quinzena="2" type="button">2ª Quinzena</button>
+                </div>
               </div>
               <div class="climate-exec-forecast-strip">
                 ${forecastDays.map(({ date, weather, actCount }) => `
@@ -2340,6 +2349,7 @@
         : month;
 
     const activeTab = container.dataset.activeTab || "calendario";
+    const quinzena = container.dataset.quinzena || "1";
 
     container.innerHTML = `
     <div class="climate-page">
@@ -2437,6 +2447,7 @@
         effectiveConfig,
         realForecastMap,
         selectedDistrict,
+        quinzena,
       }) : `
       <div class="climate-kpis">
         <article>
@@ -2660,6 +2671,13 @@
     container.querySelectorAll("[data-climate-tab]").forEach((btn) => {
       btn.addEventListener("click", () => {
         container.dataset.activeTab = btn.dataset.climateTab;
+        render({ container, demandas, config });
+      });
+    });
+
+    container.querySelectorAll("[data-quinzena]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        container.dataset.quinzena = btn.dataset.quinzena;
         render({ container, demandas, config });
       });
     });

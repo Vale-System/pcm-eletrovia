@@ -7,14 +7,11 @@
     <link rel="icon" type="image/png" href="assets/favicon.png?v=2" />
     <link rel="shortcut icon" type="image/png" href="assets/favicon.png?v=2" />
     <link rel="apple-touch-icon" href="assets/favicon.png?v=2" />
-    <link rel="stylesheet" href="styles.css?v=20260515-login-responsive-02" />
+    <link rel="stylesheet" href="styles.css?v=20260529-01" />
+    <link rel="stylesheet" href="features/clima/clima.css?v=20260529-01" />
     <link
       rel="stylesheet"
-      href="features/clima/clima.css?v=20260528-clima-09"
-    />
-    <link
-      rel="stylesheet"
-      href="features/indicadores/indicadores-taxonomia.css?v=20260529-taxo-02"
+      href="features/indicadores/indicadores-taxonomia.css?v=20260529-02"
     />
     <script defer src="assets/vendor/xlsx.full.min.js?v=20260507-01"></script>
     <script
@@ -33,12 +30,12 @@
       defer
       src="features/clima/clima-config.js?v=20260527-clima-02"
     ></script>
-    <script defer src="features/clima/clima.js?v=20260528-clima-09"></script>
+    <script defer src="features/clima/clima.js?v=20260529-01"></script>
     <script
       defer
-      src="features/indicadores/indicadores-taxonomia.js?v=20260529-taxo-02"
+      src="features/indicadores/indicadores-taxonomia.js?v=20260529-02"
     ></script>
-    <script defer src="app.js?v=20260529-taxo-04"></script>
+    <script defer src="app.js?v=20260529-02"></script>
   </head>
   <body>
     <section
@@ -482,6 +479,11 @@
             ></div>
             <div
               class="advanced-filter hidden"
+              data-multi-filter="kmInicio"
+            ></div>
+            <div class="advanced-filter hidden" data-multi-filter="kmFim"></div>
+            <div
+              class="advanced-filter hidden"
               data-multi-filter="statusSistema"
             ></div>
             <div
@@ -591,6 +593,8 @@
                       <th>Planejador OM</th>
                       <th>Programador</th>
                       <th>Local Instalação</th>
+                      <th>Km Início</th>
+                      <th>Km Fim</th>
                       <th>Prioridade</th>
                       <th>Crítico</th>
                       <th>Planejada</th>
@@ -917,6 +921,8 @@
             <div data-quality-local-multi-filter="substatus"></div>
             <div data-quality-local-multi-filter="prioridade"></div>
             <div data-quality-local-multi-filter="critico"></div>
+            <div data-quality-local-multi-filter="kmInicio"></div>
+            <div data-quality-local-multi-filter="kmFim"></div>
             <div data-quality-local-multi-filter="anoVencimento"></div>
             <div data-quality-local-multi-filter="mesVencimento"></div>
             <label class="search-field">
@@ -1330,6 +1336,8 @@
             <div data-indicator-multi-filter="planejadorCurto"></div>
             <div data-indicator-multi-filter="planejadorOM"></div>
             <div data-indicator-multi-filter="programador"></div>
+            <div data-indicator-multi-filter="kmInicio"></div>
+            <div data-indicator-multi-filter="kmFim"></div>
             <div data-indicator-multi-filter="anoVencimento"></div>
             <div data-indicator-multi-filter="mesVencimento"></div>
             <label class="search-field">

@@ -95,6 +95,16 @@
       field: "localInstalacao",
     },
     {
+      key: "kmInicio",
+      label: "Km Início",
+      field: "kmInicio",
+    },
+    {
+      key: "kmFim",
+      label: "Km Fim",
+      field: "kmFim",
+    },
+    {
       key: "statusSistema",
       label: "Status Sistema",
       field: "statusSistema",
@@ -866,12 +876,63 @@
     }
   }
 
-  function showToast(message, type = "") {
+  function debounce(fn, delay) {
+    let timer;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+  }
+
+  function showToast(message, type = "", duration = 4000) {
+    const host = $("#toastHost");
+    if (!host) return;
     const toast = document.createElement("div");
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    $("#toastHost").appendChild(toast);
-    setTimeout(() => toast.remove(), 3600);
+    toast.className = `toast${type ? " " + type : ""}`;
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+
+    const icons = {
+      success: "✓",
+      error: "✕",
+      warning: "⚠",
+      info: "ℹ",
+      loading: "⟳",
+    };
+    const icon = icons[type] || "";
+    toast.innerHTML = icon
+      ? `<span class="toast-icon">${icon}</span><span>${message}</span>`
+      : message;
+
+    host.appendChild(toast);
+    // Trigger CSS entrance animation
+    requestAnimationFrame(() => toast.classList.add("is-visible"));
+    setTimeout(() => {
+      toast.classList.remove("is-visible");
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  function showLoadingToast(message) {
+    const host = $("#toastHost");
+    if (!host) return null;
+    const toast = document.createElement("div");
+    toast.className = "toast loading is-visible";
+    toast.setAttribute("role", "status");
+    toast.innerHTML = `<span class="toast-icon toast-spinner">⟳</span><span>${message}</span>`;
+    host.appendChild(toast);
+    return {
+      dismiss(successMessage) {
+        if (successMessage) showToast(successMessage, "success");
+        toast.classList.remove("is-visible");
+        setTimeout(() => toast.remove(), 300);
+      },
+      error(errorMessage) {
+        showToast(errorMessage || "Erro ao processar.", "error");
+        toast.classList.remove("is-visible");
+        setTimeout(() => toast.remove(), 300);
+      },
+    };
   }
 
   function showBatchStatus(type, title, detail = "") {
@@ -943,6 +1004,248 @@
     }
 
     return data;
+  }
+
+  function pickField(item, fieldNames) {
+    for (const fieldName of fieldNames) {
+      const value = item?.[fieldName];
+
+      if (
+        value !== undefined &&
+        value !== null &&
+        String(value).trim() !== ""
+      ) {
+        return value;
+      }
+    }
+
+    return "";
+  }
+
+  function formatKmFerroviario(value) {
+    const original = String(value ?? "").trim();
+
+    if (!original) return "";
+
+    const normalized = original.replace(",", ".").replace(/\s+/g, "").trim();
+
+    // Se já vier no padrão correto, mantém.
+    if (/^\d{3}\.\d{3}$/.test(normalized)) {
+      return normalized;
+    }
+
+    // Se vier como 7.690, transforma em 007.690.
+    if (/^\d{1,2}\.\d{3}$/.test(normalized)) {
+      const [km, metro] = normalized.split(".");
+      return `${km.padStart(3, "0")}.${metro.padStart(3, "0").slice(0, 3)}`;
+    }
+
+    // Se vier como número puro: 7690 => 007.690.
+    const digits = normalized.replace(/\D/g, "");
+
+    if (!digits) {
+      return original;
+    }
+
+    const padded = digits.padStart(6, "0");
+    const km = padded.slice(0, -3).padStart(3, "0");
+    const metro = padded.slice(-3);
+
+    return `${km}.${metro}`;
+  }
+
+  function kmFieldValue(item, fieldNames) {
+    return formatKmFerroviario(pickField(item, fieldNames));
+  }
+
+  function normalizeLinearKeyPart(value) {
+    const text = String(value ?? "")
+      .trim()
+      .replace(/\s+/g, "")
+      .replace(/[^\dA-Za-z]/g, "");
+
+    if (!text) return "";
+
+    const onlyDigits = /^\d+$/.test(text);
+
+    if (onlyDigits) {
+      const withoutLeadingZeros = text.replace(/^0+/, "");
+      return withoutLeadingZeros || "0";
+    }
+
+    return normalizeText(text);
+  }
+
+  function extractPlanoItemFromFutureId(idDemandaControle) {
+    const id = String(idDemandaControle ?? "").trim();
+
+    if (!id) {
+      return {
+        plano: "",
+        item: "",
+      };
+    }
+
+    const match = id.match(/^ID-([^-]+)-([^-]+)/i);
+
+    if (!match) {
+      return {
+        plano: "",
+        item: "",
+      };
+    }
+
+    return {
+      plano: normalizeLinearKeyPart(match[1]),
+      item: normalizeLinearKeyPart(match[2]),
+    };
+  }
+
+  function makePlanoItemKey(plano, item) {
+    const planoNormalizado = normalizeLinearKeyPart(plano);
+    const itemNormalizado = normalizeLinearKeyPart(item);
+
+    if (!planoNormalizado || !itemNormalizado) return "";
+
+    return `${planoNormalizado}::${itemNormalizado}`;
+  }
+
+  function buildItensLinearesMap(itensLinearesRaw) {
+    const mapa = new Map();
+
+    if (!Array.isArray(itensLinearesRaw)) return mapa;
+
+    itensLinearesRaw.forEach((linha) => {
+      const plano = pickField(linha, [
+        "plano",
+        "Plano",
+        "PLANO",
+        "planejamento",
+        "Planejamento",
+      ]);
+
+      const item = pickField(linha, [
+        "item",
+        "Item",
+        "ITEM",
+        "Item plano",
+        "Item Plano",
+        "ITEM_PLANO",
+      ]);
+
+      const key = makePlanoItemKey(plano, item);
+
+      if (!key) return;
+
+      // Mantém a primeira ocorrência válida para evitar sobrescrita silenciosa.
+      // Se futuramente você quiser tratar duplicidade de plano/item, fazemos em Qualidade.
+      if (!mapa.has(key)) {
+        mapa.set(key, linha);
+      }
+    });
+
+    return mapa;
+  }
+
+  function enrichBaseFuturasWithItensLineares(
+    baseFuturasRaw,
+    itensLinearesRaw,
+  ) {
+    if (!Array.isArray(baseFuturasRaw) || !baseFuturasRaw.length) {
+      return [];
+    }
+
+    const mapaItensLineares = buildItensLinearesMap(itensLinearesRaw);
+
+    if (!mapaItensLineares.size) {
+      return baseFuturasRaw;
+    }
+
+    return baseFuturasRaw.map((futura) => {
+      const idDemandaControle = pickField(futura, [
+        "ID_Demanda_Controle",
+        "Id_Demanda_Controle",
+        "id_demanda_controle",
+        "IdDemandaControle",
+        "id",
+        "ID",
+      ]);
+
+      const { plano, item } = extractPlanoItemFromFutureId(idDemandaControle);
+      const key = makePlanoItemKey(plano, item);
+      const itemLinear = key ? mapaItensLineares.get(key) : null;
+
+      if (!itemLinear) {
+        return futura;
+      }
+
+      const textoItem = pickField(itemLinear, [
+        "Texto item",
+        "Texto Item",
+        "TEXTO ITEM",
+        "texto item",
+        "texto_item",
+        "TEXTO_ITEM",
+        "textoItem",
+        "TextoItem",
+        "descricao",
+        "Descrição",
+        "DESCRICAO",
+      ]);
+
+      const kmInicio = pickField(itemLinear, [
+        "Km Inicio",
+        "Km Início",
+        "KM Inicio",
+        "KM Início",
+        "KM_INICIO",
+        "km_inicio",
+        "kmInicio",
+        "KmInicial",
+        "kmInicial",
+      ]);
+
+      const kmFim = pickField(itemLinear, [
+        "Km Fim",
+        "KM Fim",
+        "KM_FIM",
+        "km_fim",
+        "kmFim",
+        "KmFinal",
+        "kmFinal",
+      ]);
+
+      return {
+        ...futura,
+
+        // REGRA EXCLUSIVA DA BASE FUTURA:
+        // apenas substitui a descrição da futura pelo Texto item do itens_lineares.json.
+        ...(textoItem
+          ? {
+              Descricao: textoItem,
+              descricao: textoItem,
+            }
+          : {}),
+
+        // Campos adicionais vindos do itens_lineares.json.
+        // Não altera local, centro de trabalho, gerência, supervisão nem qualquer outro dado.
+        ...(kmInicio
+          ? {
+              KmInicio: formatKmFerroviario(kmInicio),
+              kmInicio: formatKmFerroviario(kmInicio),
+              km_inicio: formatKmFerroviario(kmInicio),
+            }
+          : {}),
+
+        ...(kmFim
+          ? {
+              KmFim: formatKmFerroviario(kmFim),
+              kmFim: formatKmFerroviario(kmFim),
+              km_fim: formatKmFerroviario(kmFim),
+            }
+          : {}),
+      };
+    });
   }
 
   function mapBaseItemToDemand(item, origemPadrao) {
@@ -1028,6 +1331,38 @@
         item.KmReferencia ||
         item.kmReferencia ||
         "",
+
+      kmInicio: kmFieldValue(item, [
+        "KmInicio",
+        "kmInicio",
+        "km_inicio",
+        "Km Inicio",
+        "Km Início",
+        "KM Inicio",
+        "KM Início",
+        "KM_INICIO",
+        "KM INICIO",
+        "KMINICIO",
+        "Km Inicial",
+        "KmInicial",
+        "kmInicial",
+      ]),
+
+      kmFim: kmFieldValue(item, [
+        "KmFim",
+        "kmFim",
+        "kmfim",
+        "km fim",
+        "km_fim",
+        "Km Fim",
+        "KM Fim",
+        "KM FIM",
+        "KM_FIM",
+        "KMFIM",
+        "Km Final",
+        "KmFinal",
+        "kmFinal",
+      ]),
 
       statusSistema: item.StatusSistema || item.status_sistema || "",
       statusUsuario: item.StatusUsuario || item.status_usuario || "",
@@ -1241,6 +1576,8 @@
       "supervisao",
       "centroTrabalho",
       "localInstalacao",
+      "kmInicio",
+      "kmFim",
       "competencia",
       "tipoOM",
       "prioridade",
@@ -1524,7 +1861,7 @@
   }
 
   async function loadBaseSourcesFromJson() {
-    const [baseOrdensRaw, baseFuturasRaw, baseRealizadosRaw] =
+    const [baseOrdensRaw, baseFuturasRaw, baseRealizadosRaw, itensLinearesRaw] =
       await Promise.all([
         fetchJsonArray("./base/base_ordens.json", "base_ordens.json"),
 
@@ -1542,13 +1879,26 @@
           console.warn("base_realizados.json não carregada:", error);
           return [];
         }),
+
+        fetchJsonArray(
+          "./base/itens_lineares.json",
+          "itens_lineares.json",
+        ).catch((error) => {
+          console.warn("itens_lineares.json não carregado:", error);
+          return [];
+        }),
       ]);
+
+    const baseFuturasEnriquecidaRaw = enrichBaseFuturasWithItensLineares(
+      baseFuturasRaw,
+      itensLinearesRaw,
+    );
 
     const baseOrdens = baseOrdensRaw.map((item) =>
       mapBaseItemToDemand(item, "SAP BO - Ordens"),
     );
 
-    const baseFuturas = baseFuturasRaw.map((item) =>
+    const baseFuturas = baseFuturasEnriquecidaRaw.map((item) =>
       mapBaseItemToDemand(item, "SAP BO - Demandas Futuras"),
     );
 
@@ -1556,7 +1906,12 @@
       mapBaseItemToDemand(item, "SAP BO - Realizados"),
     );
 
-    return { baseOrdens, baseFuturas, baseRealizados };
+    return {
+      baseOrdens,
+      baseFuturas,
+      baseRealizados,
+      itensLineares: itensLinearesRaw,
+    };
   }
 
   async function loadBaseFromJson() {
@@ -1583,6 +1938,8 @@
       centroTrabalho: baseDemand.centroTrabalho || delta.centroTrabalho,
       localInstalacao: baseDemand.localInstalacao || delta.localInstalacao,
       km: baseDemand.km || delta.km || "",
+      kmInicio: baseDemand.kmInicio || delta.kmInicio || "",
+      kmFim: baseDemand.kmFim || delta.kmFim || "",
       competencia: normalizeCompetencia(
         baseDemand.competencia || delta.competencia,
       ),
@@ -1828,7 +2185,26 @@
       competencia: normalizeCompetencia(demanda.competencia),
       prioridade: normalizePrioridade(demanda.prioridade),
       critico: normalizeCritico(demanda.critico),
-      km: demanda.km || demanda.Km || demanda.KM || "",
+      km: formatKmFerroviario(demanda.km || demanda.Km || demanda.KM || ""),
+      kmInicio: formatKmFerroviario(
+        demanda.kmInicio ||
+          demanda.KmInicio ||
+          demanda.km_inicio ||
+          demanda["Km Inicio"] ||
+          demanda["Km Início"] ||
+          demanda["KM Inicio"] ||
+          demanda["KM Início"] ||
+          "",
+      ),
+      kmFim: formatKmFerroviario(
+        demanda.kmFim ||
+          demanda.KmFim ||
+          demanda.km_fim ||
+          demanda["Km Fim"] ||
+          demanda["KM Fim"] ||
+          demanda["KM FIM"] ||
+          "",
+      ),
       planejadorCurto: demanda.planejadorCurto || "",
       planejadorCurtoEmail: demanda.planejadorCurtoEmail || "",
       planejadorCurtoMatricula: demanda.planejadorCurtoMatricula || "",
@@ -2784,6 +3160,8 @@
               item.descricao,
               item.centroTrabalho,
               item.localInstalacao,
+              item.kmInicio,
+              item.kmFim,
               item.gerencia,
               item.supervisao,
               item.usuarioResponsavel,
@@ -3131,6 +3509,8 @@
       "supervisao",
       "centroTrabalho",
       "localInstalacao",
+      "kmInicio",
+      "kmFim",
       "statusSistema",
       "statusUsuario",
       "competencia",
@@ -4767,6 +5147,8 @@
             <td>${escapeHtml(item.planejadorOM || "-")}</td>
             <td>${escapeHtml(item.programador || "-")}</td>
             <td>${escapeHtml(item.localInstalacao || "-")}</td>
+            <td class="km-cell">${escapeHtml(item.kmInicio || "-")}</td>
+            <td class="km-cell">${escapeHtml(item.kmFim || "-")}</td>
             <td>${escapeHtml(item.prioridade || "-")}</td>
             <td>${escapeHtml(item.critico || "Não informado")}</td>
             <td>${formatDate(item.dataPlanejada)}</td>
@@ -4833,6 +5215,9 @@
         <div class="detail-item"><span>Programador</span><strong>${escapeHtml(demand.programador || "-")}</strong></div>
 
         <div class="detail-item"><span>Local</span><strong>${escapeHtml(demand.localInstalacao || "-")}</strong></div>
+
+        <div class="detail-item"><span>Km Início</span><strong>${escapeHtml(demand.kmInicio || "-")}</strong></div>
+        <div class="detail-item"><span>Km Fim</span><strong>${escapeHtml(demand.kmFim || "-")}</strong></div>
 
         <div class="detail-item"><span>Tolerância Mín.</span><strong>${formatDate(demand.toleranciaMin)}</strong></div>
         <div class="detail-item"><span>Tolerância Máx.</span><strong>${formatDate(demand.toleranciaMax)}</strong></div>
@@ -7222,34 +7607,93 @@
       demandMatchesFilters(item, indicatorFilters),
     );
     const stats = dashboardStats(demands);
+    const today = toDate(todayText());
+
     const dueSoon = demands
       .filter((item) => {
         const due = toDate(item.vencimento);
-        const today = toDate(todayText());
         if (!due || item.dataRealizada) return false;
         const days = (due - today) / 86400000;
         return days >= 0 && days <= 20;
       })
       .sort((a, b) => toDate(a.vencimento) - toDate(b.vencimento));
+
     const overdue = demands.filter(
-      (item) =>
-        toDate(item.vencimento) < toDate(todayText()) && !item.dataRealizada,
-    ).length;
-    const cards = [
-      ["Total de Demandas", stats.total, "recorte filtrado"],
-      ["Total a Planejar", stats.aPlanejar, "sem data"],
-      ["Planejadas", stats.planejadas, "ativas"],
-      ["Replanejadas", stats.replanejadas, "com histórico"],
-      ["Realizadas", stats.realizadas, "baixadas"],
-      ["Ordens Vencidas", overdue, "sem realização"],
-      ["Próximas do Vencimento", dueSoon.length, "20 dias"],
+      (item) => toDate(item.vencimento) < today && !item.dataRealizada,
+    );
+
+    const pct = (n, total) =>
+      total > 0 ? Math.round((n / total) * 100) : 0;
+
+    const adherenceRate = pct(stats.realizadas, stats.total);
+    const overdueRate = pct(overdue.length, stats.total);
+    const withLoss = demands.filter((d) => d.perda).length;
+    const lossRate = pct(withLoss, stats.total);
+
+    // ── KPI grid ──────────────────────────────────────────────────
+    const kpiCards = [
+      {
+        label: "Total",
+        value: stats.total,
+        note: "demandas no filtro atual",
+        accent: "",
+      },
+      {
+        label: "A Planejar",
+        value: stats.aPlanejar,
+        note: `${pct(stats.aPlanejar, stats.total)}% sem data`,
+        accent: stats.aPlanejar > 0 ? "warn" : "",
+      },
+      {
+        label: "Planejadas",
+        value: stats.planejadas,
+        note: `${pct(stats.planejadas, stats.total)}% do total`,
+        accent: "",
+      },
+      {
+        label: "Realizadas",
+        value: stats.realizadas,
+        note: `${adherenceRate}% de aderência`,
+        accent: adherenceRate >= 80 ? "ok" : adherenceRate >= 50 ? "warn" : "danger",
+      },
+      {
+        label: "Replanejadas",
+        value: stats.replanejadas,
+        note: `${pct(stats.replanejadas, stats.total)}% com alteração`,
+        accent: "",
+      },
+      {
+        label: "Vencidas",
+        value: overdue.length,
+        note: `${overdueRate}% do total`,
+        accent: overdue.length > 0 ? "danger" : "ok",
+      },
+      {
+        label: "Com Perda",
+        value: withLoss,
+        note: `${lossRate}% com perda registrada`,
+        accent: withLoss > 0 ? "warn" : "",
+      },
+      {
+        label: "Vencendo em 20d",
+        value: dueSoon.length,
+        note: "requerem atenção imediata",
+        accent: dueSoon.length > 0 ? "warn" : "",
+      },
     ];
-    $("#indicatorGrid").innerHTML = cards
+
+    $("#indicatorGrid").innerHTML = kpiCards
       .map(
-        ([label, value, note]) =>
-          `<article class="indicator-card"><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`,
+        ({ label, value, note, accent }) =>
+          `<article class="indicator-card${accent ? " indicator-card--" + accent : ""}">` +
+          `<span>${label}</span>` +
+          `<strong>${value}</strong>` +
+          `<small>${note}</small>` +
+          `</article>`,
       )
       .join("");
+
+    // ── Gráficos de distribuição ──────────────────────────────────
     renderBars(
       $("#lossByCenter"),
       countBy(demands, (item) => item.gerencia),
@@ -7262,20 +7706,32 @@
       $("#replanRanking"),
       countBy(demands, (item) => item.centroTrabalho),
     );
-    $("#dueSoonList").innerHTML =
-      dueSoon
-        .slice(0, 6)
-        .map(
-          (item) => `
-        <div class="due-item">
-          <strong>${formatDate(item.vencimento)}</strong>
-          <span>${escapeHtml(item.ordem || item.id)} | ${escapeHtml(item.descricao)}</span>
+
+    // ── Lista de vencimentos próximos ─────────────────────────────
+    const dueHtml = dueSoon.slice(0, 8).map((item) => {
+      const due = toDate(item.vencimento);
+      const daysLeft = due ? Math.round((due - today) / 86400000) : null;
+      const urgClass =
+        daysLeft !== null && daysLeft <= 5 ? "due-item--urgent" : "";
+      return `
+        <div class="due-item ${urgClass}">
+          <div class="due-item-date">
+            <strong>${formatDate(item.vencimento)}</strong>
+            ${daysLeft !== null ? `<small>${daysLeft === 0 ? "hoje" : daysLeft + "d"}</small>` : ""}
+          </div>
+          <div class="due-item-body">
+            <span>${escapeHtml(item.ordem || item.id)} — ${escapeHtml(item.descricao)}</span>
+            <small>${escapeHtml(item.gerencia || "")}${item.supervisao ? " · " + item.supervisao : ""}${item.centroTrabalho ? " · " + item.centroTrabalho : ""}</small>
+          </div>
           ${statusChipGroup(statusListOf(item))}
         </div>
-      `,
-        )
-        .join("") ||
-      '<span class="muted">Sem vencimentos nos próximos 20 dias.</span>';
+      `;
+    });
+    $("#dueSoonList").innerHTML =
+      dueHtml.join("") ||
+      '<span class="muted">Nenhum vencimento nos próximos 20 dias.</span>';
+
+    // ── Status e Competência ──────────────────────────────────────
     renderBars(
       $("#statusChart"),
       countBy(demands, (item) => primaryStatusOf(item)),
@@ -8594,6 +9050,8 @@
       "Planejador OM",
       "Programador",
       "Local Instalação",
+      "Km Início",
+      "Km Fim",
       "Prioridade",
       "Status Operacional",
       "Substatus",
@@ -8620,6 +9078,8 @@
       item.planejadorOM,
       item.programador,
       item.localInstalacao,
+      item.kmInicio,
+      item.kmFim,
       item.prioridade,
       primaryStatusOf(item),
       substatusListOf(item).join(" | "),

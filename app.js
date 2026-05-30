@@ -232,8 +232,100 @@
       page: 1,
       pageSize: 80,
     },
+    cache: {
+      baseSources: null,
+      basePortfolio: null,
+      demandMap: new Map(),
+      historiesByDemand: new Map(),
+      carteiraFilterKey: "",
+      carteiraFiltered: [],
+      indicatorFilterKey: "",
+      indicatorFiltered: [],
+      dataVersion: 0,
+    },
     actionContext: null,
   };
+
+  function bumpDataVersion() {
+    state.cache.dataVersion += 1;
+    state.cache.carteiraFilterKey = "";
+    state.cache.carteiraFiltered = [];
+    state.cache.indicatorFilterKey = "";
+    state.cache.indicatorFiltered = [];
+  }
+
+  function buildDemandMap(demandas = []) {
+    return new Map(demandas.map((item) => [item.id, item]));
+  }
+
+  function buildHistoriesByDemand() {
+    const grouped = new Map();
+    const pushHistory = (demandId, entry) => {
+      if (!demandId) return;
+      if (!grouped.has(demandId)) grouped.set(demandId, []);
+      grouped.get(demandId).push(entry);
+    };
+
+    (state.db?.historicoPlanejamento || []).forEach((item) => {
+      pushHistory(item.demandaId, {
+        type: "Planejamento",
+        date: item.dataHora,
+        title: `Planejado para ${formatDate(item.novaData)}`,
+        detail: item.comentario || item.usuario,
+      });
+    });
+
+    (state.db?.historicoReplanejamento || []).forEach((item) => {
+      pushHistory(item.demandaId, {
+        type: "Replanejamento",
+        date: item.dataHora,
+        title: `${formatDate(item.dataAnterior)} para ${formatDate(item.novaData)}`,
+        detail: `${item.motivo || "-"} | ${item.justificativa || "-"}`,
+      });
+    });
+
+    (state.db?.historicoRealizadoPerdas || []).forEach((item) => {
+      pushHistory(item.demandaId, {
+        type: item.perda ? "Perda" : "Realizado",
+        date: item.dataHora,
+        title: item.perda
+          ? item.motivoPerda || "Perda registrada"
+          : `Realizado em ${formatDate(item.dataRealizada)}`,
+        detail: item.comentario || item.justificativaPerda || item.usuario,
+      });
+    });
+
+    grouped.forEach((entries, demandId) => {
+      grouped.set(
+        demandId,
+        entries.sort((a, b) => new Date(b.date) - new Date(a.date)),
+      );
+    });
+
+    return grouped;
+  }
+
+  function rebuildDataIndexes() {
+    state.cache.demandMap = buildDemandMap(state.db?.demandas || []);
+    state.cache.historiesByDemand = buildHistoriesByDemand();
+    bumpDataVersion();
+  }
+
+  function appendHistoryLocally(type, entry) {
+    if (!entry) return;
+    if (type === "planejamento") {
+      state.db.historicoPlanejamento.unshift(entry);
+    } else if (type === "replanejamento") {
+      state.db.historicoReplanejamento.unshift(entry);
+    } else if (type === "realizadoPerda") {
+      state.db.historicoRealizadoPerdas.unshift(entry);
+    }
+  }
+
+  function appendLogLocally(entry) {
+    if (!entry) return;
+    state.db.logs.unshift(entry);
+  }
 
   function iconSvg(name) {
     const icons = {
@@ -2002,7 +2094,38 @@
     return [...carteiraAtualizada, ...realizadosSomenteNaBase];
   }
 
-  async function loadBaseSourcesFromJson() {
+  function buildBasePortfolioCache(baseSources) {
+    const mapaItensLineares = buildItensLinearesMap(baseSources.itensLineares || []);
+    const carteiraBase = mergeBaseOrdensEFuturas(
+      baseSources.baseOrdens,
+      baseSources.baseFuturas,
+    );
+
+    const demandasComRealizados = applyBaseRealizadosToCarteira(
+      carteiraBase.map(normalizeDemandRecord),
+      baseSources.baseRealizados,
+    ).map(normalizeDemandRecord);
+
+    const demandas = consolidateCarteiraByRealizedOrder(demandasComRealizados)
+      .map((demanda) =>
+        enrichDemandWithItemLinear(demanda, mapaItensLineares, {
+          preencherDescricaoSeVazia: true,
+        }),
+      )
+      .map(normalizeDemandRecord);
+
+    return {
+      mapaItensLineares,
+      demandas,
+      baseIds: new Set(demandas.map((item) => item.id)),
+    };
+  }
+
+  async function loadBaseSourcesFromJson({ force = false } = {}) {
+    if (!force && state.cache.baseSources) {
+      return state.cache.baseSources;
+    }
+
     const [baseOrdensRaw, baseFuturasRaw, baseRealizadosRaw, itensLinearesRaw] =
       await Promise.all([
         fetchJsonArray("./base/base_ordens.json", "base_ordens.json"),
@@ -2048,12 +2171,16 @@
       mapBaseItemToDemand(item, "SAP BO - Realizados"),
     );
 
-    return {
+    state.cache.baseSources = {
       baseOrdens,
       baseFuturas,
       baseRealizados,
       itensLineares: itensLinearesRaw,
     };
+
+    state.cache.basePortfolio = buildBasePortfolioCache(state.cache.baseSources);
+
+    return state.cache.baseSources;
   }
 
   async function loadBaseFromJson() {
@@ -2215,21 +2342,17 @@
     };
   }
 
-  async function loadDatabase() {
+  async function loadDatabase({ forceBaseReload = false } = {}) {
     const previousSelection = state.selectedDemandId;
     const previousUserEmail =
       state.currentUser?.email || getStoredSessionEmail();
 
-    const baseSources = await loadBaseSourcesFromJson();
-
-    const mapaItensLineares = buildItensLinearesMap(
-      baseSources.itensLineares || [],
-    );
-
-    const base = mergeBaseOrdensEFuturas(
-      baseSources.baseOrdens,
-      baseSources.baseFuturas,
-    );
+    const baseSources = await loadBaseSourcesFromJson({
+      force: forceBaseReload,
+    });
+    const basePortfolio =
+      state.cache.basePortfolio || buildBasePortfolioCache(baseSources);
+    state.cache.basePortfolio = basePortfolio;
 
     const supabaseData = await state.repo.getAll();
 
@@ -2239,7 +2362,7 @@
         .map((item) => [centroResponsabilidadeChave(item), item]),
     );
 
-    const baseEnriquecida = base.map((demanda) =>
+    const baseEnriquecida = basePortfolio.demandas.map((demanda) =>
       enrichDemandWithCentroTrabalho(demanda, mapaCentrosTrabalho),
     );
 
@@ -2247,7 +2370,7 @@
       (supabaseData.demandas || []).map((item) => [item.id, item]),
     );
 
-    const baseIds = new Set(baseEnriquecida.map((item) => item.id));
+    const baseIds = basePortfolio.baseIds;
 
     const qualitySourceRecords = buildQualitySourceRecords({
       baseOrdens: baseSources.baseOrdens,
@@ -2269,33 +2392,15 @@
       .filter((item) => !baseIds.has(item.id))
       .map((item) =>
         enrichDemandWithCentroTrabalho(
-          enrichDemandWithItemLinear(item, mapaItensLineares, {
+          enrichDemandWithItemLinear(item, basePortfolio.mapaItensLineares, {
             preencherDescricaoSeVazia: true,
           }),
           mapaCentrosTrabalho,
         ),
       );
-
-    const demandasAntesRealizados = [
-      ...demandasSomenteSupabase,
-      ...mergedBase,
-    ].map(normalizeDemandRecord);
-
-    const demandasComRealizados = applyBaseRealizadosToCarteira(
-      demandasAntesRealizados,
-      baseSources.baseRealizados,
-    ).map(normalizeDemandRecord);
-
-    const demandas = consolidateCarteiraByRealizedOrder(demandasComRealizados)
-      .map((demanda) =>
-        enrichDemandWithItemLinear(demanda, mapaItensLineares, {
-          preencherDescricaoSeVazia: true,
-        }),
-      )
-      .map((demanda) =>
-        enrichDemandWithCentroTrabalho(demanda, mapaCentrosTrabalho),
-      )
-      .map(normalizeDemandRecord);
+    const demandas = [...demandasSomenteSupabase, ...mergedBase].map(
+      normalizeDemandRecord,
+    );
 
     state.db = {
       demandas,
@@ -2331,6 +2436,7 @@
     setCurrentUserFromEmail(previousUserEmail);
 
     state.lastDataUpdateAt = latestDataUpdateAt();
+    rebuildDataIndexes();
 
     state.selectedDemandId = demandas.some(
       (item) => item.id === previousSelection,
@@ -2498,39 +2604,11 @@
     return dates[0]?.toISOString() || "";
   }
   function demandById(id) {
-    return state.db.demandas.find((item) => item.id === id);
+    return state.cache.demandMap.get(id) || null;
   }
 
   function historiesFor(id) {
-    const planejamento = state.db.historicoPlanejamento
-      .filter((item) => item.demandaId === id)
-      .map((item) => ({
-        type: "Planejamento",
-        date: item.dataHora,
-        title: `Planejado para ${formatDate(item.novaData)}`,
-        detail: item.comentario || item.usuario,
-      }));
-    const replanejamento = state.db.historicoReplanejamento
-      .filter((item) => item.demandaId === id)
-      .map((item) => ({
-        type: "Replanejamento",
-        date: item.dataHora,
-        title: `${formatDate(item.dataAnterior)} para ${formatDate(item.novaData)}`,
-        detail: `${item.motivo || "-"} | ${item.justificativa || "-"}`,
-      }));
-    const realizados = state.db.historicoRealizadoPerdas
-      .filter((item) => item.demandaId === id)
-      .map((item) => ({
-        type: item.perda ? "Perda" : "Realizado",
-        date: item.dataHora,
-        title: item.perda
-          ? item.motivoPerda || "Perda registrada"
-          : `Realizado em ${formatDate(item.dataRealizada)}`,
-        detail: item.comentario || item.justificativaPerda || item.usuario,
-      }));
-    return [...planejamento, ...replanejamento, ...realizados].sort(
-      (a, b) => new Date(b.date) - new Date(a.date),
-    );
+    return state.cache.historiesByDemand.get(id) || [];
   }
 
   function buildPortfolioHistoryRows() {
@@ -2879,7 +2957,6 @@
 
       await loadDatabase();
       global.CCEClimaFeature?.limparCache?.();
-      await autoSyncRealizadosFromSharePoint();
 
       state.pageSize = Number(state.db.parametros?.pageSizeDefault || 12);
 
@@ -2890,6 +2967,9 @@
       renderRole();
       // Defer heavy initial render so login-screen fade happens first
       requestAnimationFrame(() => renderCurrentView());
+      global.setTimeout(() => {
+        autoSyncRealizadosFromSharePoint().catch(console.error);
+      }, 120);
 
       await state.repo.addLog?.({
         usuario: user.email,
@@ -3343,10 +3423,21 @@
   }
 
   function filteredDemandas() {
-    const filters = collectFilters();
-    return state.db.demandas.filter((item) =>
+    const filters = state.filters || {};
+    const cacheKey = JSON.stringify({
+      version: state.cache.dataVersion,
+      filters,
+    });
+
+    if (state.cache.carteiraFilterKey === cacheKey) {
+      return state.cache.carteiraFiltered;
+    }
+
+    state.cache.carteiraFiltered = state.db.demandas.filter((item) =>
       demandMatchesFilters(item, filters),
     );
+    state.cache.carteiraFilterKey = cacheKey;
+    return state.cache.carteiraFiltered;
   }
 
   function dashboardStats(demands) {
@@ -5757,6 +5848,8 @@
     if (!demand) return;
     const form = new FormData($("#actionForm"));
     const userEmail = state.currentUser.email;
+    let savedHistory = null;
+    let savedLog = null;
 
     if (context.action === "regularizarReplanejamento") {
       const motivo = form.get("motivo") || "";
@@ -5869,7 +5962,7 @@
       demand.comentario = form.get("comentario") || "";
       Object.assign(demand, prepareDemandForSave(demand));
       await state.repo.upsertDemanda(demand);
-      await state.repo.addHistory("planejamento", {
+      savedHistory = await state.repo.addHistory("planejamento", {
         demandaId: demand.id,
         ordem: demand.ordem,
         dataAnterior: previous,
@@ -5877,7 +5970,7 @@
         usuario: userEmail,
         comentario: demand.comentario,
       });
-      await state.repo.addLog({
+      savedLog = await state.repo.addLog({
         usuario: userEmail,
         acao: "Planejamento",
         lista: "Controle_Demandas_Eletrovia",
@@ -5906,7 +5999,7 @@
       demand.usuarioResponsavel = userEmail;
       Object.assign(demand, prepareDemandForSave(demand));
       await state.repo.upsertDemanda(demand);
-      await state.repo.addHistory("replanejamento", {
+      savedHistory = await state.repo.addHistory("replanejamento", {
         demandaId: demand.id,
         ordem: demand.ordem,
         motivo: form.get("motivo"),
@@ -5922,7 +6015,7 @@
         quantidadeReplanejamentos: demand.quantidadeReplanejamentos,
         comentario: demand.comentario,
       });
-      await state.repo.addLog({
+      savedLog = await state.repo.addLog({
         usuario: userEmail,
         acao: "Replanejamento",
         lista: "Controle_Demandas_Eletrovia",
@@ -5961,7 +6054,7 @@
 
       await state.repo.upsertDemanda(demand);
 
-      await state.repo.addHistory("realizadoPerda", {
+      savedHistory = await state.repo.addHistory("realizadoPerda", {
         demandaId: demand.id,
         ordem: demand.ordem,
         dataRealizada: demand.dataRealizada,
@@ -5978,7 +6071,7 @@
         usuario: userEmail,
       });
 
-      await state.repo.addLog({
+      savedLog = await state.repo.addLog({
         usuario: userEmail,
         acao: demand.perda ? "Perda" : "Realizado",
         lista: "Historico_Realizado_Perdas",
@@ -5989,8 +6082,15 @@
       });
     }
 
+    if (context.action === "planejar") appendHistoryLocally("planejamento", savedHistory);
+    if (context.action === "replanejar")
+      appendHistoryLocally("replanejamento", savedHistory);
+    if (context.action === "realizado")
+      appendHistoryLocally("realizadoPerda", savedHistory);
+    appendLogLocally(savedLog);
+
     $("#actionDialog").close();
-    await refreshAfterSave("Registro salvo com sucesso.");
+    refreshUiAfterLocalSave("Registro salvo com sucesso.");
   }
 
   function renderClimateRisk() {
@@ -6079,6 +6179,23 @@
       loading.error("Erro ao sincronizar após salvar.");
       throw err;
     }
+  }
+
+  function refreshUiAfterLocalSave(message = "Registro salvo com sucesso.") {
+    clearNotificationsCache();
+    state.lastDataUpdateAt = latestDataUpdateAt();
+    rebuildDataIndexes();
+    hydrateStaticUi();
+    renderCurrentView();
+    const time = new Date().toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    $("#lastSync").textContent = `Sincronizado ${time}`;
+    $("#lastUpdateSide").textContent = state.lastDataUpdateAt
+      ? formatDateTime(state.lastDataUpdateAt)
+      : "-";
+    showToast(message, "success");
   }
 
   async function refreshAll() {
@@ -7629,6 +7746,122 @@
     }, {});
   }
 
+  function filteredIndicatorDemandas() {
+    const filters = state.indicatorFilters || {};
+    const cacheKey = JSON.stringify({
+      version: state.cache.dataVersion,
+      filters,
+    });
+
+    if (state.cache.indicatorFilterKey === cacheKey) {
+      return state.cache.indicatorFiltered;
+    }
+
+    state.cache.indicatorFiltered = state.db.demandas.filter((item) =>
+      demandMatchesFilters(item, filters),
+    );
+    state.cache.indicatorFilterKey = cacheKey;
+    return state.cache.indicatorFiltered;
+  }
+
+  function summarizeIndicatorDemands(demands) {
+    const today = toDate(todayText());
+    const stats = dashboardStats(demands);
+    const dueSoon = [];
+    const overdue = [];
+    const gerenciaCounts = {};
+    const tipoOmCounts = {};
+    const replanSupervisaoCounts = {};
+    const competenciaCounts = {};
+    let withLossCount = 0;
+
+    demands.forEach((item) => {
+      const gerencia = item.gerencia || "NÃ£o informado";
+      const tipoOm = item.tipoOM || "NÃ£o inf.";
+      const competencia = item.competencia || "NÃ£o informado";
+
+      gerenciaCounts[gerencia] = (gerenciaCounts[gerencia] || 0) + 1;
+      tipoOmCounts[tipoOm] = (tipoOmCounts[tipoOm] || 0) + 1;
+      competenciaCounts[competencia] = (competenciaCounts[competencia] || 0) + 1;
+
+      if (item.dataReplanejadaAtual) {
+        const supervisao = item.supervisao || "NÃ£o informado";
+        replanSupervisaoCounts[supervisao] =
+          (replanSupervisaoCounts[supervisao] || 0) + 1;
+      }
+
+      if (item.perda) {
+        withLossCount += 1;
+      }
+
+      const due = toDate(item.vencimento);
+      if (!due || item.dataRealizada) return;
+
+      const days = (due - today) / 86400000;
+      if (days < 0) {
+        overdue.push(item);
+      } else if (days <= 20) {
+        dueSoon.push(item);
+      }
+    });
+
+    dueSoon.sort((a, b) => toDate(a.vencimento) - toDate(b.vencimento));
+
+    return {
+      today,
+      stats,
+      dueSoon,
+      overdue,
+      withLossCount,
+      gerenciaCounts,
+      tipoOmCounts,
+      replanSupervisaoCounts,
+      competenciaCounts,
+    };
+  }
+
+  function updateIndicatorHero({
+    adherenceRate,
+    stats,
+    overdue,
+    dueSoon,
+  }) {
+    const spotlightMetric = $("#indicatorSpotlightMetric");
+    const spotlightNote = $("#indicatorSpotlightNote");
+    const spotlightMeta = $("#indicatorSpotlightMeta");
+    const rhythm = $("#indicatorRhythm");
+    const risk = $("#indicatorRisk");
+    const focus = $("#indicatorFocus");
+
+    if (spotlightMetric) spotlightMetric.textContent = `${adherenceRate}%`;
+    if (spotlightNote) {
+      spotlightNote.textContent =
+        adherenceRate >= 80
+          ? "execução forte no recorte atual"
+          : adherenceRate >= 50
+            ? "execução estável, mas com espaço para ganho"
+            : "execução abaixo do esperado no recorte atual";
+    }
+    if (spotlightMeta) {
+      spotlightMeta.textContent = `${stats.realizadas.toLocaleString("pt-BR")} realizadas de ${stats.total.toLocaleString("pt-BR")} demandas`;
+    }
+    if (rhythm) {
+      rhythm.textContent = `${stats.planejadas.toLocaleString("pt-BR")} planejadas e ${stats.replanejadas.toLocaleString("pt-BR")} replanejadas`;
+    }
+    if (risk) {
+      risk.textContent =
+        overdue.length > 0
+          ? `${overdue.length.toLocaleString("pt-BR")} vencidas pedindo ataque imediato`
+          : "nenhuma demanda vencida no recorte";
+    }
+    if (focus) {
+      focus.textContent =
+        dueSoon.length > 0
+          ? `${dueSoon.length.toLocaleString("pt-BR")} vencem nos próximos 20 dias`
+          : "janela de próximos 20 dias sem pressão relevante";
+    }
+  }
+
   function renderBars(element, counts, limitOrOpts = {}) {
     const opts =
       typeof limitOrOpts === "number"
@@ -7832,33 +8065,23 @@
   }
 
   function renderIndicators() {
-    const indicatorFilters = collectIndicatorFilters();
-    const demands = state.db.demandas.filter((item) =>
-      demandMatchesFilters(item, indicatorFilters),
-    );
-    const stats = dashboardStats(demands);
-    const today = toDate(todayText());
-
-    const dueSoon = demands
-      .filter((item) => {
-        const due = toDate(item.vencimento);
-        if (!due || item.dataRealizada) return false;
-        const days = (due - today) / 86400000;
-        return days >= 0 && days <= 20;
-      })
-      .sort((a, b) => toDate(a.vencimento) - toDate(b.vencimento));
-
-    const overdue = demands.filter(
-      (item) => toDate(item.vencimento) < today && !item.dataRealizada,
-    );
+    const demands = filteredIndicatorDemandas();
+    const summary = summarizeIndicatorDemands(demands);
+    const { stats, today, dueSoon, overdue } = summary;
 
     const pct = (n, total) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
     const adherenceRate = pct(stats.realizadas, stats.total);
     const overdueRate = pct(overdue.length, stats.total);
-    const withLoss = demands.filter((d) => d.perda).length;
-    const lossRate = pct(withLoss, stats.total);
+    const lossRate = pct(summary.withLossCount, stats.total);
     const replanRate = pct(stats.replanejadas, stats.total);
+
+    updateIndicatorHero({
+      adherenceRate,
+      stats,
+      overdue,
+      dueSoon,
+    });
 
     // ── KPI cards ──────────────────────────────────────────
     const kpiCards = [
@@ -7901,9 +8124,9 @@
       },
       {
         label: "Com Perda",
-        value: withLoss,
+        value: summary.withLossCount,
         note: `${lossRate}% do total`,
-        accent: withLoss > 0 ? "warn" : "",
+        accent: summary.withLossCount > 0 ? "warn" : "",
       },
       {
         label: "Vence em 20d",
@@ -7953,39 +8176,22 @@
         mkAdh(
           "Perda registrada",
           lossRate,
-          `${withLoss.toLocaleString("pt-BR")} ordens com perda documentada`,
+          `${summary.withLossCount.toLocaleString("pt-BR")} ordens com perda documentada`,
           lossRate > 10 ? "danger" : lossRate > 3 ? "warn" : "ok",
         );
     }
 
     // ── Gerência bars ────────────────────────────────────
-    renderBars(
-      $("#chartGerencia"),
-      countBy(demands, (d) => d.gerencia),
-      10,
-    );
+    renderBars($("#chartGerencia"), summary.gerenciaCounts, 10);
 
     // ── Tipo OM bars ─────────────────────────────────────
-    renderBars(
-      $("#chartTipoOM"),
-      countBy(demands, (d) => d.tipoOM || "Não inf."),
-      10,
-    );
+    renderBars($("#chartTipoOM"), summary.tipoOmCounts, 10);
 
     // ── Replan por supervisão bars ───────────────────────
-    const replanDemands = demands.filter((d) => d.dataReplanejadaAtual);
-    renderBars(
-      $("#chartReplanSupervisao"),
-      countBy(replanDemands, (d) => d.supervisao),
-      8,
-    );
+    renderBars($("#chartReplanSupervisao"), summary.replanSupervisaoCounts, 8);
 
     // ── Competência bars ──────────────────────────────────
-    renderBars(
-      $("#chartCompetencia"),
-      countBy(demands, (d) => d.competencia),
-      10,
-    );
+    renderBars($("#chartCompetencia"), summary.competenciaCounts, 10);
 
     // ── Status donut canvas ───────────────────────────────
     renderStatusDonut(demands, stats);
@@ -9782,7 +9988,12 @@
       const loading = showLoadingToast("Atualizando base de dados...");
       try {
         await state.repo.reset();
-        await refreshAll();
+        state.cache.baseSources = null;
+        state.cache.basePortfolio = null;
+        await loadDatabase({ forceBaseReload: true });
+        await autoSyncRealizadosFromSharePoint();
+        hydrateStaticUi();
+        renderCurrentView();
         loading.dismiss("Base atualizada com sucesso.");
       } catch (err) {
         loading.error("Erro ao atualizar. Tente novamente.");
@@ -10331,3 +10542,4 @@
 
   document.addEventListener("DOMContentLoaded", init);
 })(window, document);
+

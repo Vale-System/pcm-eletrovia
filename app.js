@@ -7837,10 +7837,10 @@
     if (spotlightNote) {
       spotlightNote.textContent =
         adherenceRate >= 80
-          ? "execução forte no recorte atual"
+          ? "carteira com execução consistente e boa resposta operacional"
           : adherenceRate >= 50
-            ? "execução estável, mas com espaço para ganho"
-            : "execução abaixo do esperado no recorte atual";
+            ? "execução parcial com oportunidade clara de recuperação da malha"
+            : "execução pressionada, exigindo ataque imediato sobre vencidas e backlog";
     }
     if (spotlightMeta) {
       spotlightMeta.textContent = `${stats.realizadas.toLocaleString("pt-BR")} realizadas de ${stats.total.toLocaleString("pt-BR")} demandas`;
@@ -7851,14 +7851,14 @@
     if (risk) {
       risk.textContent =
         overdue.length > 0
-          ? `${overdue.length.toLocaleString("pt-BR")} vencidas pedindo ataque imediato`
-          : "nenhuma demanda vencida no recorte";
+          ? `${overdue.length.toLocaleString("pt-BR")} demandas vencidas com impacto direto na disciplina operacional`
+          : "sem demandas vencidas no recorte monitorado";
     }
     if (focus) {
       focus.textContent =
         dueSoon.length > 0
-          ? `${dueSoon.length.toLocaleString("pt-BR")} vencem nos próximos 20 dias`
-          : "janela de próximos 20 dias sem pressão relevante";
+          ? `${dueSoon.length.toLocaleString("pt-BR")} demandas entram em janela crítica nos próximos 20 dias`
+          : "horizonte de 20 dias sem pressão relevante de vencimento";
     }
   }
 
@@ -8142,7 +8142,7 @@
         .map(
           ({ label, value, note, accent }) =>
             `<article class="indicator-card${accent ? " indicator-card--" + accent : ""}">` +
-            `<span>${label}</span><strong>${value}</strong><small>${note}</small></article>`,
+            `<span>${label}</span><strong>${Number(value || 0).toLocaleString("pt-BR")}</strong><small>${note}</small></article>`,
         )
         .join("");
     }
@@ -8237,11 +8237,11 @@
 
     const total = slices.reduce((s, x) => s + x.value, 0);
     const ctx = canvas.getContext("2d");
-    const W = 140,
+    const W = 118,
       cx = W / 2,
       cy = W / 2,
-      R = 58,
-      r = 34;
+      R = 48,
+      r = 28;
     canvas.width = W;
     canvas.height = W;
     ctx.clearRect(0, 0, W, W);
@@ -8266,11 +8266,11 @@
 
     // Center label
     ctx.fillStyle = "#111827";
-    ctx.font = "bold 18px system-ui";
+    ctx.font = "700 15px system-ui";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(total.toLocaleString("pt-BR"), cx, cy - 5);
-    ctx.font = "500 9px system-ui";
+    ctx.font = "500 8px system-ui";
     ctx.fillStyle = "#6b7280";
     ctx.fillText("demandas", cx, cy + 11);
 

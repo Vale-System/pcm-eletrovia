@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   color-scheme: light;
   --green-950: #003f2d;
   --green-900: #00513b;
@@ -1764,12 +1764,51 @@ label {
   border-left-color: var(--red-700);
 }
 
+.future-form-panel {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 28px rgba(14, 45, 35, 0.05);
+  overflow: hidden;
+}
+
+.future-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 14px 12px;
+  border-bottom: 1px solid rgba(8, 76, 54, 0.08);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(246, 251, 248, 0.98)
+  );
+}
+
+.future-form-header h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.future-form-header span {
+  color: var(--gray-600);
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .future-form {
   align-content: start;
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: 14px;
+}
+
+.future-form.hidden {
+  display: none;
 }
 
 .span-2 {

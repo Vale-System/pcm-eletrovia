@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
@@ -12,6 +12,10 @@
     <link
       rel="stylesheet"
       href="features/indicadores/indicadores-taxonomia.css?v=20260529-03"
+    />
+    <link
+      rel="stylesheet"
+      href="features/relatorios/relatorios.css?v=20260531-diag-preset-01"
     />
     <script defer src="assets/vendor/xlsx.full.min.js?v=20260507-01"></script>
     <script
@@ -40,7 +44,35 @@
       defer
       src="features/indicadores/indicadores-taxonomia.js?v=20260529-02"
     ></script>
-    <script defer src="app.js?v=20260529-05"></script>
+    <script
+      defer
+      src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+    ></script>
+    <script
+      defer
+      src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"
+    ></script>
+    <script
+      defer
+      src="features/relatorios/diagnostico-config.js?v=20260531-diag-preset-01"
+    ></script>
+    <script
+      defer
+      src="features/relatorios/diagnostico-engine.js?v=20260531-diag-hotfix-02"
+    ></script>
+    <script
+      defer
+      src="features/relatorios/diagnostico-charts.js?v=20260531-diag-hotfix-02"
+    ></script>
+    <script
+      defer
+      src="features/relatorios/diagnostico-pdf.js?v=20260531-diag-hotfix-02"
+    ></script>
+    <script
+      defer
+      src="features/relatorios/diagnostico-carteira.js?v=20260531-diag-preset-01"
+    ></script>
+    <script defer src="app.js?v=20260531-diag-hotfix-01"></script>
   </head>
   <body>
     <section
@@ -538,6 +570,13 @@
               <button class="button secondary" id="clearFilters" type="button">
                 Limpar
               </button>
+              <button
+                class="button secondary"
+                id="openDiagnosticoCarteira"
+                type="button"
+              >
+                Diagnóstico da Carteira
+              </button>
               <button class="button" id="exportCsv" type="button">
                 Exportar CSV
               </button>
@@ -709,7 +748,23 @@
           </div>
 
           <div class="future-layout">
-            <form class="future-form" id="futureDemandForm">
+            <section class="future-form-panel">
+              <div class="future-form-header">
+                <div>
+                  <h2>Criar ID Demanda Futura</h2>
+                  <span>Cadastre uma nova demanda futura ou sistemática.</span>
+                </div>
+                <button
+                  class="button secondary planner-only"
+                  id="toggleFutureDemandForm"
+                  type="button"
+                  aria-expanded="true"
+                >
+                  Recolher
+                </button>
+              </div>
+
+              <form class="future-form" id="futureDemandForm">
               <label class="span-2">
                 ID da Demanda
                 <input
@@ -779,7 +834,8 @@
               <button class="button planner-only" type="submit">
                 Criar Demanda Futura
               </button>
-            </form>
+              </form>
+            </section>
 
             <section class="future-list">
               <div class="panel-toolbar">
@@ -1540,7 +1596,7 @@
               Férias/Substituições
             </button>
             <button data-admin-tab="parametros" type="button">
-              Parâmetros
+              ParÃ¢metros
             </button>
           </div>
           <div id="adminContent" class="admin-content"></div>
@@ -1677,6 +1733,256 @@
       </form>
     </dialog>
 
+    <dialog id="diagnosticoCarteiraDialog" class="diag-dialog">
+      <div class="diag-modal">
+        <div class="diag-header">
+          <div class="diag-header-copy">
+            <h2 class="diag-title">Diagnóstico da Carteira</h2>
+            <p class="diag-subtitle">
+              Gere um relatório técnico executivo a partir do recorte filtrado
+              atual da carteira.
+            </p>
+          </div>
+          <button
+            class="diag-close"
+            id="closeDiagnosticoCarteira"
+            type="button"
+            aria-label="Fechar diagnóstico da carteira"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="diag-body">
+          <section class="diag-section">
+            <div class="diag-section-heading">
+              <h3 class="diag-section-title">Resumo do recorte atual</h3>
+              <p class="diag-section-text">
+                Leitura rápida da carteira filtrada para apoiar a configuração
+                do relatório.
+              </p>
+            </div>
+            <div class="diag-summary-grid">
+              <article class="diag-summary-card">
+                <span class="diag-summary-label">Total filtrado</span>
+                <strong id="diagResumoTotal">0</strong>
+              </article>
+              <article class="diag-summary-card">
+                <span class="diag-summary-label">Planejadas</span>
+                <strong id="diagResumoPlanejadas">0</strong>
+              </article>
+              <article class="diag-summary-card">
+                <span class="diag-summary-label">A planejar</span>
+                <strong id="diagResumoAPlanejar">0</strong>
+              </article>
+              <article class="diag-summary-card">
+                <span class="diag-summary-label">Replanejadas</span>
+                <strong id="diagResumoReplanejadas">0</strong>
+              </article>
+              <article class="diag-summary-card">
+                <span class="diag-summary-label">Realizadas</span>
+                <strong id="diagResumoRealizadas">0</strong>
+              </article>
+              <article class="diag-summary-card diag-summary-card-danger">
+                <span class="diag-summary-label">Vencidas</span>
+                <strong id="diagResumoVencidas">0</strong>
+              </article>
+              <article class="diag-summary-card diag-summary-card-warning">
+                <span class="diag-summary-label">Críticas</span>
+                <strong id="diagResumoCriticas">0</strong>
+              </article>
+              <article class="diag-summary-card">
+                <span class="diag-summary-label">Com KM</span>
+                <strong id="diagResumoComKm">0</strong>
+              </article>
+            </div>
+          </section>
+
+          <section class="diag-section">
+            <div class="diag-section-heading">
+              <h3 class="diag-section-title">Configuração do relatório</h3>
+              <p class="diag-section-text">
+                Defina o recorte de leitura e a identificação executiva do
+                documento.
+              </p>
+            </div>
+            <div class="diag-form-grid">
+              <label class="diag-field">
+                <span>Tipo de relatório</span>
+                <select id="diagTipoRelatorio">
+                  <option value="executivo">Executivo</option>
+                  <option value="m1">Planejamento M+1</option>
+                  <option value="planejador">Por Planejador de Curto</option>
+                  <option value="centro">Por Centro de Trabalho</option>
+                  <option value="supervisao">Por Supervisão/Gerência</option>
+                  <option value="clima">Risco Climático</option>
+                  <option value="completo">Completo</option>
+                </select>
+                <p
+                  class="diag-type-description"
+                  id="diagTipoRelatorioDescricao"
+                >
+                  Relatório sintético para leitura gerencial, com KPIs, riscos,
+                  vencimentos e recomendações.
+                </p>
+              </label>
+              <label class="diag-field">
+                <span>Título do relatório</span>
+                <input
+                  id="diagTituloRelatorio"
+                  type="text"
+                  value="Diagnóstico Executivo da Carteira"
+                />
+              </label>
+              <label class="diag-field">
+                <span>Responsável pelo relatório</span>
+                <input id="diagResponsavel" type="text" />
+              </label>
+              <label class="diag-field">
+                <span>Escopo do diagnóstico</span>
+                <input
+                  id="diagEscopoDiagnostico"
+                  type="text"
+                  value="Recorte filtrado atual da carteira"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section class="diag-section">
+            <div class="diag-section-heading">
+              <h3 class="diag-section-title">Seções do relatório</h3>
+              <p class="diag-section-text">
+                Selecione o conteúdo técnico que deve compor o diagnóstico.
+              </p>
+            </div>
+            <div class="diag-option-grid">
+  <label class="diag-check-card">
+    <input id="diagSecaoCapa" type="checkbox" checked />
+    <span>Capa executiva</span>
+  </label>
+  <label class="diag-check-card">
+    <input id="diagSecaoResumoExecutivo" type="checkbox" checked />
+    <span>Resumo executivo</span>
+  </label>
+  <label class="diag-check-card">
+    <input id="diagSecaoKpis" type="checkbox" checked />
+    <span>KPIs da carteira</span>
+  </label>
+  <label class="diag-check-card">
+    <input id="diagSecaoPlanejamento" type="checkbox" checked />
+    <span>Planejamento por data</span>
+  </label>
+  <label class="diag-check-card">
+    <input id="diagSecaoCentros" type="checkbox" checked />
+    <span>Análise por centro de trabalho</span>
+  </label>
+  <label class="diag-check-card">
+    <input id="diagSecaoPlanejadores" type="checkbox" />
+    <span>Análise por planejador de curto</span>
+  </label>
+  <label class="diag-check-card">
+    <input id="diagSecaoKm" type="checkbox" checked />
+    <span>Análise por KM e trecho</span>
+  </label>
+  <label class="diag-check-card">
+    <input id="diagSecaoTolerancias" type="checkbox" />
+    <span>Tolerâncias e janelas de execução</span>
+  </label>
+  <label class="diag-check-card">
+    <input id="diagSecaoVencimentos" type="checkbox" checked />
+    <span>Vencimentos e atrasos</span>
+  </label>
+  <label class="diag-check-card">
+    <input id="diagSecaoClima" type="checkbox" checked />
+    <span>Risco climático</span>
+  </label>
+  <p class="diag-inline-note hidden" id="diagClimateHint">
+    O módulo climático não retornou previsão ativa. O relatório usará
+    diagnóstico de sensibilidade climática por tipo de atividade.
+  </p>
+  <label class="diag-check-card">
+    <input id="diagSecaoListaCritica" type="checkbox" checked />
+    <span>Lista crítica de acompanhamento</span>
+  </label>
+  <label class="diag-check-card">
+    <input id="diagSecaoRecomendacoes" type="checkbox" checked />
+    <span>Recomendações técnicas</span>
+  </label>
+</div>
+          </section>
+
+          <section class="diag-section">
+            <div class="diag-section-heading">
+              <h3 class="diag-section-title">Opções técnicas</h3>
+              <p class="diag-section-text">
+                Ajustes operacionais para a próxima etapa de geração do
+                diagnóstico.
+              </p>
+            </div>
+            <div class="diag-option-grid">
+              <label class="diag-check-card">
+                <input id="diagIncluirGraficos" type="checkbox" checked />
+                <span>Incluir gráficos</span>
+              </label>
+              <label class="diag-check-card">
+                <input id="diagIncluirTabelaOms" type="checkbox" checked />
+                <span>Incluir tabela de OMs/demandas</span>
+              </label>
+              <label class="diag-check-card">
+                <input id="diagIncluirSomenteCriticas" type="checkbox" />
+                <span>Priorizar demandas críticas</span>
+              </label>
+              <label class="diag-check-card">
+                <input id="diagIncluirDemandasSemKm" type="checkbox" checked />
+                <span>Destacar demandas sem KM</span>
+              </label>
+              <label class="diag-check-card">
+                <input id="diagIncluirDetalhamentoCompleto" type="checkbox" />
+                <span>Incluir detalhamento completo</span>
+              </label>
+            </div>
+          </section>
+
+          <section class="diag-section">
+            <div class="diag-section-heading">
+              <h3 class="diag-section-title">Observação técnica</h3>
+              <p class="diag-section-text">
+                Contexto opcional para orientar o uso executivo do relatório.
+              </p>
+            </div>
+            <label class="diag-field">
+              <span>Descrição complementar</span>
+              <textarea
+                id="diagObservacaoTecnica"
+                rows="4"
+                placeholder="Ex.: Análise M+1 da supervisão BAC para reunião de alinhamento do planejamento de curto prazo."
+              ></textarea>
+            </label>
+          </section>
+        </div>
+
+        <div class="diag-footer">
+          <button
+            class="button secondary diag-secondary-action"
+            id="cancelDiagnosticoCarteira"
+            type="button"
+          >
+            Cancelar
+          </button>
+          <button
+            class="button diag-primary-action"
+            id="generateDiagnosticoCarteira"
+            type="button"
+          >
+            Gerar diagnóstico
+          </button>
+        </div>
+      </div>
+    </dialog>
+
     <div id="toastHost" class="toast-host" aria-live="polite"></div>
   </body>
 </html>
+
+

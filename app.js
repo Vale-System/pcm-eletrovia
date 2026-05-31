@@ -1,4 +1,4 @@
-(function bootstrapCentral(global, document) {
+﻿(function bootstrapCentral(global, document) {
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) =>
     Array.from(root.querySelectorAll(selector));
@@ -203,6 +203,7 @@
     futurePage: 1,
     futurePageSize: 50,
     futureSearch: "",
+    futureFormCollapsed: false,
 
     advancedFilters: false,
     identity: null,
@@ -3100,6 +3101,21 @@
     });
   }
 
+  function initFeatureModules() {
+    global.CCEDiagnosticoCarteira?.init?.({
+      getDemandasFiltradas: () => filteredDemandas(),
+      getState: () => state,
+      formatDate,
+      formatDateTime,
+      primaryStatusOf,
+      substatusListOf,
+      statusOf,
+      dueClassOf,
+      dateText,
+      toDate,
+    });
+  }
+
   async function handleLogin(event) {
     event.preventDefault();
 
@@ -3195,6 +3211,7 @@
       hydrateStaticUi();
       renderLoginState();
       renderRole();
+      initFeatureModules();
       // Defer heavy initial render so login-screen fade happens first
       requestAnimationFrame(() => renderCurrentView());
       global.setTimeout(() => {
@@ -4596,7 +4613,7 @@
         type="button"
         data-quality-action="save-merge"
         ${canSaveQuality ? "" : "disabled"}
-        title="${canSaveQuality ? "Salvar ajuste no Supabase" : "Perfil sem permissÃ£o para salvar ajuste"}"
+        title="${canSaveQuality ? "Salvar ajuste no Supabase" : "Perfil sem permissão para salvar ajuste"}"
       >
         Salvar ajuste
       </button>
@@ -5681,7 +5698,7 @@
             action: "regularizar-perda",
             source: "fora-prazo-sem-perda",
             message:
-              "Realizada fora da tolerância e ainda sem registro de perda.",
+              "Realizada fora da tolerÃ¢ncia e ainda sem registro de perda.",
           }),
         );
       }
@@ -7897,11 +7914,35 @@
     );
   }
 
+  function isLinkedFutureDemand(item) {
+    if (!item) return false;
+    if (String(item.ordem || "").trim()) return true;
+
+    const status = primaryStatusOf(item);
+    return status === "Realizado" || Boolean(dateText(item.dataRealizada));
+  }
+
+  function setFutureFormCollapsed(collapsed) {
+    state.futureFormCollapsed = Boolean(collapsed);
+
+    const form = $("#futureDemandForm");
+    const toggle = $("#toggleFutureDemandForm");
+    if (form) form.classList.toggle("hidden", state.futureFormCollapsed);
+    if (toggle) {
+      toggle.textContent = state.futureFormCollapsed ? "Mostrar" : "Recolher";
+      toggle.setAttribute(
+        "aria-expanded",
+        state.futureFormCollapsed ? "false" : "true",
+      );
+    }
+  }
+
   function filteredFutureDemandas() {
     const search = normalizeText(state.futureSearch);
 
     return state.db.demandas.filter((item) => {
       if (!isFutureDemand(item)) return false;
+      if (isLinkedFutureDemand(item)) return false;
 
       if (!search) return true;
 
@@ -7914,6 +7955,7 @@
           item.localInstalacao,
           item.gerencia,
           item.supervisao,
+          item.usuarioResponsavel,
           item.competencia,
           item.origem,
           item.frequencia,
@@ -8001,8 +8043,6 @@
     const listHtml =
       pageRows
         .map((item) => {
-          const possuiOM = Boolean(String(item.ordem || "").trim());
-
           return `
           <article class="future-card" data-future-card="${escapeHtml(item.id)}">
             <header>
@@ -8011,7 +8051,7 @@
                 <span class="muted">
                   ${escapeHtml(item.id)}
                   |
-                  ${possuiOM ? `OM ${escapeHtml(item.ordem)}` : "Sem OM SAP"}
+                  Sem OM SAP
                   |
                   ${escapeHtml(item.centroTrabalho || "-")}
                   |
@@ -8044,7 +8084,7 @@
 
             <div class="suggestion-list" id="suggestions-${escapeHtml(item.id)}">
               ${
-                possuiOM
+                false
                   ? `<span class="muted">Esta demanda já possui OM SAP vinculada. Sugestão não necessária.</span>`
                   : `<button class="button secondary planner-only" type="button" data-load-suggestions="${escapeHtml(item.id)}">
                       Ver sugestões de vínculo
@@ -8055,7 +8095,7 @@
         `;
         })
         .join("") ||
-      '<div class="empty-detail"><strong>Nenhuma demanda futura encontrada</strong><span>Verifique a busca, a base_futuras.json ou os registros criados no sistema.</span></div>';
+      '<div class="empty-detail"><strong>Nenhuma demanda futura encontrada</strong><span>Somente IDs sem OM SAP e sem realizado vinculado aparecem nesta lista.</span></div>';
 
     $("#futureDemandList").innerHTML = toolbarHtml + listHtml;
 
@@ -8094,6 +8134,7 @@
     }
 
     applyPermissions();
+    setFutureFormCollapsed(state.futureFormCollapsed);
   }
 
   function renderFutureSuggestions(futureId) {
@@ -8102,7 +8143,7 @@
 
     if (!future || !container) return;
 
-    if (future.ordem) {
+    if (isLinkedFutureDemand(future)) {
       container.innerHTML =
         '<span class="muted">Esta demanda já possui OM SAP vinculada. Sugestão não necessária.</span>';
       return;
@@ -8182,7 +8223,7 @@
   }
 
   function linkSuggestions(future) {
-    if (future.ordem) return [];
+    if (isLinkedFutureDemand(future)) return [];
 
     return state.db.demandas
       .filter((item) => item.ordem && item.id !== future.id)
@@ -8339,16 +8380,16 @@
     let withLossCount = 0;
 
     demands.forEach((item) => {
-      const gerencia = item.gerencia || "NÃ£o informado";
-      const tipoOm = item.tipoOM || "NÃ£o inf.";
-      const competencia = item.competencia || "NÃ£o informado";
+      const gerencia = item.gerencia || "Não informado";
+      const tipoOm = item.tipoOM || "Não inf.";
+      const competencia = item.competencia || "Não informado";
 
       gerenciaCounts[gerencia] = (gerenciaCounts[gerencia] || 0) + 1;
       tipoOmCounts[tipoOm] = (tipoOmCounts[tipoOm] || 0) + 1;
       competenciaCounts[competencia] = (competenciaCounts[competencia] || 0) + 1;
 
       if (item.dataReplanejadaAtual) {
-        const supervisao = item.supervisao || "NÃ£o informado";
+        const supervisao = item.supervisao || "Não informado";
         replanSupervisaoCounts[supervisao] =
           (replanSupervisaoCounts[supervisao] || 0) + 1;
       }
@@ -9993,7 +10034,7 @@
         <label>Biblioteca SAP BO<input name="sharePointLibrary" value="${escapeHtml(params.sharePointLibrary || "")}" /></label>
         <label>Arquivo SAP BO<input name="sapExcelFileName" value="${escapeHtml(params.sapExcelFileName || "")}" /></label>
         <label>Arquivo de Realizados SAP BO<input name="realizedExcelFileName" value="${escapeHtml(params.realizedExcelFileName || "base_realizados_sap.xlsx")}" /></label>
-        <button class="button" type="submit">Salvar Parâmetros</button>
+        <button class="button" type="submit">Salvar ParÃ¢metros</button>
       </form>
     `;
     $("#parameterForm").addEventListener("submit", async (event) => {
@@ -10003,12 +10044,12 @@
       );
       await state.repo.addLog({
         usuario: state.currentUser.email,
-        acao: "Parâmetros",
+        acao: "ParÃ¢metros",
         lista: "Parametros_Sistema",
         referencia: "Geral",
-        detalhe: "Parâmetros atualizados.",
+        detalhe: "ParÃ¢metros atualizados.",
       });
-      await refreshAfterSave("Parâmetros salvos com sucesso.");
+      await refreshAfterSave("ParÃ¢metros salvos com sucesso.");
     });
   }
 
@@ -10446,8 +10487,14 @@
 
       if (event.target.id === "quickSearch") {
         state.page = 1;
-        global.clearTimeout(state.filterSearchTimer);
-        state.filterSearchTimer = global.setTimeout(renderCarteira, 160);
+        if (state.filterSearchTimer) {
+          global.cancelAnimationFrame(state.filterSearchTimer);
+        }
+        state.filterSearchTimer = global.requestAnimationFrame(() => {
+          collectFilters();
+          renderCarteira();
+          state.filterSearchTimer = null;
+        });
       }
     });
 
@@ -10580,6 +10627,9 @@
     $("#saveConfirmedBatch").addEventListener("click", () => saveBatch(true));
     $("#downloadTemplate").addEventListener("click", downloadTemplate);
     $("#futureDemandForm").addEventListener("submit", createFutureDemand);
+    $("#toggleFutureDemandForm")?.addEventListener("click", () => {
+      setFutureFormCollapsed(!state.futureFormCollapsed);
+    });
     $("#futureDemandList").addEventListener("click", (event) => {
       const suggestionButton = event.target.closest("[data-load-suggestions]");
 

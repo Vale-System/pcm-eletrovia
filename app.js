@@ -21,6 +21,13 @@
     set(_bucket, _key, value) {
       return value;
     },
+    async getPersistent() {
+      return null;
+    },
+    async setPersistent(_bucket, _key, value) {
+      return value;
+    },
+    async clearPersistent() {},
     clear() {},
     saveMeta() {},
   };
@@ -39,6 +46,7 @@
   const MULTI_FILTER_INITIAL_LIMIT = 80;
   const MULTI_FILTER_INCREMENT = 160;
   const INDEX_WORKER_MIN_ROWS = 12000;
+  const PROCESSED_BASE_CACHE_SCHEMA = "20260531-cto-01";
 
   const PROFILE_RULES = {
     Administrador: {
@@ -217,6 +225,11 @@
     indicatorSearchTimer: null,
     lastDataUpdateAt: "",
     loginReady: false,
+    loginBaseWarmup: {
+      active: false,
+      statusText: "",
+    },
+    baseWarmupPromise: null,
     batch: {
       rows: [],
       valid: [],
@@ -1212,6 +1225,38 @@
     };
   }
 
+  function showCsvExportProgress({
+    title = "Preparando exportação",
+    message = "Organizando dados para exportação.",
+    percent = 0,
+    meta = "O sistema ficará bloqueado até o download ficar pronto.",
+  } = {}) {
+    const overlay = $("#csvExportOverlay");
+    const titleElement = $("#csvExportTitle");
+    const messageElement = $("#csvExportMessage");
+    const percentElement = $("#csvExportPercent");
+    const progressBar = $("#csvExportProgressBar");
+    const metaElement = $("#csvExportMeta");
+
+    if (!overlay) return;
+
+    overlay.classList.remove("hidden");
+    overlay.setAttribute("aria-hidden", "false");
+    titleElement && (titleElement.textContent = title);
+    messageElement && (messageElement.textContent = message);
+    percentElement && (percentElement.textContent = `${Math.max(0, Math.min(100, Math.round(percent)))}%`);
+    progressBar && (progressBar.style.width = `${Math.max(0, Math.min(100, percent))}%`);
+    metaElement && (metaElement.textContent = meta);
+  }
+
+  function hideCsvExportProgress() {
+    const overlay = $("#csvExportOverlay");
+    if (!overlay) return;
+
+    overlay.classList.add("hidden");
+    overlay.setAttribute("aria-hidden", "true");
+  }
+
   function setProcessingFeedback(targetSelector, message) {
     const target = $(targetSelector);
     if (!target) return;
@@ -1261,10 +1306,106 @@
     URL.revokeObjectURL(url);
   }
 
+  function operationalDateKey() {
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Sao_Paulo",
+      }).format(new Date());
+    } catch (error) {
+      return new Date().toISOString().slice(0, 10);
+    }
+  }
+
+  function processedBaseCacheKey() {
+    return `processed-base::${PROCESSED_BASE_CACHE_SCHEMA}::${operationalDateKey()}`;
+  }
+
+  function repairMojibakeText(value) {
+    const text = String(value ?? "");
+
+    if (!text || !/[ÃÂâ]/.test(text)) return text;
+
+    try {
+      return decodeURIComponent(escape(text));
+    } catch (error) {
+      return text;
+    }
+  }
+
+  function csvNormalizedText(value) {
+    return repairMojibakeText(value)
+      .replace(/\r?\n|\r/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function csvEscape(value) {
+    const text = csvNormalizedText(value);
+    const escaped = text.replace(/"/g, '""');
+
+    if (!/[;"\r\n]/.test(text)) {
+      return escaped;
+    }
+
+    return `"${escaped}"`;
+  }
+
+  function csvProtectedText(value) {
+    const text = csvNormalizedText(value);
+
+    if (!text) return "";
+
+    if (/^\d{9,}$/.test(text)) {
+      return `="${text.replace(/"/g, '""')}"`;
+    }
+
+    return csvEscape(text);
+  }
+
+  function encodeUtf8WithBom(text) {
+    const content = String(text ?? "");
+    const encoder = new TextEncoder();
+    const payload = encoder.encode(content);
+    const bytes = new Uint8Array(3 + payload.length);
+
+    bytes[0] = 0xef;
+    bytes[1] = 0xbb;
+    bytes[2] = 0xbf;
+    bytes.set(payload, 3);
+
+    return bytes;
+  }
+
+  function downloadCsvFile(filename, csvContent) {
+    const blob = new Blob([encodeUtf8WithBom(csvContent)], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+    link.style.display = "none";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  }
+
   function toCsv(rows) {
-    const escapeCell = (value) =>
-      `"${String(value ?? "").replace(/"/g, '""')}"`;
-    return rows.map((row) => row.map(escapeCell).join(";")).join("\n");
+    const delimiter = ";";
+    const body = rows.map((row) =>
+      row.map((value) => csvEscape(value)).join(delimiter),
+    );
+    return ["sep=;", ...body].join("\r\n");
+  }
+
+  function yieldToUi() {
+    return new Promise((resolve) => {
+      global.setTimeout(resolve, 0);
+    });
   }
 
   async function fetchJsonArray(baseUrl, label) {
@@ -2317,8 +2458,35 @@
     };
   }
 
-  async function loadBaseSourcesFromJson({ force = false } = {}) {
+  async function readProcessedBaseCache(cacheKey) {
+    if (!dataStore.getPersistent) return null;
+
+    const cached = await dataStore.getPersistent("derived", cacheKey);
+    if (!cached?.baseSources || !cached?.basePortfolio) return null;
+
+    return cached;
+  }
+
+  async function writeProcessedBaseCache(cacheKey, payload) {
+    if (!dataStore.setPersistent) return;
+
+    await dataStore.setPersistent("derived", cacheKey, payload);
+  }
+
+  async function loadBaseSourcesFromJson({ force = false, onStage } = {}) {
     if (!force && state.cache.baseSources) {
+      onStage?.("Base consolidada da sessão conectada.");
+      return state.cache.baseSources;
+    }
+
+    const cacheKey = processedBaseCacheKey();
+    const persistentProcessedBase =
+      !force ? await readProcessedBaseCache(cacheKey) : null;
+
+    if (persistentProcessedBase) {
+      onStage?.("Reutilizando base consolidada local...");
+      state.cache.baseSources = persistentProcessedBase.baseSources;
+      state.cache.basePortfolio = persistentProcessedBase.basePortfolio;
       return state.cache.baseSources;
     }
 
@@ -2328,12 +2496,15 @@
         : null;
 
     if (cachedBaseSources) {
+      onStage?.("Reutilizando base consolidada da sessão...");
       state.cache.baseSources = cachedBaseSources;
       state.cache.basePortfolio =
         dataStore.get("derived", "basePortfolio") ||
         buildBasePortfolioCache(cachedBaseSources);
       return state.cache.baseSources;
     }
+
+    onStage?.("Baixando atualização do dia...");
 
     const [baseOrdensRaw, baseFuturasRaw, baseRealizadosRaw, itensLinearesRaw] =
       await Promise.all([
@@ -2362,6 +2533,8 @@
           return [];
         }),
       ]);
+
+    onStage?.("Associando ordens, futuras e realizados...");
 
     const baseFuturasEnriquecidaRaw = perf.measure("base:enrich-futuras", () =>
       enrichBaseFuturasWithItensLineares(baseFuturasRaw, itensLinearesRaw),
@@ -2395,6 +2568,13 @@
     );
     dataStore.set("bases", "baseSources", state.cache.baseSources);
     dataStore.set("derived", "basePortfolio", state.cache.basePortfolio);
+    await writeProcessedBaseCache(cacheKey, {
+      savedAt: new Date().toISOString(),
+      cacheKey,
+      schema: PROCESSED_BASE_CACHE_SCHEMA,
+      baseSources: state.cache.baseSources,
+      basePortfolio: state.cache.basePortfolio,
+    });
 
     return state.cache.baseSources;
   }
@@ -2558,20 +2738,23 @@
     };
   }
 
-  async function loadDatabase({ forceBaseReload = false } = {}) {
+  async function loadDatabase({ forceBaseReload = false, onStage } = {}) {
     const previousSelection = state.selectedDemandId;
     const previousUserEmail =
       state.currentUser?.email || getStoredSessionEmail();
 
     perf.start("loadDatabase");
 
+    onStage?.("Conectando base consolidada...");
     const baseSources = await loadBaseSourcesFromJson({
       force: forceBaseReload,
+      onStage,
     });
     const basePortfolio =
       state.cache.basePortfolio || buildBasePortfolioCache(baseSources);
     state.cache.basePortfolio = basePortfolio;
 
+    onStage?.("Conectando ajustes operacionais...");
     const supabaseData = await perf.measureAsync("supabase:getAll", () =>
       state.repo.getAll(),
     );
@@ -2582,6 +2765,7 @@
         .map((item) => [centroResponsabilidadeChave(item), item]),
     );
 
+    onStage?.("Validando centros e responsáveis...");
     const baseEnriquecida = perf.measure("db:enrich-base-centros", () =>
       basePortfolio.demandas.map((demanda) =>
         enrichDemandWithCentroTrabalho(demanda, mapaCentrosTrabalho),
@@ -2594,6 +2778,7 @@
 
     const baseIds = basePortfolio.baseIds;
 
+    onStage?.("Consolidando fontes operacionais...");
     const qualitySourceRecords = perf.measure("db:quality-sources", () =>
       buildQualitySourceRecords({
         baseOrdens: baseSources.baseOrdens,
@@ -2664,6 +2849,7 @@
     setCurrentUserFromEmail(previousUserEmail);
 
     state.lastDataUpdateAt = latestDataUpdateAt();
+    onStage?.("Preparando filtros e painel inicial...");
     await rebuildDataIndexesAsync({ preferWorker: true });
 
     state.selectedDemandId = demandas.some(
@@ -2673,6 +2859,7 @@
       : demandas[0]?.id || "";
 
     dataStore.set("views", "db", state.db);
+    onStage?.("Base operacional pronta.");
     perf.end("loadDatabase");
   }
 
@@ -3024,6 +3211,42 @@
     $("#logoutButton")?.classList.toggle("hidden", !state.currentUser);
     applyPermissions();
   }
+
+  function setLoginWarmupStatus(active, statusText = "") {
+    state.loginBaseWarmup.active = active;
+    state.loginBaseWarmup.statusText = statusText;
+  }
+
+  function primeBasePortfolioCache() {
+    if (state.cache.basePortfolio || state.baseWarmupPromise) {
+      return state.baseWarmupPromise;
+    }
+
+    setLoginWarmupStatus(true, "Conectando base consolidada local...");
+    renderLoginState();
+
+    state.baseWarmupPromise = loadBaseSourcesFromJson({
+      onStage: (message) => {
+        setLoginWarmupStatus(true, message);
+        if (!state.currentUser) {
+          renderLoginState();
+        }
+      },
+    })
+      .catch((error) => {
+        console.warn("Warmup da base consolidada falhou:", error);
+      })
+      .finally(() => {
+        state.baseWarmupPromise = null;
+        setLoginWarmupStatus(false, "");
+        if (!state.currentUser) {
+          renderLoginState();
+        }
+      });
+
+    return state.baseWarmupPromise;
+  }
+
   function setLoginUiState({
     loading = false,
     ready = false,
@@ -3068,7 +3291,10 @@
       ready: true,
       loading: false,
       buttonText: "Entrar na Central",
-      statusText: "Acesso pronto. Informe e-mail e matrícula.",
+      statusText:
+        state.loginBaseWarmup.active && state.loginBaseWarmup.statusText
+          ? `Acesso pronto. ${state.loginBaseWarmup.statusText}`
+          : "Acesso pronto. Informe e-mail e matrícula.",
     });
   }
 
@@ -3099,6 +3325,10 @@
       buttonText: "Entrar na Central",
       statusText: "Acesso pronto. Informe e-mail e matrícula.",
     });
+
+    global.setTimeout(() => {
+      primeBasePortfolioCache();
+    }, 0);
   }
 
   function initFeatureModules() {
@@ -3201,7 +3431,23 @@
         statusText: "Acesso validado. Carregando carteira operacional...",
       });
 
-      await loadDatabase();
+      const updateLoginStage = (message) => {
+        setLoginUiState({
+          ready: true,
+          loading: true,
+          buttonText: "Carregando carteira...",
+          statusText: message,
+        });
+      };
+
+      if (state.baseWarmupPromise) {
+        updateLoginStage("Conectando base consolidada preparada localmente...");
+        await state.baseWarmupPromise;
+      }
+
+      await loadDatabase({
+        onStage: updateLoginStage,
+      });
       global.CCEClimaFeature?.limparCache?.();
 
       state.pageSize = Number(state.db.parametros?.pageSizeDefault || 12);
@@ -10252,15 +10498,27 @@
         </tr>`;
   }
 
-  function exportCurrentCarteira() {
+  async function exportCurrentCarteira() {
     const rows = filteredDemandas();
+    if (!rows.length) {
+      showToast?.("Não há registros filtrados para exportar.", "error");
+      return;
+    }
+
+    const delimiter = ";";
+    const formatDateForCsv = (value) =>
+      typeof formatDate === "function" ? formatDate(value) : String(value ?? "");
+    const formatDateTimeForCsv = (value) =>
+      typeof formatDateTime === "function"
+        ? formatDateTime(value)
+        : String(value ?? "");
     const header = [
-      "ID_Demanda_Controle",
+      "ID",
       "Ordem SAP",
       "Descrição",
       "Origem",
-      "Gerencia",
-      "Supervisao",
+      "Gerência",
+      "Supervisão",
       "Vencimento",
       "Competência",
       "Tipo OM",
@@ -10280,40 +10538,106 @@
       "Data Realizada",
       "Perda",
       "Motivo Perda",
-      "Ultima Atualizacao",
+      "Última Atualização",
     ];
-    const body = rows.map((item) => [
-      item.id,
-      item.ordem,
-      item.descricao,
-      item.origem,
-      item.gerencia,
-      item.supervisao,
-      item.vencimento,
-      item.competencia,
-      item.tipoOM,
-      item.centroTrabalho,
-      item.centroTrabalhoStatus,
-      item.planejadorCurto,
-      item.planejadorOM,
-      item.programador,
-      item.localInstalacao,
-      item.kmInicio,
-      item.kmFim,
-      item.prioridade,
-      primaryStatusOf(item),
-      substatusListOf(item).join(" | "),
-      item.dataPlanejada,
-      item.dataReplanejadaAtual,
-      item.dataRealizada,
-      item.perda ? "Sim" : "Não",
-      item.motivoPerda,
-      item.dataUltimaAtualizacao,
-    ]);
-    downloadFile(
-      `carteira-eletrovia-${todayText()}.csv`,
-      toCsv([header, ...body]),
-    );
+    const exportButton = $("#exportCsv");
+    exportButton?.setAttribute("disabled", "disabled");
+
+    try {
+      showCsvExportProgress({
+        title: "Preparando CSV",
+        message: "Lendo recorte atual da carteira e organizando colunas.",
+        percent: 4,
+        meta: `${rows.length.toLocaleString("pt-BR")} registros no recorte atual.`,
+      });
+      await yieldToUi();
+
+      const body = [];
+      const chunkSize = 1200;
+      const totalRows = rows.length;
+
+      for (let index = 0; index < totalRows; index += 1) {
+        const item = rows[index];
+        body.push(
+          [
+            csvEscape(item.id),
+            csvProtectedText(item.ordem),
+            csvEscape(item.descricao),
+            csvEscape(item.origem),
+            csvEscape(item.gerencia),
+            csvEscape(item.supervisao),
+            csvEscape(formatDateForCsv(item.vencimento)),
+            csvEscape(item.competencia),
+            csvEscape(item.tipoOM),
+            csvEscape(item.centroTrabalho),
+            csvEscape(item.centroTrabalhoStatus),
+            csvEscape(item.planejadorCurto),
+            csvEscape(item.planejadorOM),
+            csvEscape(item.programador),
+            csvEscape(item.localInstalacao),
+            csvEscape(item.kmInicio),
+            csvEscape(item.kmFim),
+            csvEscape(item.prioridade),
+            csvEscape(primaryStatusOf(item)),
+            csvEscape(substatusListOf(item).join(" | ")),
+            csvEscape(formatDateForCsv(item.dataPlanejada)),
+            csvEscape(formatDateForCsv(item.dataReplanejadaAtual)),
+            csvEscape(formatDateForCsv(item.dataRealizada)),
+            csvEscape(item.perda ? "Sim" : "Não"),
+            csvEscape(item.motivoPerda),
+            csvEscape(
+              formatDateTimeForCsv(
+                item.updatedAt || item.dataUltimaAtualizacao,
+              ),
+            ),
+          ].join(delimiter),
+        );
+
+        if ((index + 1) % chunkSize === 0 || index === totalRows - 1) {
+          const completion = Math.round(((index + 1) / totalRows) * 84);
+          showCsvExportProgress({
+            title: "Montando CSV",
+            message: "Convertendo carteira filtrada em linhas de exportação.",
+            percent: 8 + completion,
+            meta: `${(index + 1).toLocaleString("pt-BR")} de ${totalRows.toLocaleString("pt-BR")} registros preparados.`,
+          });
+          await yieldToUi();
+        }
+      }
+
+      showCsvExportProgress({
+        title: "Finalizando arquivo",
+        message: "Compactando conteúdo textual e preparando o download.",
+        percent: 96,
+        meta: `${body.length.toLocaleString("pt-BR")} linhas prontas para exportação.`,
+      });
+      await yieldToUi();
+
+      const csvContent = [
+        "sep=;",
+        header.map((value) => csvEscape(value)).join(delimiter),
+        ...body,
+      ].join("\r\n");
+
+      showCsvExportProgress({
+        title: "Disparando download",
+        message: "Arquivo pronto. Enviando CSV para o navegador.",
+        percent: 100,
+        meta: "O bloqueio será removido assim que o download for iniciado.",
+      });
+      await yieldToUi();
+
+      downloadCsvFile(`carteira-eletrovia-${todayText()}.csv`, csvContent);
+      showToast?.("CSV exportado com sucesso.", "success");
+    } catch (error) {
+      console.error(error);
+      showToast?.("Erro ao exportar CSV. Tente novamente.", "error");
+    } finally {
+      global.setTimeout(() => {
+        hideCsvExportProgress();
+        exportButton?.removeAttribute("disabled");
+      }, 180);
+    }
   }
 
   function downloadTemplate() {
@@ -10351,7 +10675,7 @@
       "",
       "Carga modelo",
     ];
-    downloadFile("modelo-carga-eletrovia.csv", toCsv([header, example]));
+    downloadCsvFile("modelo-carga-eletrovia.csv", toCsv([header, example]));
   }
 
   function downloadRealizedTemplate() {
@@ -10371,7 +10695,10 @@
       "",
       "Realizado sincronizado pelo SAP BO",
     ];
-    downloadFile("modelo-realizados-eletrovia.csv", toCsv([header, example]));
+    downloadCsvFile(
+      "modelo-realizados-eletrovia.csv",
+      toCsv([header, example]),
+    );
   }
 
   function bindEvents() {
@@ -11116,7 +11443,7 @@
         log.referencia,
         log.detalhe,
       ]);
-      downloadFile(
+      downloadCsvFile(
         `logs-eletrovia-${todayText()}.csv`,
         toCsv([
           ["Data/Hora", "Usuário", "Ação", "Lista", "Referência", "Detalhe"],

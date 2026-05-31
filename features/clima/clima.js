@@ -111,6 +111,14 @@
   }
 
   function getKmWindowFromDemand(demanda) {
+    if (!demanda || typeof demanda !== "object") {
+      return {
+        kmInicio: null,
+        kmFim: null,
+        kmMedio: null,
+      };
+    }
+
     const kmInicio = safeNumber(
       demanda.kmInicio || demanda.KmInicio || demanda.km_inicio,
     );
@@ -131,6 +139,8 @@
       kmFim: Number.isFinite(kmFim) ? kmFim : null,
       kmMedio: Number.isFinite(kmInicio) ? kmInicio : Number.isFinite(kmFim) ? kmFim : null,
     };
+
+    return resolved;
   }
 
   function getKmFromBaseJson(demanda) {
@@ -198,6 +208,8 @@
   }
 
   function demandSearchText(demanda) {
+    if (!demanda || typeof demanda !== "object") return "";
+
     return [
       demanda.id,
       demanda.ordem,
@@ -244,9 +256,13 @@
       data: "",
       origem: "Sem data",
     };
+
+    return resolved;
   }
 
   function isAllowedStatusForClimate(demanda) {
+    if (!demanda || typeof demanda !== "object") return false;
+
     const text = normalizeText(
       [
         demanda.statusOperacional,
@@ -562,6 +578,15 @@
   }
 
   function inferDistrict(demanda, config) {
+    if (!demanda || typeof demanda !== "object") {
+      return {
+        distrito: "",
+        coordenada: null,
+        origem: "Demanda inválida",
+        semInfluenciaClimatica: true,
+      };
+    }
+
     const locationCacheKey = [
       demanda.id || "",
       demanda.km || demanda.Km || demanda.KM || "",
@@ -1351,6 +1376,7 @@
 
   function buildClimateRows(demandas, config, realForecastMap) {
     return (demandas || [])
+      .filter((demanda) => demanda && typeof demanda === "object")
       .filter(isAllowedStatusForClimate)
       .map((demanda) => {
         const dataInfo = getProgramDateInfo(demanda);

@@ -5330,3 +5330,81 @@ body.is-login-required {
     transform: rotate(360deg);
   }
 }
+
+.csv-export-overlay {
+  align-items: center;
+  background: rgba(7, 34, 25, 0.56);
+  backdrop-filter: blur(6px);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 1200;
+}
+
+.csv-export-overlay.hidden {
+  display: none;
+}
+
+.csv-export-card {
+  background: linear-gradient(180deg, #ffffff, #f6fbf8);
+  border: 1px solid rgba(8, 76, 54, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 28px 68px rgba(4, 28, 20, 0.24);
+  max-width: 520px;
+  padding: 24px 24px 22px;
+  width: min(520px, calc(100vw - 36px));
+}
+
+.csv-export-header {
+  align-items: baseline;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.csv-export-header strong {
+  color: var(--gray-950);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.csv-export-header span {
+  color: var(--green-800);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.csv-export-message {
+  color: var(--gray-800);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 0 0 14px;
+}
+
+.csv-export-progress-track {
+  background: rgba(8, 76, 54, 0.1);
+  border-radius: 999px;
+  height: 14px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.csv-export-progress-bar {
+  background: linear-gradient(90deg, #1e8f67, #39b07d);
+  border-radius: inherit;
+  height: 100%;
+  transition: width 0.18s ease;
+  width: 0%;
+}
+
+.csv-export-meta {
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-top: 12px;
+}

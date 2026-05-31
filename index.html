@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" href="assets/favicon.png?v=2" />
     <link rel="shortcut icon" type="image/png" href="assets/favicon.png?v=2" />
     <link rel="apple-touch-icon" href="assets/favicon.png?v=2" />
-    <link rel="stylesheet" href="styles.css?v=20260529-02" />
+    <link rel="stylesheet" href="styles.css?v=20260531-csv-progress-01" />
     <link rel="stylesheet" href="features/clima/clima.css?v=20260529-01" />
     <link
       rel="stylesheet"
@@ -32,14 +32,14 @@
     ></script>
     <script defer src="services/json-cache-service.js?v=20260530-01"></script>
     <script defer src="services/performance-logger.js?v=20260530-01"></script>
-    <script defer src="services/data-store.js?v=20260530-01"></script>
+    <script defer src="services/data-store.js?v=20260531-persistent-01"></script>
     <script defer src="services/index-builder.js?v=20260530-01"></script>
     <script defer src="services/filter-engine.js?v=20260530-01"></script>
     <script
       defer
       src="features/clima/clima-config.js?v=20260527-clima-02"
     ></script>
-    <script defer src="features/clima/clima.js?v=20260529-01"></script>
+    <script defer src="features/clima/clima.js?v=20260531-hotfix-01"></script>
     <script
       defer
       src="features/indicadores/indicadores-taxonomia.js?v=20260529-02"
@@ -72,7 +72,7 @@
       defer
       src="features/relatorios/diagnostico-carteira.js?v=20260531-diag-preset-01"
     ></script>
-    <script defer src="app.js?v=20260531-diag-hotfix-01"></script>
+    <script defer src="app.js?v=20260531-csv-progress-01"></script>
   </head>
   <body>
     <section
@@ -1980,6 +1980,37 @@
         </div>
       </div>
     </dialog>
+
+    <div
+      id="csvExportOverlay"
+      class="csv-export-overlay hidden"
+      aria-hidden="true"
+    >
+      <div
+        class="csv-export-card"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <div class="csv-export-header">
+          <strong id="csvExportTitle">Preparando exportação</strong>
+          <span id="csvExportPercent">0%</span>
+        </div>
+        <p id="csvExportMessage" class="csv-export-message">
+          Organizando dados para exportação.
+        </p>
+        <div class="csv-export-progress-track" aria-hidden="true">
+          <div
+            id="csvExportProgressBar"
+            class="csv-export-progress-bar"
+            style="width: 0%"
+          ></div>
+        </div>
+        <div id="csvExportMeta" class="csv-export-meta">
+          O sistema ficará bloqueado até o download ficar pronto.
+        </div>
+      </div>
+    </div>
 
     <div id="toastHost" class="toast-host" aria-live="polite"></div>
   </body>

@@ -2,6 +2,30 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) =>
     Array.from(root.querySelectorAll(selector));
+  const perf = global.CCEPerformance || {
+    start() {},
+    end() {
+      return 0;
+    },
+    measure(_label, fn) {
+      return fn();
+    },
+    async measureAsync(_label, fn) {
+      return fn();
+    },
+  };
+  const dataStore = global.CCEDataStore || {
+    get() {
+      return undefined;
+    },
+    set(_bucket, _key, value) {
+      return value;
+    },
+    clear() {},
+    saveMeta() {},
+  };
+  const indexBuilder = global.CCEIndexBuilder || null;
+  const filterEngine = global.CCEFilterEngine || null;
 
   const STATUS_OPTIONS = [
     "A Planejar",
@@ -237,10 +261,18 @@
       basePortfolio: null,
       demandMap: new Map(),
       historiesByDemand: new Map(),
+      filterOptionSets: {
+        carteira: {},
+        indicadores: {},
+        qualidadeLocal: {},
+      },
+      filterIndexes: {},
       carteiraFilterKey: "",
       carteiraFiltered: [],
       indicatorFilterKey: "",
       indicatorFiltered: [],
+      indicatorSummaryKey: "",
+      indicatorSummary: null,
       dataVersion: 0,
     },
     actionContext: null,
@@ -252,6 +284,8 @@
     state.cache.carteiraFiltered = [];
     state.cache.indicatorFilterKey = "";
     state.cache.indicatorFiltered = [];
+    state.cache.indicatorSummaryKey = "";
+    state.cache.indicatorSummary = null;
   }
 
   function buildDemandMap(demandas = []) {
@@ -306,8 +340,50 @@
   }
 
   function rebuildDataIndexes() {
-    state.cache.demandMap = buildDemandMap(state.db?.demandas || []);
+    const demandas = state.db?.demandas || [];
+
+    state.cache.demandMap = buildDemandMap(demandas);
     state.cache.historiesByDemand = buildHistoriesByDemand();
+
+    if (indexBuilder?.buildDemandIndexes) {
+      const indexDefinitions = FILTER_DEFINITIONS.map((definition) => ({
+        ...definition,
+        getValue(item) {
+          if (definition.special === "substatus") {
+            return String(filterValueFor(item, definition))
+              .split(" | ")
+              .map((option) => option.trim())
+              .filter(Boolean);
+          }
+
+          return filterValueFor(item, definition);
+        },
+      }));
+      const built = perf.measure("filters:indexes", () =>
+        indexBuilder.buildDemandIndexes(demandas, indexDefinitions),
+      );
+      state.cache.filterIndexes = built.indexes || {};
+      state.cache.filterOptionSets = {
+        carteira: built.options || {},
+        indicadores: built.options || {},
+        qualidadeLocal: built.options || {},
+      };
+    } else {
+      state.cache.filterIndexes = {};
+      state.cache.filterOptionSets = {
+        carteira: {},
+        indicadores: {},
+        qualidadeLocal: {},
+      };
+    }
+
+    dataStore.set("derived", "indexes", state.cache.filterIndexes);
+    dataStore.set("derived", "filterOptionSets", state.cache.filterOptionSets);
+    dataStore.saveMeta({
+      demandCount: demandas.length,
+      updatedAt: latestDataUpdateAt(),
+    });
+
     bumpDataVersion();
   }
 
@@ -325,6 +401,18 @@
   function appendLogLocally(entry) {
     if (!entry) return;
     state.db.logs.unshift(entry);
+  }
+
+  function upsertDemandLocally(entry) {
+    if (!entry || !state.db?.demandas) return;
+    const normalized = normalizeDemandRecord(entry);
+    const index = state.db.demandas.findIndex((item) => item.id === normalized.id);
+
+    if (index >= 0) {
+      state.db.demandas[index] = normalized;
+    } else {
+      state.db.demandas.unshift(normalized);
+    }
   }
 
   function iconSvg(name) {
@@ -1027,6 +1115,12 @@
     };
   }
 
+  function setProcessingFeedback(targetSelector, message) {
+    const target = $(targetSelector);
+    if (!target) return;
+    target.textContent = message;
+  }
+
   function showBatchStatus(type, title, detail = "") {
     const panel = $(".validation-panel");
     if (!panel) return;
@@ -1077,25 +1171,30 @@
   }
 
   async function fetchJsonArray(baseUrl, label) {
-    const response = await fetch(`${baseUrl}?v=${Date.now()}`, {
-      method: "GET",
-      cache: "no-store",
-      headers: {
-        Accept: "application/json",
-      },
+    return perf.measureAsync(`json:${label}`, async () => {
+      const data = global.CCEJsonCache?.getJson
+        ? await global.CCEJsonCache.getJson(baseUrl, {
+            ttlMs: 10 * 60 * 1000,
+          })
+        : await fetch(`${baseUrl}?v=${Date.now()}`, {
+            method: "GET",
+            cache: "no-store",
+            headers: {
+              Accept: "application/json",
+            },
+          }).then(async (response) => {
+            if (!response.ok) {
+              throw new Error(`Erro ao carregar ${label}: ${response.status}`);
+            }
+            return response.json();
+          });
+
+      if (!Array.isArray(data)) {
+        throw new Error(`${label} precisa ser um array JSON.`);
+      }
+
+      return data;
     });
-
-    if (!response.ok) {
-      throw new Error(`Erro ao carregar ${label}: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (!Array.isArray(data)) {
-      throw new Error(`${label} precisa ser um array JSON.`);
-    }
-
-    return data;
   }
 
   function pickField(item, fieldNames) {
@@ -2126,6 +2225,19 @@
       return state.cache.baseSources;
     }
 
+    const cachedBaseSources =
+      !force && dataStore.get("bases", "baseSources")
+        ? dataStore.get("bases", "baseSources")
+        : null;
+
+    if (cachedBaseSources) {
+      state.cache.baseSources = cachedBaseSources;
+      state.cache.basePortfolio =
+        dataStore.get("derived", "basePortfolio") ||
+        buildBasePortfolioCache(cachedBaseSources);
+      return state.cache.baseSources;
+    }
+
     const [baseOrdensRaw, baseFuturasRaw, baseRealizadosRaw, itensLinearesRaw] =
       await Promise.all([
         fetchJsonArray("./base/base_ordens.json", "base_ordens.json"),
@@ -2154,21 +2266,24 @@
         }),
       ]);
 
-    const baseFuturasEnriquecidaRaw = enrichBaseFuturasWithItensLineares(
-      baseFuturasRaw,
-      itensLinearesRaw,
+    const baseFuturasEnriquecidaRaw = perf.measure("base:enrich-futuras", () =>
+      enrichBaseFuturasWithItensLineares(baseFuturasRaw, itensLinearesRaw),
     );
 
-    const baseOrdens = baseOrdensRaw.map((item) =>
-      mapBaseItemToDemand(item, "SAP BO - Ordens"),
+    const baseOrdens = perf.measure("base:map-ordens", () =>
+      baseOrdensRaw.map((item) => mapBaseItemToDemand(item, "SAP BO - Ordens")),
     );
 
-    const baseFuturas = baseFuturasEnriquecidaRaw.map((item) =>
-      mapBaseItemToDemand(item, "SAP BO - Demandas Futuras"),
+    const baseFuturas = perf.measure("base:map-futuras", () =>
+      baseFuturasEnriquecidaRaw.map((item) =>
+        mapBaseItemToDemand(item, "SAP BO - Demandas Futuras"),
+      ),
     );
 
-    const baseRealizados = baseRealizadosRaw.map((item) =>
-      mapBaseItemToDemand(item, "SAP BO - Realizados"),
+    const baseRealizados = perf.measure("base:map-realizados", () =>
+      baseRealizadosRaw.map((item) =>
+        mapBaseItemToDemand(item, "SAP BO - Realizados"),
+      ),
     );
 
     state.cache.baseSources = {
@@ -2178,7 +2293,11 @@
       itensLineares: itensLinearesRaw,
     };
 
-    state.cache.basePortfolio = buildBasePortfolioCache(state.cache.baseSources);
+    state.cache.basePortfolio = perf.measure("buildBasePortfolioCache", () =>
+      buildBasePortfolioCache(state.cache.baseSources),
+    );
+    dataStore.set("bases", "baseSources", state.cache.baseSources);
+    dataStore.set("derived", "basePortfolio", state.cache.basePortfolio);
 
     return state.cache.baseSources;
   }
@@ -2347,6 +2466,8 @@
     const previousUserEmail =
       state.currentUser?.email || getStoredSessionEmail();
 
+    perf.start("loadDatabase");
+
     const baseSources = await loadBaseSourcesFromJson({
       force: forceBaseReload,
     });
@@ -2354,7 +2475,9 @@
       state.cache.basePortfolio || buildBasePortfolioCache(baseSources);
     state.cache.basePortfolio = basePortfolio;
 
-    const supabaseData = await state.repo.getAll();
+    const supabaseData = await perf.measureAsync("supabase:getAll", () =>
+      state.repo.getAll(),
+    );
 
     const mapaCentrosTrabalho = new Map(
       (supabaseData.centrosTrabalho || [])
@@ -2362,8 +2485,10 @@
         .map((item) => [centroResponsabilidadeChave(item), item]),
     );
 
-    const baseEnriquecida = basePortfolio.demandas.map((demanda) =>
-      enrichDemandWithCentroTrabalho(demanda, mapaCentrosTrabalho),
+    const baseEnriquecida = perf.measure("db:enrich-base-centros", () =>
+      basePortfolio.demandas.map((demanda) =>
+        enrichDemandWithCentroTrabalho(demanda, mapaCentrosTrabalho),
+      ),
     );
 
     const deltasById = new Map(
@@ -2372,34 +2497,40 @@
 
     const baseIds = basePortfolio.baseIds;
 
-    const qualitySourceRecords = buildQualitySourceRecords({
-      baseOrdens: baseSources.baseOrdens,
-      baseFuturas: baseSources.baseFuturas,
-      supabaseDemandas: supabaseData.demandas || [],
-      baseIds,
-      deltasById,
-      mapaCentrosTrabalho,
-    });
-
-    const mergedBase = baseEnriquecida.map((item) =>
-      enrichDemandWithCentroTrabalho(
-        mergeDemandWithSupabase(item, deltasById.get(item.id)),
+    const qualitySourceRecords = perf.measure("db:quality-sources", () =>
+      buildQualitySourceRecords({
+        baseOrdens: baseSources.baseOrdens,
+        baseFuturas: baseSources.baseFuturas,
+        supabaseDemandas: supabaseData.demandas || [],
+        baseIds,
+        deltasById,
         mapaCentrosTrabalho,
+      }),
+    );
+
+    const mergedBase = perf.measure("db:merge-base-supabase", () =>
+      baseEnriquecida.map((item) =>
+        enrichDemandWithCentroTrabalho(
+          mergeDemandWithSupabase(item, deltasById.get(item.id)),
+          mapaCentrosTrabalho,
+        ),
       ),
     );
 
-    const demandasSomenteSupabase = (supabaseData.demandas || [])
-      .filter((item) => !baseIds.has(item.id))
-      .map((item) =>
-        enrichDemandWithCentroTrabalho(
-          enrichDemandWithItemLinear(item, basePortfolio.mapaItensLineares, {
-            preencherDescricaoSeVazia: true,
-          }),
-          mapaCentrosTrabalho,
+    const demandasSomenteSupabase = perf.measure("db:supabase-only", () =>
+      (supabaseData.demandas || [])
+        .filter((item) => !baseIds.has(item.id))
+        .map((item) =>
+          enrichDemandWithCentroTrabalho(
+            enrichDemandWithItemLinear(item, basePortfolio.mapaItensLineares, {
+              preencherDescricaoSeVazia: true,
+            }),
+            mapaCentrosTrabalho,
+          ),
         ),
-      );
-    const demandas = [...demandasSomenteSupabase, ...mergedBase].map(
-      normalizeDemandRecord,
+    );
+    const demandas = perf.measure("db:normalize-demandas", () =>
+      [...demandasSomenteSupabase, ...mergedBase].map(normalizeDemandRecord),
     );
 
     state.db = {
@@ -2443,6 +2574,9 @@
     )
       ? previousSelection
       : demandas[0]?.id || "";
+
+    dataStore.set("views", "db", state.db);
+    perf.end("loadDatabase");
   }
 
   function normalizeDemandRecord(demanda) {
@@ -3047,24 +3181,58 @@
     $("#exportCsv").disabled = !canExport();
   }
 
+  function hasActiveStructuredFilters(filters = {}) {
+    return FILTER_DEFINITIONS.some((definition) => {
+      const selected = filters[definition.key] || [];
+      return Array.isArray(selected) && selected.length > 0;
+    });
+  }
+
+  function baseFilterOptionsForScope(scope, definition) {
+    return (
+      state.cache.filterOptionSets?.[scope]?.[definition.key] ||
+      state.filterOptionsCache?.[definition.key] ||
+      []
+    );
+  }
+
+  function collectScopedFilterOptions(rows, filters) {
+    if (!filterEngine?.collectOptionsFromRows) {
+      const fallback = {};
+      FILTER_DEFINITIONS.forEach((definition) => {
+        const scopedRows = rows.filter((item) =>
+          demandMatchesFilters(item, filters, definition.key),
+        );
+        fallback[definition.key] =
+          definition.special === "substatus"
+            ? uniqueOptions(
+                scopedRows.flatMap((item) =>
+                  String(filterValueFor(item, definition))
+                    .split(" | ")
+                    .map((option) => option.trim())
+                    .filter(Boolean),
+                ),
+              )
+            : uniqueOptions(scopedRows.map((item) => filterValueFor(item, definition)));
+      });
+      return fallback;
+    }
+
+    const filteredRows = rows.filter((item) => demandMatchesFilters(item, filters));
+
+    return filterEngine.collectOptionsFromRows(filteredRows, FILTER_DEFINITIONS);
+  }
+
   function filterOptionsFor(definition) {
     if (!state.filterOptionsCache) state.filterOptionsCache = {};
     if (state.filterOptionsCache[definition.key]) {
       return state.filterOptionsCache[definition.key];
     }
 
-    const rows = state.db?.demandas || [];
-    const values =
-      definition.special === "substatus"
-        ? rows.flatMap((item) =>
-            String(filterValueFor(item, definition))
-              .split(" | ")
-              .map((option) => option.trim())
-              .filter(Boolean),
-          )
-        : rows.map((item) => filterValueFor(item, definition));
-
-    state.filterOptionsCache[definition.key] = uniqueOptions(values);
+    state.filterOptionsCache[definition.key] = baseFilterOptionsForScope(
+      "carteira",
+      definition,
+    );
     return state.filterOptionsCache[definition.key];
   }
 
@@ -3091,22 +3259,20 @@
 
   function buildIndicatorFilterOptions() {
     const filters = state.indicatorFilters || {};
+    const useScoped =
+      hasActiveStructuredFilters(filters) || Boolean(filters.quickSearch);
+    const scopedOptions = useScoped
+      ? perf.measure("filters:indicator-options", () =>
+          collectScopedFilterOptions(state.db?.demandas || [], filters),
+        )
+      : null;
+
     FILTER_DEFINITIONS.forEach((definition) => {
       const host = $(`[data-indicator-multi-filter="${definition.key}"]`);
       if (!host) return;
-      const scopedRows = (state.db?.demandas || []).filter((item) =>
-        demandMatchesFilters(item, filters, definition.key),
-      );
-      const rowOptions =
-        definition.special === "substatus"
-          ? scopedRows.flatMap((item) =>
-              String(filterValueFor(item, definition))
-                .split(" | ")
-                .map((option) => option.trim())
-                .filter(Boolean),
-            )
-          : scopedRows.map((item) => filterValueFor(item, definition));
-      const availableOptions = uniqueOptions(rowOptions);
+      const availableOptions =
+        (useScoped ? scopedOptions?.[definition.key] : null) ||
+        baseFilterOptionsForScope("indicadores", definition);
       const selected = (filters[definition.key] || []).filter((option) =>
         availableOptions.includes(option),
       );
@@ -3120,23 +3286,20 @@
 
   function buildQualityLocalFilterOptions() {
     const filters = state.quality.localFilters || {};
+    const useScoped =
+      hasActiveStructuredFilters(filters) || Boolean(filters.quickSearch);
+    const scopedOptions = useScoped
+      ? perf.measure("filters:quality-local-options", () =>
+          collectScopedFilterOptions(state.db?.demandas || [], filters),
+        )
+      : null;
+
     FILTER_DEFINITIONS.forEach((definition) => {
       const host = $(`[data-quality-local-multi-filter="${definition.key}"]`);
       if (!host) return;
-
-      const scopedRows = (state.db?.demandas || []).filter((item) =>
-        demandMatchesFilters(item, filters, definition.key),
-      );
-      const rowOptions =
-        definition.special === "substatus"
-          ? scopedRows.flatMap((item) =>
-              String(filterValueFor(item, definition))
-                .split(" | ")
-                .map((option) => option.trim())
-                .filter(Boolean),
-            )
-          : scopedRows.map((item) => filterValueFor(item, definition));
-      const availableOptions = uniqueOptions(rowOptions);
+      const availableOptions =
+        (useScoped ? scopedOptions?.[definition.key] : null) ||
+        baseFilterOptionsForScope("qualidadeLocal", definition);
       const selected = (filters[definition.key] || []).filter((option) =>
         availableOptions.includes(option),
       );
@@ -3433,8 +3596,8 @@
       return state.cache.carteiraFiltered;
     }
 
-    state.cache.carteiraFiltered = state.db.demandas.filter((item) =>
-      demandMatchesFilters(item, filters),
+    state.cache.carteiraFiltered = perf.measure("filters:carteira", () =>
+      state.db.demandas.filter((item) => demandMatchesFilters(item, filters)),
     );
     state.cache.carteiraFilterKey = cacheKey;
     return state.cache.carteiraFiltered;
@@ -5353,6 +5516,7 @@
   }
 
   function renderCarteira() {
+    perf.start("render:carteira");
     const filtered = filteredDemandas();
     renderKpis(filtered);
 
@@ -5427,6 +5591,16 @@
     $("#prevPage").disabled = state.page <= 1;
     $("#nextPage").disabled = state.page >= totalPages;
     renderDetail();
+    perf.end("render:carteira");
+  }
+
+  function syncSelectedCarteiraRow() {
+    $$("#demandTableBody [data-demand-id]").forEach((row) => {
+      row.classList.toggle(
+        "is-selected",
+        row.dataset.demandId === state.selectedDemandId,
+      );
+    });
   }
 
   function renderDetail() {
@@ -6139,6 +6313,7 @@
   }
 
   function renderCurrentView() {
+    perf.start(`view:${state.currentView}`);
     syncNavigation(state.currentView);
     syncActiveViewPanel(state.currentView);
     if (state.currentView === "carteira") renderCarteira();
@@ -6168,6 +6343,7 @@
     if (state.currentView === "logs") renderLogs();
     if (state.currentView === "saude-integracao") renderIntegrationHealth();
     applyPermissions();
+    perf.end(`view:${state.currentView}`);
   }
 
   async function refreshAfterSave(message = "Registro salvo com sucesso.") {
@@ -7672,16 +7848,17 @@
     future.prioridade = target.prioridade;
     future.toleranciaMin = target.toleranciaMin;
     future.toleranciaMax = target.toleranciaMax;
-    await state.repo.upsertDemanda(prepareDemandForSave(future));
-    await state.repo.addLog({
+    const saved = await state.repo.upsertDemanda(prepareDemandForSave(future));
+    const savedLog = await state.repo.addLog({
       usuario: state.currentUser.email,
       acao: "Vínculo Demanda/Ordem",
       lista: "Controle_Demandas_Eletrovia",
       referencia: future.id,
       detalhe: `Vinculada à ordem ${target.ordem}`,
     });
-    await refreshAll();
-    showToast("Demanda futura vinculada à ordem SAP.", "success");
+    upsertDemandLocally(saved || future);
+    appendLogLocally(savedLog);
+    refreshUiAfterLocalSave("Demanda futura vinculada à ordem SAP.");
   }
 
   async function createFutureDemand(event) {
@@ -7725,8 +7902,8 @@
     record.competencia = normalizeCompetencia(record.competencia);
     record.origem = "Sistema - Demanda Futura";
     record.usuarioResponsavel = state.currentUser.email;
-    await state.repo.upsertDemanda(prepareDemandForSave(record));
-    await state.repo.addLog({
+    const saved = await state.repo.upsertDemanda(prepareDemandForSave(record));
+    const savedLog = await state.repo.addLog({
       usuario: state.currentUser.email,
       acao: "Criação Demanda Futura",
       lista: "Controle_Demandas_Eletrovia",
@@ -7734,8 +7911,9 @@
       detalhe: record.descricao,
     });
     event.currentTarget.reset();
-    await refreshAll();
-    showToast("Demanda futura criada.", "success");
+    upsertDemandLocally(saved || record);
+    appendLogLocally(savedLog);
+    refreshUiAfterLocalSave("Demanda futura criada.");
   }
 
   function countBy(demands, selector) {
@@ -7757,14 +7935,19 @@
       return state.cache.indicatorFiltered;
     }
 
-    state.cache.indicatorFiltered = state.db.demandas.filter((item) =>
-      demandMatchesFilters(item, filters),
+    state.cache.indicatorFiltered = perf.measure("filters:indicadores", () =>
+      state.db.demandas.filter((item) => demandMatchesFilters(item, filters)),
     );
     state.cache.indicatorFilterKey = cacheKey;
     return state.cache.indicatorFiltered;
   }
 
   function summarizeIndicatorDemands(demands) {
+    const cacheKey = `${state.cache.indicatorFilterKey}:${demands.length}`;
+    if (state.cache.indicatorSummaryKey === cacheKey && state.cache.indicatorSummary) {
+      return state.cache.indicatorSummary;
+    }
+
     const today = toDate(todayText());
     const stats = dashboardStats(demands);
     const dueSoon = [];
@@ -7807,7 +7990,7 @@
 
     dueSoon.sort((a, b) => toDate(a.vencimento) - toDate(b.vencimento));
 
-    return {
+    const result = {
       today,
       stats,
       dueSoon,
@@ -7818,6 +8001,9 @@
       replanSupervisaoCounts,
       competenciaCounts,
     };
+    state.cache.indicatorSummaryKey = cacheKey;
+    state.cache.indicatorSummary = result;
+    return result;
   }
 
   function updateIndicatorHero({
@@ -8065,6 +8251,7 @@
   }
 
   function renderIndicators() {
+    perf.start("render:indicadores");
     const demands = filteredIndicatorDemandas();
     const summary = summarizeIndicatorDemands(demands);
     const { stats, today, dueSoon, overdue } = summary;
@@ -8221,6 +8408,7 @@
         dueHtml.join("") ||
         '<span class="muted">Nenhum vencimento nos próximos 20 dias.</span>';
     }
+    perf.end("render:indicadores");
   }
 
   function renderStatusDonut(demands, stats) {
@@ -9974,7 +10162,8 @@
       const row = event.target.closest("[data-demand-id]");
       if (row) {
         state.selectedDemandId = row.dataset.demandId;
-        renderCarteira();
+        syncSelectedCarteiraRow();
+        renderDetail();
       }
     });
     $("#detailPanel").addEventListener("click", (event) => {
@@ -9990,6 +10179,9 @@
         await state.repo.reset();
         state.cache.baseSources = null;
         state.cache.basePortfolio = null;
+        dataStore.clear("bases");
+        dataStore.clear("derived");
+        global.CCEJsonCache?.clear?.();
         await loadDatabase({ forceBaseReload: true });
         await autoSyncRealizadosFromSharePoint();
         hydrateStaticUi();
@@ -10164,18 +10356,21 @@
 
     $("#toggleQualityLocalFilters")?.addEventListener("click", () => {
       state.quality.localFiltersVisible = !state.quality.localFiltersVisible;
+      renderQualityLocalFilterVisibility();
       if (
         state.quality.localFiltersVisible &&
         !state.quality.localFiltersReady
       ) {
-        collectQualityLocalFilters();
-        buildQualityLocalFilterOptions();
+        global.requestAnimationFrame(() => {
+          collectQualityLocalFilters();
+          buildQualityLocalFilterOptions();
+        });
       }
-      renderQualityLocalFilterVisibility();
     });
 
     $("#qualityLocalFilterPanel")?.addEventListener("change", (event) => {
       if (!event.target.matches("[data-multi-option]")) return;
+      setProcessingFeedback("#qualityLocalCount", "Aplicando filtros...");
       collectQualityLocalFilters();
       buildQualityLocalFilterOptions();
       state.quality.selectedLocal = "";
@@ -10200,6 +10395,7 @@
       if (event.target.id === "qualityLocalQuickSearch") {
         collectQualityLocalFilters();
         state.quality.selectedLocal = "";
+        setProcessingFeedback("#qualityLocalCount", "Aplicando filtros...");
         global.clearTimeout(state.quality.localFilterSearchTimer);
         state.quality.localFilterSearchTimer = global.setTimeout(
           renderQualityByLocal,
@@ -10242,6 +10438,7 @@
       collectQualityLocalFilters();
       buildQualityLocalFilterOptions();
       state.quality.selectedLocal = "";
+      setProcessingFeedback("#qualityLocalCount", "Aplicando filtros...");
       renderQualityByLocal();
     });
 
@@ -10408,14 +10605,20 @@
     });
     $("#toggleIndicatorFilters")?.addEventListener("click", () => {
       state.indicatorFiltersVisible = !state.indicatorFiltersVisible;
-      if (state.indicatorFiltersVisible && !state.indicatorFiltersReady) {
-        collectIndicatorFilters();
-        buildIndicatorFilterOptions();
-      }
       renderIndicatorFilterVisibility();
+      if (state.indicatorFiltersVisible && !state.indicatorFiltersReady) {
+        global.requestAnimationFrame(() => {
+          collectIndicatorFilters();
+          buildIndicatorFilterOptions();
+        });
+      }
     });
     $("#indicatorFilterPanel")?.addEventListener("change", (event) => {
       if (!event.target.matches("[data-multi-option]")) return;
+      setProcessingFeedback(
+        "#indicatorSpotlightMeta",
+        "Aplicando filtros operacionais...",
+      );
       collectIndicatorFilters();
       buildIndicatorFilterOptions();
       // Debounce to avoid re-render storm on multi-select
@@ -10439,6 +10642,10 @@
 
       if (event.target.id === "indicatorQuickSearch") {
         collectIndicatorFilters();
+        setProcessingFeedback(
+          "#indicatorSpotlightMeta",
+          "Atualizando indicadores...",
+        );
         global.clearTimeout(state.indicatorSearchTimer);
         state.indicatorSearchTimer = global.setTimeout(renderIndicators, 160);
       }
@@ -10476,6 +10683,10 @@
 
       collectIndicatorFilters();
       buildIndicatorFilterOptions();
+      setProcessingFeedback(
+        "#indicatorSpotlightMeta",
+        "Atualizando indicadores...",
+      );
       renderIndicators();
     });
     $("#indicatorClearFilters")?.addEventListener("click", () => {

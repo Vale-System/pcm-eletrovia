@@ -546,6 +546,15 @@
   class SupabaseRepository {
     constructor() {
       this.mode = "Banco de Dados";
+      this._allCache = null;
+      this._allCacheAt = 0;
+      this._pendingAll = null;
+    }
+
+    invalidateCache() {
+      this._allCache = null;
+      this._allCacheAt = 0;
+      this._pendingAll = null;
     }
 
     async getLoginData() {
@@ -575,10 +584,21 @@
     }
 
     async reset() {
+      this.invalidateCache();
       return this.getAll();
     }
 
     async getAll() {
+      const now = Date.now();
+      if (this._allCache && now - this._allCacheAt < 120000) {
+        return this._allCache;
+      }
+
+      if (this._pendingAll) {
+        return this._pendingAll;
+      }
+
+      this._pendingAll = (async () => {
       const [
         demandas,
         usuarios,
@@ -675,7 +695,7 @@
 
       const parametrosMap = {};
 
-      return {
+      const payload = {
         demandas: demandas.map(mapControleToDemand),
         usuarios: usuarios.map(mapUser),
         centrosTrabalho: centrosTrabalho.map(mapCentroTrabalho),
@@ -717,6 +737,19 @@
         feriasSubstituicoes: feriasSubstituicoes.map(mapFeriasSubstituicao),
         logs: logs.map(mapLog),
       };
+
+        this._allCache = payload;
+        this._allCacheAt = Date.now();
+        this._pendingAll = null;
+        return payload;
+      })();
+
+      try {
+        return await this._pendingAll;
+      } catch (error) {
+        this._pendingAll = null;
+        throw error;
+      }
     }
 
     async upsertFeriasSubstituicao(record) {
@@ -750,6 +783,7 @@
     }
 
     async upsertDemanda(record) {
+      this.invalidateCache();
       const payload = mapDemandToControle(record);
       const saved = await upsert(
         TABLES.controle,
@@ -761,6 +795,7 @@
 
     async bulkUpsertDemandas(records) {
       if (!records.length) return [];
+      this.invalidateCache();
 
       const payload = records.map(mapDemandToControle);
       const saved = await upsert(
@@ -773,6 +808,7 @@
     }
 
     async bulkAddHistories(entries) {
+      this.invalidateCache();
       const planejamento = entries?.planejamento || [];
       const replanejamento = entries?.replanejamento || [];
       const realizadoPerda = entries?.realizadoPerda || [];
@@ -801,6 +837,7 @@
     }
 
     async updateReplanHistory(id, entry) {
+      this.invalidateCache();
       if (!id) {
         return this.addHistory("replanejamento", entry);
       }
@@ -834,6 +871,7 @@
     }
 
     async updateRealizadoPerdaHistory(id, entry) {
+      this.invalidateCache();
       if (!id) {
         return this.addHistory("realizadoPerda", entry);
       }
@@ -875,6 +913,7 @@
     }
 
     async addHistory(type, entry) {
+      this.invalidateCache();
       if (type === "planejamento") {
         const payload = planejamentoHistoryPayload(entry);
 
@@ -900,6 +939,7 @@
     }
 
     async addLog(entry) {
+      this.invalidateCache();
       const payload = {
         acao: entry.acao || "",
         usuario: entry.usuario || "",
@@ -918,6 +958,7 @@
     }
 
     async addConfigItem(group, value, parentId = "") {
+      this.invalidateCache();
       const nome = String(value || "").trim();
       if (!nome) return null;
 
@@ -978,6 +1019,7 @@
     }
 
     async addUser(user) {
+      this.invalidateCache();
       const perfil = user.perfil || user.perfil_acesso || "Visualizador";
       const defaults =
         {
@@ -1067,6 +1109,7 @@
     }
 
     async updateParameters(parameters) {
+      this.invalidateCache();
       await this.addLog({
         acao: "PARAMETROS_NAO_MIGRADOS",
         usuario: "",
@@ -1081,6 +1124,7 @@
     }
 
     async createBatchRun(summary) {
+      this.invalidateCache();
       const loteId =
         summary.loteId ||
         summary.lote_id ||

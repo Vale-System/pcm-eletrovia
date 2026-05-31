@@ -1,4 +1,24 @@
 (function setupClimateModule(global) {
+  const perf = global.CCEPerformance || {
+    start() {},
+    end() {
+      return 0;
+    },
+    measure(_label, fn) {
+      return fn();
+    },
+    async measureAsync(_label, fn) {
+      return fn();
+    },
+  };
+  const dataStore = global.CCEDataStore || {
+    get() {
+      return undefined;
+    },
+    set(_bucket, _key, value) {
+      return value;
+    },
+  };
   const DEFAULT_DATA_URLS = {
     distritos: "./data/distritos_ferrovia.json",
     centros: "./data/centros_trabalho_distritos.json",
@@ -7,6 +27,14 @@
 
   let externalDataCache = null;
   let externalDataPromise = null;
+  const climateRuntime = {
+    locationByDemand: new Map(),
+    kmCoordinateCache: new Map(),
+    trechoCoordinateCache: new Map(),
+    preparedCacheKey: "",
+    preparedPayload: null,
+    viewCache: new Map(),
+  };
 
   function normalizeText(value) {
     return String(value || "")
@@ -80,6 +108,29 @@
 
     const number = Number(text);
     return Number.isFinite(number) ? number : null;
+  }
+
+  function getKmWindowFromDemand(demanda) {
+    const kmInicio = safeNumber(
+      demanda.kmInicio || demanda.KmInicio || demanda.km_inicio,
+    );
+    const kmFim = safeNumber(
+      demanda.kmFim || demanda.KmFim || demanda.km_fim,
+    );
+
+    if (Number.isFinite(kmInicio) && Number.isFinite(kmFim)) {
+      return {
+        kmInicio,
+        kmFim,
+        kmMedio: Number((((kmInicio + kmFim) / 2)).toFixed(3)),
+      };
+    }
+
+    const resolved = {
+      kmInicio: Number.isFinite(kmInicio) ? kmInicio : null,
+      kmFim: Number.isFinite(kmFim) ? kmFim : null,
+      kmMedio: Number.isFinite(kmInicio) ? kmInicio : Number.isFinite(kmFim) ? kmFim : null,
+    };
   }
 
   function getKmFromBaseJson(demanda) {
@@ -189,7 +240,7 @@
       };
     }
 
-    return {
+    const resolved = {
       data: "",
       origem: "Sem data",
     };
@@ -407,6 +458,11 @@
   }
 
   function resolveKmLocation(km, config, tipoVinculo) {
+    const cacheKey = `KM::${Number(km).toFixed(3)}::${tipoVinculo || ""}`;
+    if (climateRuntime.kmCoordinateCache.has(cacheKey)) {
+      return climateRuntime.kmCoordinateCache.get(cacheKey);
+    }
+
     const coordenada = findNearestCoordinateByKm(km, config);
 
     const distritoPelaCoordenada = coordenada?.distrito
@@ -419,13 +475,43 @@
 
     if (!distrito) return null;
 
-    return {
+    const resolved = {
       tipoVinculo,
       km,
       distrito,
       coordenada,
       semInfluenciaClimatica: false,
     };
+
+    climateRuntime.kmCoordinateCache.set(cacheKey, resolved);
+    return resolved;
+  }
+
+  function resolveTrechoLocation(kmInicio, kmFim, config) {
+    const cacheKey = `${Number(kmInicio).toFixed(3)}|${Number(kmFim).toFixed(3)}`;
+    if (climateRuntime.trechoCoordinateCache.has(cacheKey)) {
+      return climateRuntime.trechoCoordinateCache.get(cacheKey);
+    }
+
+    const kmMedio = Number(
+      (((Number(kmInicio) + Number(kmFim)) / 2)).toFixed(3),
+    );
+    const resolved = resolveKmLocation(
+      kmMedio,
+      config,
+      "Trecho por KM inicio/fim",
+    );
+
+    if (!resolved) return null;
+
+    const trechoResolved = {
+      ...resolved,
+      kmInicio,
+      kmFim,
+      km: kmMedio,
+    };
+    climateRuntime.trechoCoordinateCache.set(cacheKey, trechoResolved);
+    return trechoResolved;
   }
 
   function findDistrictByCentroTrabalho(demanda, config) {
@@ -476,13 +562,43 @@
   }
 
   function inferDistrict(demanda, config) {
+    const locationCacheKey = [
+      demanda.id || "",
+      demanda.km || demanda.Km || demanda.KM || "",
+      demanda.kmInicio || demanda.KmInicio || demanda.km_inicio || "",
+      demanda.kmFim || demanda.KmFim || demanda.km_fim || "",
+      demanda.localInstalacao || "",
+      demanda.centroTrabalho || "",
+      demanda.descricao || "",
+    ].join("::");
+
+    if (climateRuntime.locationByDemand.has(locationCacheKey)) {
+      return climateRuntime.locationByDemand.get(locationCacheKey);
+    }
+
     const searchText = demandSearchText(demanda);
+    const kmWindow = getKmWindowFromDemand(demanda);
+
+    if (Number.isFinite(kmWindow.kmInicio) && Number.isFinite(kmWindow.kmFim)) {
+      const trechoLocation = resolveTrechoLocation(
+        kmWindow.kmInicio,
+        kmWindow.kmFim,
+        config,
+      );
+      if (trechoLocation) {
+        climateRuntime.locationByDemand.set(locationCacheKey, trechoLocation);
+        return trechoLocation;
+      }
+    }
 
     const kmBaseJson = getKmFromBaseJson(demanda);
 
     if (Number.isFinite(kmBaseJson)) {
       const location = resolveKmLocation(kmBaseJson, config, "KM da base JSON");
-      if (location) return location;
+      if (location) {
+        climateRuntime.locationByDemand.set(locationCacheKey, location);
+        return location;
+      }
     }
 
     if (textHasAny(searchText, ["SLS", "TFPM", "TFPM 1", "TFPM 2"])) {
@@ -493,13 +609,15 @@
       const coordenada = findNearestCoordinateByKm(0, config);
 
       if (distrito) {
-        return {
+        const resolved = {
           tipoVinculo: "Regra especial SLS/TFPM",
           km: 0,
           distrito,
           coordenada,
           semInfluenciaClimatica: false,
         };
+        climateRuntime.locationByDemand.set(locationCacheKey, resolved);
+        return resolved;
       }
     }
 
@@ -515,13 +633,15 @@
         findDistrictByName("Ramal Ferroviário", config);
 
       if (distrito) {
-        return {
+        const resolved = {
           tipoVinculo: "Regra especial RFSP",
           km: null,
           distrito,
           coordenada: null,
           semInfluenciaClimatica: false,
         };
+        climateRuntime.locationByDemand.set(locationCacheKey, resolved);
+        return resolved;
       }
     }
 
@@ -534,7 +654,10 @@
         "KM/TU extraído da descrição",
       );
 
-      if (location) return location;
+      if (location) {
+        climateRuntime.locationByDemand.set(locationCacheKey, location);
+        return location;
+      }
     }
 
     const kmLocal = extractKmFromText(demanda.localInstalacao);
@@ -546,12 +669,18 @@
         "KM/TU extraído do local",
       );
 
-      if (location) return location;
+      if (location) {
+        climateRuntime.locationByDemand.set(locationCacheKey, location);
+        return location;
+      }
     }
 
     const distritoPorCentro = findDistrictByCentroTrabalho(demanda, config);
 
-    if (distritoPorCentro) return distritoPorCentro;
+    if (distritoPorCentro) {
+      climateRuntime.locationByDemand.set(locationCacheKey, distritoPorCentro);
+      return distritoPorCentro;
+    }
 
     return {
       tipoVinculo: "Não identificado",
@@ -591,6 +720,7 @@
   let realWeatherCache = null;
   let realWeatherPromise = null;
   let realWeatherCacheKey = "";
+  let realWeatherCacheAt = 0;
 
   function currentDateTextLocal(timezone = "America/Fortaleza") {
     const parts = new Intl.DateTimeFormat("en-CA", {
@@ -996,7 +1126,13 @@
       apiConfig.timezone || "America/Fortaleza",
     ].join("::");
 
-    if (realWeatherCache && realWeatherCacheKey === cacheKey) {
+    const ttlMs = Math.max(1, Number(apiConfig.cacheMinutes || 60)) * 60000;
+
+    if (
+      realWeatherCache &&
+      realWeatherCacheKey === cacheKey &&
+      Date.now() - realWeatherCacheAt < ttlMs
+    ) {
       return realWeatherCache;
     }
 
@@ -1036,6 +1172,7 @@
       })
       .then((data) => {
         realWeatherCache = normalizeRealWeatherResponse(data);
+        realWeatherCacheAt = Date.now();
         return realWeatherCache;
       })
       .catch((error) => {
@@ -1044,6 +1181,7 @@
           error,
         );
         realWeatherCache = new Map();
+        realWeatherCacheAt = Date.now();
         return realWeatherCache;
       })
       .finally(() => {
@@ -1244,6 +1382,61 @@
       .filter((row) => row && row.dataProgramada);
   }
 
+  function climateDatasetKey(demandas, config, selectedPeriodKeys = [], meta = {}) {
+    return JSON.stringify({
+      version:
+        meta.dataVersion ||
+        meta.lastDataUpdateAt ||
+        demandas?.length ||
+        0,
+      forecast: realWeatherCacheKey,
+      periods: selectedPeriodKeys.join("|"),
+      climateVersion: config?.versao || "",
+    });
+  }
+
+  async function prepareClimateDataset({
+    demandas,
+    config,
+    selectedPeriodKeys,
+    meta = {},
+    onStage,
+  }) {
+    const datasetKey = climateDatasetKey(
+      demandas,
+      config,
+      selectedPeriodKeys,
+      meta,
+    );
+
+    if (
+      climateRuntime.preparedCacheKey === datasetKey &&
+      climateRuntime.preparedPayload
+    ) {
+      return climateRuntime.preparedPayload;
+    }
+
+    onStage?.("Associando KMs às coordenadas...");
+    const rows = perf.measure("clima:build-rows", () =>
+      buildClimateRows(demandas, config, realWeatherCache || new Map()),
+    );
+
+    const payload = {
+      datasetKey,
+      config,
+      rows,
+      generatedAt: Date.now(),
+      forecastKey: realWeatherCacheKey,
+    };
+
+    climateRuntime.preparedCacheKey = datasetKey;
+    climateRuntime.preparedPayload = payload;
+    climateRuntime.viewCache.clear();
+    dataStore.set("views", "climatePrepared", payload);
+
+    return payload;
+  }
+
   function cleanTooltipDescription(value) {
     return String(value || "Sem descrição")
       .replace(/\bID-\S+/gi, "")
@@ -1251,6 +1444,75 @@
       .replace(/\b\d{8,}\b/g, "")
       .replace(/\s+/g, " ")
       .trim();
+  }
+
+  function buildClimateViewModel({
+    rows,
+    effectiveConfig,
+    month,
+    viewMode,
+    weekReference,
+    selectedDateOrigins,
+    selectedDistrictCode,
+  }) {
+    const viewKey = JSON.stringify({
+      datasetKey: climateRuntime.preparedCacheKey,
+      month,
+      viewMode,
+      weekReference,
+      selectedDateOrigins,
+      selectedDistrictCode,
+    });
+
+    if (climateRuntime.viewCache.has(viewKey)) {
+      return climateRuntime.viewCache.get(viewKey);
+    }
+
+    const selectedDistrict =
+      selectedDistrictCode === "__ALL__"
+        ? null
+        : (effectiveConfig.distritos || []).find(
+            (item) => item.codigo === selectedDistrictCode,
+          ) || null;
+
+    const scopedDateRows = rows.filter((row) => {
+      if (!rowMatchesDateOrigin(row, selectedDateOrigins)) return false;
+
+      return dateMatchesCurrentView(
+        row.dataProgramada,
+        month,
+        viewMode,
+        weekReference,
+      );
+    });
+
+    const filteredRows = scopedDateRows.filter((row) => {
+      if (!selectedDistrict) return true;
+      return row.localizacao.distrito?.codigo === selectedDistrict.codigo;
+    });
+
+    const riskRows = filteredRows
+      .filter((row) => row.risco.nivel >= 2)
+      .sort((a, b) => {
+        if (b.risco.nivel !== a.risco.nivel) {
+          return b.risco.nivel - a.risco.nivel;
+        }
+        return String(a.dataProgramada).localeCompare(String(b.dataProgramada));
+      });
+
+    const model = {
+      selectedDistrict,
+      scopedDateRows,
+      filteredRows,
+      riskRows,
+      criticalRows: riskRows.filter((row) => row.risco.nivel >= 4),
+      highRows: riskRows.filter((row) => row.risco.nivel >= 3),
+      unidentifiedRows: scopedDateRows.filter((row) => !row.localizacao.distrito),
+      kmExactRows: filteredRows.filter((row) => Number.isFinite(row.localizacao.km)),
+    };
+
+    climateRuntime.viewCache.set(viewKey, model);
+    return model;
   }
 
   function climateTooltipHtml(date, weather, items) {
@@ -2272,7 +2534,26 @@
     `;
   }
 
+  function renderClimateLoading(container, message) {
+    container.innerHTML = `
+    <div class="climate-card">
+      <div class="climate-empty">${escapeHtml(message)}</div>
+      <div class="climate-kpis climate-kpis--loading">
+        <article><span>Resumo</span><strong>...</strong><small>Preparando</small></article>
+        <article><span>Clima</span><strong>...</strong><small>Consultando</small></article>
+        <article><span>Trechos</span><strong>...</strong><small>Agrupando</small></article>
+        <article><span>Painel</span><strong>...</strong><small>Renderizando</small></article>
+      </div>
+    </div>
+  `;
+  }
+
   async function render({ container, demandas, config }) {
+    perf.start("clima:render");
+    const dataVersion = container.dataset.dataVersion || "";
+    const lastDataUpdateAt = container.dataset.lastDataUpdateAt || "";
+    const updateStage = (message) => renderClimateLoading(container, message);
+    updateStage("Preparando análise climática...");
     container.innerHTML = `
     <div class="climate-card">
       <div class="climate-empty">
@@ -2281,8 +2562,12 @@
     </div>
   `;
 
-    const externalData = await loadExternalClimateData(config);
-    const effectiveConfig = buildEffectiveConfig(config || {}, externalData);
+    const externalData = await perf.measureAsync("clima:external-data", () =>
+      loadExternalClimateData(config),
+    );
+    const effectiveConfig = perf.measure("clima:effective-config", () =>
+      buildEffectiveConfig(config || {}, externalData),
+    );
 
     const month = container.dataset.month || currentMonthText();
     const viewMode = getClimateViewMode(container, effectiveConfig);
@@ -2296,54 +2581,47 @@
     const selectedPeriodKeys = periodKeysFromFilter(periodoFiltro);
     const selectedDateOrigins = getSelectedDateOrigins(container);
 
-    const realForecastMap = await loadRealWeatherForecast(
-      effectiveConfig,
-      selectedPeriodKeys,
+    updateStage("Consultando previsão climática...");
+    await perf.measureAsync("clima:forecast", () =>
+      loadRealWeatherForecast(effectiveConfig, selectedPeriodKeys),
     );
 
-    const rows = buildClimateRows(demandas, effectiveConfig, realForecastMap);
+    updateStage("Associando KMs às coordenadas...");
+    const prepared = await prepareClimateDataset({
+      demandas,
+      config: effectiveConfig,
+      selectedPeriodKeys,
+      meta: {
+        dataVersion,
+        lastDataUpdateAt,
+      },
+      onStage: updateStage,
+    });
 
     const selectedDistrictCode = container.dataset.district || "__ALL__";
 
-    const selectedDistrict =
-      selectedDistrictCode === "__ALL__"
-        ? null
-        : (effectiveConfig.distritos || []).find(
-            (item) => item.codigo === selectedDistrictCode,
-          ) || null;
-
-    const scopedDateRows = rows.filter((row) => {
-      if (!rowMatchesDateOrigin(row, selectedDateOrigins)) return false;
-
-      return dateMatchesCurrentView(
-        row.dataProgramada,
+    updateStage("Calculando risco operacional...");
+    const {
+      selectedDistrict,
+      scopedDateRows,
+      filteredRows,
+      riskRows,
+      criticalRows,
+      highRows,
+      unidentifiedRows,
+      kmExactRows,
+    } = perf.measure("clima:view-model", () =>
+      buildClimateViewModel({
+        rows: prepared.rows,
+        effectiveConfig,
         month,
         viewMode,
         weekReference,
-      );
-    });
-
-    const filteredRows = scopedDateRows.filter((row) => {
-      if (!selectedDistrict) return true;
-      return row.localizacao.distrito?.codigo === selectedDistrict.codigo;
-    });
-
-    const riskRows = filteredRows
-      .filter((row) => row.risco.nivel >= 2)
-      .sort((a, b) => {
-        if (b.risco.nivel !== a.risco.nivel)
-          return b.risco.nivel - a.risco.nivel;
-        return String(a.dataProgramada).localeCompare(String(b.dataProgramada));
-      });
-
-    const criticalRows = riskRows.filter((row) => row.risco.nivel >= 4);
-    const highRows = riskRows.filter((row) => row.risco.nivel >= 3);
-    const unidentifiedRows = scopedDateRows.filter(
-      (row) => !row.localizacao.distrito,
+        selectedDateOrigins,
+        selectedDistrictCode,
+      }),
     );
-    const kmExactRows = filteredRows.filter((row) =>
-      Number.isFinite(row.localizacao.km),
-    );
+    const realForecastMap = realWeatherCache || new Map();
 
     const worstDay = riskRows[0];
     const periodLabel = periodLabelFromFilter(periodoFiltro);
@@ -2355,6 +2633,7 @@
     const activeTab = container.dataset.activeTab || "calendario";
     const quinzena = container.dataset.quinzena || "1";
 
+    updateStage("Renderizando painel...");
     container.innerHTML = `
     <div class="climate-page">
       <div class="climate-hero">
@@ -2745,6 +3024,10 @@
           render({ container, demandas, config });
         });
       });
+
+    console.info("[clima] demandas analisadas:", prepared.rows.length);
+    console.info("[clima] distritos consultados:", buildWeatherApiPoints(effectiveConfig).length);
+    perf.end("clima:render");
   }
   global.CCEClimate = {
     render,

@@ -36,6 +36,9 @@
   ];
 
   const LARGE_BATCH_REFRESH_LIMIT = 500;
+  const MULTI_FILTER_INITIAL_LIMIT = 80;
+  const MULTI_FILTER_INCREMENT = 160;
+  const INDEX_WORKER_MIN_ROWS = 12000;
 
   const PROFILE_RULES = {
     Administrador: {
@@ -267,6 +270,7 @@
         qualidadeLocal: {},
       },
       filterIndexes: {},
+      filterResultIds: new Map(),
       carteiraFilterKey: "",
       carteiraFiltered: [],
       indicatorFilterKey: "",
@@ -286,6 +290,7 @@
     state.cache.indicatorFiltered = [];
     state.cache.indicatorSummaryKey = "";
     state.cache.indicatorSummary = null;
+    state.cache.filterResultIds = new Map();
   }
 
   function buildDemandMap(demandas = []) {
@@ -339,6 +344,120 @@
     return grouped;
   }
 
+  function buildFilterIndexDefinitions() {
+    return FILTER_DEFINITIONS.map((definition) => ({
+      ...definition,
+      getValue(item) {
+        if (definition.special === "substatus") {
+          return String(filterValueFor(item, definition))
+            .split(" | ")
+            .map((option) => option.trim())
+            .filter(Boolean);
+        }
+
+        return filterValueFor(item, definition);
+      },
+    }));
+  }
+
+  function buildAuxiliaryFilterIndexes(demandas = []) {
+    const flags = {
+      allDemandIds: [],
+      perda: { sim: [], nao: [] },
+      planejado: { sim: [], nao: [] },
+      realizado: { sim: [], nao: [] },
+    };
+
+    demandas.forEach((item) => {
+      flags.allDemandIds.push(item.id);
+      (item.perda ? flags.perda.sim : flags.perda.nao).push(item.id);
+      item.dataPlanejada || item.dataReplanejadaAtual
+        ? flags.planejado.sim.push(item.id)
+        : flags.planejado.nao.push(item.id);
+      item.dataRealizada
+        ? flags.realizado.sim.push(item.id)
+        : flags.realizado.nao.push(item.id);
+    });
+
+    return flags;
+  }
+
+  function applyBuiltFilterIndexes(demandas, built) {
+    state.cache.filterIndexes = built?.indexes || {};
+    state.cache.filterIndexes.__meta = buildAuxiliaryFilterIndexes(demandas);
+    state.cache.filterOptionSets = {
+      carteira: built?.options || {},
+      indicadores: built?.options || {},
+      qualidadeLocal: built?.options || {},
+    };
+    dataStore.set("derived", "indexes", state.cache.filterIndexes);
+    dataStore.set("derived", "filterOptionSets", state.cache.filterOptionSets);
+    dataStore.saveMeta({
+      demandCount: demandas.length,
+      updatedAt: latestDataUpdateAt(),
+    });
+  }
+
+  async function buildDemandIndexesWithWorker(demandas = []) {
+    if (
+      !global.Worker ||
+      !indexBuilder?.buildDemandIndexes ||
+      demandas.length < INDEX_WORKER_MIN_ROWS
+    ) {
+      return null;
+    }
+
+    const workerUrl = "./workers/filter-index-worker.js?v=20260531-01";
+    const payload = {
+      demandas,
+      definitions: FILTER_DEFINITIONS,
+    };
+
+    return new Promise((resolve) => {
+      const worker = new Worker(workerUrl);
+      worker.onmessage = (event) => {
+        worker.terminate();
+        const raw = event.data || {};
+        const indexes = {};
+        Object.entries(raw.indexes || {}).forEach(([key, value]) => {
+          indexes[key] = new Map(Object.entries(value || {}));
+        });
+        resolve({
+          indexes,
+          options: raw.options || {},
+        });
+      };
+      worker.onerror = (error) => {
+        console.warn("[filter-index-worker] fallback para main thread:", error);
+        worker.terminate();
+        resolve(null);
+      };
+      worker.postMessage(payload);
+    });
+  }
+
+  async function rebuildDataIndexesAsync({ preferWorker = false } = {}) {
+    const demandas = state.db?.demandas || [];
+    state.cache.demandMap = buildDemandMap(demandas);
+    state.cache.historiesByDemand = buildHistoriesByDemand();
+
+    let built = null;
+
+    if (preferWorker) {
+      built = await buildDemandIndexesWithWorker(demandas);
+    }
+
+    if (!built) {
+      const indexDefinitions = buildFilterIndexDefinitions();
+      built = perf.measure("filters:indexes", () =>
+        indexBuilder.buildDemandIndexes(demandas, indexDefinitions),
+      );
+    }
+
+    applyBuiltFilterIndexes(demandas, built);
+    bumpDataVersion();
+  }
+
   function rebuildDataIndexes() {
     const demandas = state.db?.demandas || [];
 
@@ -346,28 +465,11 @@
     state.cache.historiesByDemand = buildHistoriesByDemand();
 
     if (indexBuilder?.buildDemandIndexes) {
-      const indexDefinitions = FILTER_DEFINITIONS.map((definition) => ({
-        ...definition,
-        getValue(item) {
-          if (definition.special === "substatus") {
-            return String(filterValueFor(item, definition))
-              .split(" | ")
-              .map((option) => option.trim())
-              .filter(Boolean);
-          }
-
-          return filterValueFor(item, definition);
-        },
-      }));
+      const indexDefinitions = buildFilterIndexDefinitions();
       const built = perf.measure("filters:indexes", () =>
         indexBuilder.buildDemandIndexes(demandas, indexDefinitions),
       );
-      state.cache.filterIndexes = built.indexes || {};
-      state.cache.filterOptionSets = {
-        carteira: built.options || {},
-        indicadores: built.options || {},
-        qualidadeLocal: built.options || {},
-      };
+      applyBuiltFilterIndexes(demandas, built);
     } else {
       state.cache.filterIndexes = {};
       state.cache.filterOptionSets = {
@@ -375,14 +477,8 @@
         indicadores: {},
         qualidadeLocal: {},
       };
+      state.cache.filterIndexes.__meta = buildAuxiliaryFilterIndexes(demandas);
     }
-
-    dataStore.set("derived", "indexes", state.cache.filterIndexes);
-    dataStore.set("derived", "filterOptionSets", state.cache.filterOptionSets);
-    dataStore.saveMeta({
-      demandCount: demandas.length,
-      updatedAt: latestDataUpdateAt(),
-    });
 
     bumpDataVersion();
   }
@@ -2567,7 +2663,7 @@
     setCurrentUserFromEmail(previousUserEmail);
 
     state.lastDataUpdateAt = latestDataUpdateAt();
-    rebuildDataIndexes();
+    await rebuildDataIndexesAsync({ preferWorker: true });
 
     state.selectedDemandId = demandas.some(
       (item) => item.id === previousSelection,
@@ -3196,31 +3292,139 @@
     );
   }
 
-  function collectScopedFilterOptions(rows, filters) {
-    if (!filterEngine?.collectOptionsFromRows) {
-      const fallback = {};
-      FILTER_DEFINITIONS.forEach((definition) => {
-        const scopedRows = rows.filter((item) =>
-          demandMatchesFilters(item, filters, definition.key),
-        );
-        fallback[definition.key] =
-          definition.special === "substatus"
-            ? uniqueOptions(
-                scopedRows.flatMap((item) =>
-                  String(filterValueFor(item, definition))
-                    .split(" | ")
-                    .map((option) => option.trim())
-                    .filter(Boolean),
-                ),
-              )
-            : uniqueOptions(scopedRows.map((item) => filterValueFor(item, definition)));
+  function unionIdArrays(arrays = []) {
+    const result = new Set();
+    arrays.forEach((values) => {
+      (values || []).forEach((id) => result.add(id));
+    });
+    return Array.from(result);
+  }
+
+  function intersectIdArrays(base = [], next = []) {
+    if (!base?.length || !next?.length) return [];
+    const nextSet = new Set(next);
+    return base.filter((id) => nextSet.has(id));
+  }
+
+  function demandSearchText(item) {
+    if (!item.__filterSearchText) {
+      Object.defineProperty(item, "__filterSearchText", {
+        value: normalizeText(
+          [
+            item.id,
+            item.ordem,
+            item.descricao,
+            item.centroTrabalho,
+            item.localInstalacao,
+            item.kmInicio,
+            item.kmFim,
+            item.gerencia,
+            item.supervisao,
+            item.usuarioResponsavel,
+            item.planejadorCurto,
+            item.planejadorOM,
+            item.programador,
+          ].join(" "),
+        ),
+        enumerable: false,
+        configurable: true,
       });
-      return fallback;
     }
 
-    const filteredRows = rows.filter((item) => demandMatchesFilters(item, filters));
+    return item.__filterSearchText;
+  }
 
-    return filterEngine.collectOptionsFromRows(filteredRows, FILTER_DEFINITIONS);
+  function resolveDemandIdsByFilters(filters = {}, ignoredKey = "") {
+    const cacheKey = JSON.stringify({
+      version: state.cache.dataVersion,
+      filters,
+      ignoredKey,
+    });
+
+    if (state.cache.filterResultIds.has(cacheKey)) {
+      return state.cache.filterResultIds.get(cacheKey);
+    }
+
+    const indexes = state.cache.filterIndexes || {};
+    const meta = indexes.__meta || {};
+    const allDemandIds = meta.allDemandIds || state.db?.demandas?.map((item) => item.id) || [];
+    let candidateIds = null;
+
+    FILTER_DEFINITIONS.forEach((definition) => {
+      if (definition.key === ignoredKey) return;
+
+      const selected = filters[definition.key] || [];
+      if (!selected.length) return;
+
+      const index = indexes[definition.key];
+      if (!index) return;
+
+      const selectedIds = unionIdArrays(
+        selected.map((value) => index.get(value) || []),
+      );
+
+      candidateIds = candidateIds
+        ? intersectIdArrays(candidateIds, selectedIds)
+        : selectedIds;
+    });
+
+    const flagDefinitions = [
+      ["perda", filters.perda],
+      ["planejado", filters.planejado],
+      ["realizado", filters.realizado],
+    ];
+
+    flagDefinitions.forEach(([key, selected]) => {
+      if (!selected || !meta[key]?.[selected]) return;
+      candidateIds = candidateIds
+        ? intersectIdArrays(candidateIds, meta[key][selected])
+        : [...meta[key][selected]];
+    });
+
+    const idsToScan = candidateIds || allDemandIds;
+    const quickSearch = normalizeText(filters.quickSearch);
+    const resolvedIds = quickSearch
+      ? idsToScan.filter((id) => {
+          const item = demandById(id);
+          return item ? demandSearchText(item).includes(quickSearch) : false;
+        })
+      : idsToScan;
+
+    state.cache.filterResultIds.set(cacheKey, resolvedIds);
+    return resolvedIds;
+  }
+
+  function resolveDemandsByFilters(filters = {}, ignoredKey = "") {
+    return resolveDemandIdsByFilters(filters, ignoredKey)
+      .map((id) => demandById(id))
+      .filter(Boolean);
+  }
+
+  function optionValuesFromDemands(demands, definition) {
+    const values =
+      definition.special === "substatus"
+        ? demands.flatMap((item) =>
+            String(filterValueFor(item, definition))
+              .split(" | ")
+              .map((option) => option.trim())
+              .filter(Boolean),
+          )
+        : demands.map((item) => filterValueFor(item, definition));
+
+    return uniqueOptions(values);
+  }
+
+  function collectScopedFilterOptions(_rows, filters) {
+    const fallbackCollector = {};
+
+    FILTER_DEFINITIONS.forEach((definition) => {
+      fallbackCollector[definition.key] = optionValuesFromDemands(
+        resolveDemandsByFilters(filters, definition.key),
+        definition,
+      );
+    });
+
+    return fallbackCollector;
   }
 
   function filterOptionsFor(definition) {
@@ -3260,7 +3464,11 @@
   function buildIndicatorFilterOptions() {
     const filters = state.indicatorFilters || {};
     const useScoped =
-      hasActiveStructuredFilters(filters) || Boolean(filters.quickSearch);
+      hasActiveStructuredFilters(filters) ||
+      Boolean(filters.quickSearch) ||
+      Boolean(filters.perda) ||
+      Boolean(filters.planejado) ||
+      Boolean(filters.realizado);
     const scopedOptions = useScoped
       ? perf.measure("filters:indicator-options", () =>
           collectScopedFilterOptions(state.db?.demandas || [], filters),
@@ -3287,7 +3495,11 @@
   function buildQualityLocalFilterOptions() {
     const filters = state.quality.localFilters || {};
     const useScoped =
-      hasActiveStructuredFilters(filters) || Boolean(filters.quickSearch);
+      hasActiveStructuredFilters(filters) ||
+      Boolean(filters.quickSearch) ||
+      Boolean(filters.perda) ||
+      Boolean(filters.planejado) ||
+      Boolean(filters.realizado);
     const scopedOptions = useScoped
       ? perf.measure("filters:quality-local-options", () =>
           collectScopedFilterOptions(state.db?.demandas || [], filters),
@@ -3317,13 +3529,147 @@
     state.quality.localFiltersReady = true;
   }
 
+  function selectedValuesFromMultiHost(field) {
+    const stateRef = field?.__multiFilterState;
+    if (stateRef?.selectedSet) {
+      return Array.from(stateRef.selectedSet);
+    }
+
+    return $$("[data-multi-option]:checked", field).map((input) => input.value);
+  }
+
+  function orderedMultiFilterOptions(stateRef) {
+    const filtered = stateRef.query
+      ? stateRef.allOptions.filter((option) =>
+          normalizeText(option).includes(normalizeText(stateRef.query)),
+        )
+      : stateRef.allOptions;
+
+    if (stateRef.query) return filtered;
+
+    const selected = filtered.filter((option) => stateRef.selectedSet.has(option));
+    const unselected = filtered.filter(
+      (option) => !stateRef.selectedSet.has(option),
+    );
+    return [...selected, ...unselected];
+  }
+
+  function renderMultiFilterOptions(host) {
+    const stateRef = host?.__multiFilterState;
+    if (!stateRef) return;
+
+    const orderedOptions = orderedMultiFilterOptions(stateRef);
+    const visibleOptions = orderedOptions.slice(0, stateRef.visibleLimit);
+    const optionsHost = $(".multi-options", host);
+    const footerHost = $("[data-multi-footer]", host);
+    const searchInput = $("[data-multi-search]", host);
+
+    if (searchInput && searchInput.value !== stateRef.query) {
+      searchInput.value = stateRef.query;
+    }
+
+    if (optionsHost) {
+      optionsHost.innerHTML = visibleOptions.length
+        ? visibleOptions
+            .map(
+              (option) => `
+              <label class="multi-option">
+                <input
+                  data-multi-option
+                  type="checkbox"
+                  value="${escapeHtml(option)}"
+                  ${stateRef.selectedSet.has(option) ? "checked" : ""}
+                />
+                <span>${escapeHtml(option)}</span>
+              </label>
+            `,
+            )
+            .join("")
+        : '<span class="muted multi-empty">Sem opções no recorte</span>';
+    }
+
+    if (footerHost) {
+      const hiddenCount = Math.max(0, orderedOptions.length - visibleOptions.length);
+      footerHost.innerHTML = hiddenCount
+        ? `
+          <div class="multi-footer-meta">Mostrando ${visibleOptions.length} de ${orderedOptions.length}</div>
+          <button
+            class="mini-filter-button secondary"
+            type="button"
+            data-multi-load-more
+          >
+            Carregar mais ${Math.min(MULTI_FILTER_INCREMENT, hiddenCount)}
+          </button>
+        `
+        : orderedOptions.length
+          ? `<div class="multi-footer-meta">Mostrando ${visibleOptions.length} opções</div>`
+          : "";
+    }
+
+    updateMultiFilterSummary(host);
+  }
+
+  function multiFilterHostFromEventTarget(target) {
+    return target?.closest(
+      "[data-multi-filter], [data-indicator-multi-filter], [data-quality-local-multi-filter]",
+    );
+  }
+
+  function updateMultiFilterStateFromInput(input) {
+    const host = multiFilterHostFromEventTarget(input);
+    const stateRef = host?.__multiFilterState;
+    if (!host || !stateRef) return host;
+
+    if (input.checked) stateRef.selectedSet.add(input.value);
+    else stateRef.selectedSet.delete(input.value);
+
+    renderMultiFilterOptions(host);
+    return host;
+  }
+
+  function updateMultiFilterSearch(target) {
+    const host = multiFilterHostFromEventTarget(target);
+    const stateRef = host?.__multiFilterState;
+    if (!host || !stateRef) return host;
+
+    stateRef.query = target.value || "";
+    stateRef.visibleLimit = MULTI_FILTER_INITIAL_LIMIT;
+    renderMultiFilterOptions(host);
+    return host;
+  }
+
+  function applyMultiFilterBulkAction(target, mode) {
+    const host = multiFilterHostFromEventTarget(target);
+    const stateRef = host?.__multiFilterState;
+    if (!host || !stateRef) return host;
+
+    if (mode === "clear") {
+      stateRef.selectedSet.clear();
+      renderMultiFilterOptions(host);
+      return host;
+    }
+
+    orderedMultiFilterOptions(stateRef)
+      .slice(0, stateRef.visibleLimit)
+      .forEach((option) => stateRef.selectedSet.add(option));
+
+    renderMultiFilterOptions(host);
+    return host;
+  }
+
+  function loadMoreMultiFilterOptions(target) {
+    const host = multiFilterHostFromEventTarget(target);
+    const stateRef = host?.__multiFilterState;
+    if (!host || !stateRef) return;
+
+    stateRef.visibleLimit += MULTI_FILTER_INCREMENT;
+    renderMultiFilterOptions(host);
+  }
+
   function collectFilters() {
     const filters = {};
     $$("[data-multi-filter]").forEach((field) => {
-      filters[field.dataset.multiFilter] = $$(
-        "[data-multi-option]:checked",
-        field,
-      ).map((input) => input.value);
+      filters[field.dataset.multiFilter] = selectedValuesFromMultiHost(field);
     });
     $$("[data-filter]").forEach((field) => {
       filters[field.dataset.filter] = field.value;
@@ -3336,10 +3682,7 @@
   function collectIndicatorFilters() {
     const filters = {};
     $$("[data-indicator-multi-filter]").forEach((field) => {
-      filters[field.dataset.indicatorMultiFilter] = $$(
-        "[data-multi-option]:checked",
-        field,
-      ).map((input) => input.value);
+      filters[field.dataset.indicatorMultiFilter] = selectedValuesFromMultiHost(field);
     });
     filters.quickSearch = $("#indicatorQuickSearch")?.value.trim() || "";
     state.indicatorFilters = filters;
@@ -3349,10 +3692,8 @@
   function collectQualityLocalFilters() {
     const filters = {};
     $$("[data-quality-local-multi-filter]").forEach((field) => {
-      filters[field.dataset.qualityLocalMultiFilter] = $$(
-        "[data-multi-option]:checked",
-        field,
-      ).map((input) => input.value);
+      filters[field.dataset.qualityLocalMultiFilter] =
+        selectedValuesFromMultiHost(field);
     });
     filters.quickSearch = $("#qualityLocalQuickSearch")?.value.trim() || "";
     state.quality.localFilters = filters;
@@ -3362,9 +3703,7 @@
 
   function updateMultiFilterSummary(host) {
     if (!host) return;
-    const checked = $$("[data-multi-option]:checked", host).map(
-      (input) => input.value,
-    );
+    const checked = selectedValuesFromMultiHost(host);
     const summary =
       checked.length === 0
         ? "Todos"
@@ -3443,6 +3782,7 @@
   }
 
   function renderMultiFilter(host, definition, options, selected) {
+    const previousState = host.__multiFilterState || null;
     const selectedSet = new Set(selected || []);
     const checkedCount = selectedSet.size;
 
@@ -3454,6 +3794,67 @@
           : `${checkedCount} selecionados`;
 
     const normalizedOptions = uniqueOptions(options);
+    host.__multiFilterState = {
+      definition,
+      allOptions: normalizedOptions,
+      selectedSet,
+      query:
+        previousState?.definition?.key === definition.key
+          ? previousState.query || ""
+          : "",
+      visibleLimit:
+        previousState?.definition?.key === definition.key
+          ? Math.max(
+              previousState.visibleLimit || MULTI_FILTER_INITIAL_LIMIT,
+              MULTI_FILTER_INITIAL_LIMIT,
+            )
+          : MULTI_FILTER_INITIAL_LIMIT,
+    };
+
+    host.innerHTML = `
+    <label class="multi-label">${escapeHtml(definition.label)}</label>
+
+    <details class="multi-select filter-select-pro" data-filter-details>
+      <summary title="${escapeHtml(summary)}">
+        <span class="multi-summary-text">${escapeHtml(summary)}</span>
+      </summary>
+
+      <div class="multi-menu filter-menu-pro">
+        <div class="multi-search-wrap">
+          ${iconSvg("filter")}
+          <input
+            data-multi-search
+            type="search"
+            placeholder="Pesquisar em ${escapeHtml(definition.label)}..."
+            aria-label="Pesquisar ${escapeHtml(definition.label)}"
+          />
+        </div>
+
+        <div class="multi-menu-actions">
+          <button
+            class="mini-filter-button"
+            type="button"
+            data-multi-select-visible
+          >
+            Selecionar visíveis
+          </button>
+
+          <button
+            class="mini-filter-button secondary"
+            type="button"
+            data-multi-clear
+          >
+            Limpar seleção
+          </button>
+        </div>
+
+        <div class="multi-options"></div>
+        <div class="multi-footer" data-multi-footer></div>
+      </div>
+    </details>
+  `;
+    renderMultiFilterOptions(host);
+    return;
 
     host.innerHTML = `
     <label class="multi-label">${escapeHtml(definition.label)}</label>
@@ -3555,31 +3956,7 @@
     if (filters.realizado === "nao" && item.dataRealizada) return false;
 
     if (search) {
-      if (!item.__filterSearchText) {
-        Object.defineProperty(item, "__filterSearchText", {
-          value: normalizeText(
-            [
-              item.id,
-              item.ordem,
-              item.descricao,
-              item.centroTrabalho,
-              item.localInstalacao,
-              item.kmInicio,
-              item.kmFim,
-              item.gerencia,
-              item.supervisao,
-              item.usuarioResponsavel,
-              item.planejadorCurto,
-              item.planejadorOM,
-              item.programador,
-            ].join(" "),
-          ),
-          enumerable: false,
-          configurable: true,
-        });
-      }
-      const haystack = item.__filterSearchText;
-      if (!haystack.includes(search)) return false;
+      if (!demandSearchText(item).includes(search)) return false;
     }
 
     return true;
@@ -3597,7 +3974,7 @@
     }
 
     state.cache.carteiraFiltered = perf.measure("filters:carteira", () =>
-      state.db.demandas.filter((item) => demandMatchesFilters(item, filters)),
+      resolveDemandsByFilters(filters),
     );
     state.cache.carteiraFilterKey = cacheKey;
     return state.cache.carteiraFiltered;
@@ -6278,6 +6655,9 @@
       return;
     }
 
+    container.dataset.dataVersion = String(state.cache?.dataVersion || "");
+    container.dataset.lastDataUpdateAt = state.lastDataUpdateAt || "";
+
     global.CCEClimate.render({
       container,
       demandas: state.db?.demandas || [],
@@ -7936,7 +8316,7 @@
     }
 
     state.cache.indicatorFiltered = perf.measure("filters:indicadores", () =>
-      state.db.demandas.filter((item) => demandMatchesFilters(item, filters)),
+      resolveDemandsByFilters(filters),
     );
     state.cache.indicatorFilterKey = cacheKey;
     return state.cache.indicatorFiltered;
@@ -10050,6 +10430,9 @@
       }
 
       state.page = 1;
+      if (event.target.matches("[data-multi-option]")) {
+        updateMultiFilterStateFromInput(event.target);
+      }
       collectFilters();
       updateMultiFilterSummary(event.target.closest("[data-multi-filter]"));
       renderCarteira();
@@ -10057,17 +10440,7 @@
 
     $(".filter-panel").addEventListener("input", (event) => {
       if (event.target.matches("[data-multi-search]")) {
-        const query = normalizeText(event.target.value);
-        const menu = event.target.closest(".multi-menu");
-
-        $$(".multi-option", menu).forEach((option) => {
-          option.classList.toggle(
-            "hidden",
-            Boolean(query) &&
-              !normalizeText(option.textContent).includes(query),
-          );
-        });
-
+        updateMultiFilterSearch(event.target);
         return;
       }
 
@@ -10079,34 +10452,28 @@
     });
 
     $(".filter-panel").addEventListener("click", (event) => {
+      const loadMoreButton = event.target.closest("[data-multi-load-more]");
       const selectVisibleButton = event.target.closest(
         "[data-multi-select-visible]",
       );
       const clearButton = event.target.closest("[data-multi-clear]");
 
-      if (!selectVisibleButton && !clearButton) return;
-
-      const menu = event.target.closest(".multi-menu");
-      if (!menu) return;
+      if (!loadMoreButton && !selectVisibleButton && !clearButton) return;
 
       event.preventDefault();
       event.stopPropagation();
 
-      const visibleOptions = $$("[data-multi-option]", menu).filter(
-        (option) =>
-          !option.closest(".multi-option")?.classList.contains("hidden"),
-      );
+      if (loadMoreButton) {
+        loadMoreMultiFilterOptions(event.target);
+        return;
+      }
 
       if (selectVisibleButton) {
-        visibleOptions.forEach((option) => {
-          option.checked = true;
-        });
+        applyMultiFilterBulkAction(event.target, "select-visible");
       }
 
       if (clearButton) {
-        $$("[data-multi-option]", menu).forEach((option) => {
-          option.checked = false;
-        });
+        applyMultiFilterBulkAction(event.target, "clear");
       }
 
       state.page = 1;
@@ -10118,8 +10485,13 @@
       $$("[data-filter]").forEach((field) => {
         field.value = "";
       });
-      $$("[data-multi-option]").forEach((field) => {
-        field.checked = false;
+      $$("[data-multi-filter]").forEach((host) => {
+        if (host.__multiFilterState?.selectedSet) {
+          host.__multiFilterState.selectedSet.clear();
+          host.__multiFilterState.query = "";
+          host.__multiFilterState.visibleLimit = MULTI_FILTER_INITIAL_LIMIT;
+          renderMultiFilterOptions(host);
+        }
       });
       $("#quickSearch").value = "";
       state.page = 1;
@@ -10371,6 +10743,7 @@
     $("#qualityLocalFilterPanel")?.addEventListener("change", (event) => {
       if (!event.target.matches("[data-multi-option]")) return;
       setProcessingFeedback("#qualityLocalCount", "Aplicando filtros...");
+      updateMultiFilterStateFromInput(event.target);
       collectQualityLocalFilters();
       buildQualityLocalFilterOptions();
       state.quality.selectedLocal = "";
@@ -10379,16 +10752,7 @@
 
     $("#qualityLocalFilterPanel")?.addEventListener("input", (event) => {
       if (event.target.matches("[data-multi-search]")) {
-        const query = normalizeText(event.target.value);
-        const menu = event.target.closest(".multi-menu");
-
-        $$(".multi-option", menu).forEach((option) => {
-          option.classList.toggle(
-            "hidden",
-            Boolean(query) &&
-              !normalizeText(option.textContent).includes(query),
-          );
-        });
+        updateMultiFilterSearch(event.target);
         return;
       }
 
@@ -10405,34 +10769,28 @@
     });
 
     $("#qualityLocalFilterPanel")?.addEventListener("click", (event) => {
+      const loadMoreButton = event.target.closest("[data-multi-load-more]");
       const selectVisibleButton = event.target.closest(
         "[data-multi-select-visible]",
       );
       const clearButton = event.target.closest("[data-multi-clear]");
 
-      if (!selectVisibleButton && !clearButton) return;
-
-      const menu = event.target.closest(".multi-menu");
-      if (!menu) return;
+      if (!loadMoreButton && !selectVisibleButton && !clearButton) return;
 
       event.preventDefault();
       event.stopPropagation();
 
-      const visibleOptions = $$("[data-multi-option]", menu).filter(
-        (option) =>
-          !option.closest(".multi-option")?.classList.contains("hidden"),
-      );
+      if (loadMoreButton) {
+        loadMoreMultiFilterOptions(event.target);
+        return;
+      }
 
       if (selectVisibleButton) {
-        visibleOptions.forEach((option) => {
-          option.checked = true;
-        });
+        applyMultiFilterBulkAction(event.target, "select-visible");
       }
 
       if (clearButton) {
-        $$("[data-multi-option]", menu).forEach((option) => {
-          option.checked = false;
-        });
+        applyMultiFilterBulkAction(event.target, "clear");
       }
 
       collectQualityLocalFilters();
@@ -10443,11 +10801,14 @@
     });
 
     $("#qualityLocalClearFilters")?.addEventListener("click", () => {
-      $$("[data-multi-option]", $("#qualityLocalFilterPanel")).forEach(
-        (field) => {
-          field.checked = false;
-        },
-      );
+      $$("[data-quality-local-multi-filter]").forEach((host) => {
+        if (host.__multiFilterState?.selectedSet) {
+          host.__multiFilterState.selectedSet.clear();
+          host.__multiFilterState.query = "";
+          host.__multiFilterState.visibleLimit = MULTI_FILTER_INITIAL_LIMIT;
+          renderMultiFilterOptions(host);
+        }
+      });
       $("#qualityLocalQuickSearch").value = "";
       state.quality.localFilters = {};
       state.quality.localGroupsCache = null;
@@ -10619,6 +10980,7 @@
         "#indicatorSpotlightMeta",
         "Aplicando filtros operacionais...",
       );
+      updateMultiFilterStateFromInput(event.target);
       collectIndicatorFilters();
       buildIndicatorFilterOptions();
       // Debounce to avoid re-render storm on multi-select
@@ -10627,16 +10989,7 @@
     });
     $("#indicatorFilterPanel")?.addEventListener("input", (event) => {
       if (event.target.matches("[data-multi-search]")) {
-        const query = normalizeText(event.target.value);
-        const menu = event.target.closest(".multi-menu");
-
-        $$(".multi-option", menu).forEach((option) => {
-          option.classList.toggle(
-            "hidden",
-            Boolean(query) &&
-              !normalizeText(option.textContent).includes(query),
-          );
-        });
+        updateMultiFilterSearch(event.target);
         return;
       }
 
@@ -10651,34 +11004,28 @@
       }
     });
     $("#indicatorFilterPanel")?.addEventListener("click", (event) => {
+      const loadMoreButton = event.target.closest("[data-multi-load-more]");
       const selectVisibleButton = event.target.closest(
         "[data-multi-select-visible]",
       );
       const clearButton = event.target.closest("[data-multi-clear]");
 
-      if (!selectVisibleButton && !clearButton) return;
-
-      const menu = event.target.closest(".multi-menu");
-      if (!menu) return;
+      if (!loadMoreButton && !selectVisibleButton && !clearButton) return;
 
       event.preventDefault();
       event.stopPropagation();
 
-      const visibleOptions = $$("[data-multi-option]", menu).filter(
-        (option) =>
-          !option.closest(".multi-option")?.classList.contains("hidden"),
-      );
+      if (loadMoreButton) {
+        loadMoreMultiFilterOptions(event.target);
+        return;
+      }
 
       if (selectVisibleButton) {
-        visibleOptions.forEach((option) => {
-          option.checked = true;
-        });
+        applyMultiFilterBulkAction(event.target, "select-visible");
       }
 
       if (clearButton) {
-        $$("[data-multi-option]", menu).forEach((option) => {
-          option.checked = false;
-        });
+        applyMultiFilterBulkAction(event.target, "clear");
       }
 
       collectIndicatorFilters();
@@ -10690,8 +11037,13 @@
       renderIndicators();
     });
     $("#indicatorClearFilters")?.addEventListener("click", () => {
-      $$("[data-multi-option]", $("#indicatorFilterPanel")).forEach((field) => {
-        field.checked = false;
+      $$("[data-indicator-multi-filter]").forEach((host) => {
+        if (host.__multiFilterState?.selectedSet) {
+          host.__multiFilterState.selectedSet.clear();
+          host.__multiFilterState.query = "";
+          host.__multiFilterState.visibleLimit = MULTI_FILTER_INITIAL_LIMIT;
+          renderMultiFilterOptions(host);
+        }
       });
       $("#indicatorQuickSearch").value = "";
       state.indicatorFilters = {};

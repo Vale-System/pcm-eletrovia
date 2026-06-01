@@ -1671,6 +1671,16 @@ label {
   color: var(--green-800);
 }
 
+.status-neutral {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.status-warning {
+  background: #fff5dc;
+  color: #885503;
+}
+
 .status-fora-prazo,
 .status-perda {
   background: var(--red-100);

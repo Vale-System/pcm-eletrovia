@@ -277,6 +277,11 @@
     cache: {
       baseSources: null,
       basePortfolio: null,
+      sourcePresence: {
+        futuras: { ids: new Set(), ordens: new Set() },
+        ordens: { ids: new Set(), ordens: new Set() },
+        realizados: { ids: new Set(), ordens: new Set() },
+      },
       demandMap: new Map(),
       historiesByDemand: new Map(),
       filterOptionSets: {
@@ -310,6 +315,29 @@
 
   function buildDemandMap(demandas = []) {
     return new Map(demandas.map((item) => [item.id, item]));
+  }
+
+  function buildBasePresenceSet(rows = []) {
+    return {
+      ids: new Set(
+        (rows || [])
+          .map((item) => String(item?.id || "").trim())
+          .filter(Boolean),
+      ),
+      ordens: new Set(
+        (rows || [])
+          .map((item) => String(item?.ordem || "").trim())
+          .filter(Boolean),
+      ),
+    };
+  }
+
+  function hydrateSourcePresenceCache(baseSources) {
+    state.cache.sourcePresence = {
+      futuras: buildBasePresenceSet(baseSources?.baseFuturas || []),
+      ordens: buildBasePresenceSet(baseSources?.baseOrdens || []),
+      realizados: buildBasePresenceSet(baseSources?.baseRealizados || []),
+    };
   }
 
   function buildHistoriesByDemand() {
@@ -366,7 +394,7 @@
         if (definition.special === "substatus") {
           return String(filterValueFor(item, definition))
             .split(" | ")
-            .map((option) => option.trim())
+            .map(sanitizeSubstatusLabel)
             .filter(Boolean);
         }
 
@@ -398,12 +426,12 @@
   }
 
   function applyBuiltFilterIndexes(demandas, built) {
-    state.cache.filterIndexes = built?.indexes || {};
+    state.cache.filterIndexes = sanitizeSubstatusIndexes(built?.indexes || {});
     state.cache.filterIndexes.__meta = buildAuxiliaryFilterIndexes(demandas);
     state.cache.filterOptionSets = {
-      carteira: built?.options || {},
-      indicadores: built?.options || {},
-      qualidadeLocal: built?.options || {},
+      carteira: sanitizeSubstatusOptionSet(built?.options || {}),
+      indicadores: sanitizeSubstatusOptionSet(built?.options || {}),
+      qualidadeLocal: sanitizeSubstatusOptionSet(built?.options || {}),
     };
     dataStore.set("derived", "indexes", state.cache.filterIndexes);
     dataStore.set("derived", "filterOptionSets", state.cache.filterOptionSets);
@@ -422,7 +450,7 @@
       return null;
     }
 
-    const workerUrl = "./workers/filter-index-worker.js?v=20260531-01";
+    const workerUrl = "./workers/filter-index-worker.js?v=20260601-substatus-06";
     const payload = {
       demandas,
       definitions: FILTER_DEFINITIONS,
@@ -516,7 +544,12 @@
 
   function upsertDemandLocally(entry) {
     if (!entry || !state.db?.demandas) return;
-    const normalized = normalizeDemandRecord(entry);
+    const normalized = annotateDemandOperationalFlags(
+      normalizeDemandRecord({
+        ...entry,
+        temControleSupabase: true,
+      }),
+    );
     const index = state.db.demandas.findIndex((item) => item.id === normalized.id);
 
     if (index >= 0) {
@@ -914,13 +947,12 @@
   }
 
   function dueClassOf(demand) {
-    if (!demand.dataRealizada) return "";
-    const realized = toDate(demand.dataRealizada);
-    const min = toDate(demand.toleranciaMin);
-    const max = toDate(demand.toleranciaMax || demand.vencimento);
-    if ((min && realized < min) || (max && realized > max))
-      return "Fora do Prazo";
-    return "No Prazo";
+    const dueClasses = dueClassesOf(demand);
+    return (
+      dueClasses.find((item) =>
+        ["Antecipado", "Fora do Prazo", "No Prazo", "Vencido", "Vence em 20d"].includes(item),
+      ) || ""
+    );
   }
 
   function hasSapStatusText(demand, token) {
@@ -958,6 +990,10 @@
     return Boolean(dateText(demand.dataRealizada));
   }
 
+  function hasUserWaitingClosureStatus(demand) {
+    return normalizeText(demand.statusUsuario).includes("ENCR");
+  }
+
   function isWaitingClosure(demand) {
     if (isCanceledBySap(demand)) return false;
     if (!hasRealizedDate(demand)) return false;
@@ -967,6 +1003,12 @@
       statusSistema.includes("LIB") || statusSistema.includes("CONF");
 
     return hasOpenSystemStatus && !hasSapSystemClosureStatus(demand);
+  }
+
+  function needsTechnicalClosure(demand) {
+    if (isCanceledBySap(demand)) return false;
+    if (hasSapSystemClosureStatus(demand)) return false;
+    return hasRealizedDate(demand) || hasUserWaitingClosureStatus(demand);
   }
 
   function isWaitingTechnicalClosure(demand) {
@@ -1015,56 +1057,167 @@
     return Array.from(new Set(issues));
   }
 
+  function sanitizeSubstatusLabel(value) {
+    const text = String(value || "").trim();
+    if (!text || text === "Avaliar Status no SAP") return "";
+    if (text === "Encerrado no SAP BO sem data realizada") {
+      return "Ag Encerramento";
+    }
+    return text;
+  }
+
   function normalizeSubstatusLabels(substatuses = []) {
     return Array.from(
-      new Set(
-        (substatuses || [])
-          .map((item) =>
-            item === "Encerrado no SAP BO sem data realizada"
-              ? "Ag Encerramento"
-              : item,
-          )
-          .filter((item) => item && item !== "Avaliar Status no SAP"),
-      ),
+      new Set((substatuses || []).map(sanitizeSubstatusLabel).filter(Boolean)),
     );
+  }
+
+  function isFutureControlId(value) {
+    return /^ID-[^-]+-[^-]+-/i.test(String(value || "").trim());
+  }
+
+  function hasSemVinculoSubstatus(demand) {
+    if (demand?.semVinculoOperacional === true) return true;
+
+    const status = primaryStatusOf(demand);
+    const hasPlanningStatus = status === "Planejado" || status === "Replanejado";
+    const id = String(demand?.id || "").trim();
+    const ordem = String(demand?.ordem || "").trim();
+    const sourcePresence = state.cache.sourcePresence || {};
+    const hasFutureMatch =
+      sourcePresence.futuras?.ids?.has?.(id) ||
+      (ordem ? sourcePresence.futuras?.ordens?.has?.(ordem) : false);
+    const hasOrdensMatch =
+      sourcePresence.ordens?.ids?.has?.(id) ||
+      (ordem ? sourcePresence.ordens?.ordens?.has?.(ordem) : false);
+    const hasRealizadosMatch =
+      sourcePresence.realizados?.ids?.has?.(id) ||
+      (ordem ? sourcePresence.realizados?.ordens?.has?.(ordem) : false);
+
+    return (
+      Boolean(demand?.temControleSupabase) &&
+      isFutureControlId(id) &&
+      hasPlanningStatus &&
+      !hasFutureMatch &&
+      !hasOrdensMatch &&
+      !hasRealizadosMatch
+    );
+  }
+
+  function annotateDemandOperationalFlags(demand) {
+    if (!demand) return demand;
+
+    const status = primaryStatusOf(demand);
+    const hasPlanningStatus = status === "Planejado" || status === "Replanejado";
+    const id = String(demand.id || "").trim();
+    const ordem = String(demand.ordem || "").trim();
+    const sourcePresence = state.cache.sourcePresence || {};
+    const hasFutureMatch =
+      sourcePresence.futuras?.ids?.has?.(id) ||
+      (ordem ? sourcePresence.futuras?.ordens?.has?.(ordem) : false);
+    const hasOrdensMatch =
+      sourcePresence.ordens?.ids?.has?.(id) ||
+      (ordem ? sourcePresence.ordens?.ordens?.has?.(ordem) : false);
+    const hasRealizadosMatch =
+      sourcePresence.realizados?.ids?.has?.(id) ||
+      (ordem ? sourcePresence.realizados?.ordens?.has?.(ordem) : false);
+    const temControleSupabase = Boolean(demand.temControleSupabase);
+
+    return {
+      ...demand,
+      temControleSupabase,
+      semVinculoOperacional:
+        temControleSupabase &&
+        isFutureControlId(id) &&
+        hasPlanningStatus &&
+        !hasFutureMatch &&
+        !hasOrdensMatch &&
+        !hasRealizadosMatch,
+    };
+  }
+
+  function dueClassesOf(demand) {
+    if (isCanceledBySap(demand)) return [];
+
+    const today = toDate(new Date().toISOString());
+    const due = toDate(demand.vencimento);
+    const min = toDate(demand.toleranciaMin);
+    const max = toDate(demand.toleranciaMax);
+    const realized = hasRealizedDate(demand) ? toDate(demand.dataRealizada) : null;
+    const referenceLimit = max || due;
+
+    if (realized) {
+      if (min && realized < min) {
+        return ["Antecipado"];
+      } else if (referenceLimit && realized > referenceLimit) {
+        return ["Fora do Prazo"];
+      } else {
+        return ["No Prazo"];
+      }
+    }
+
+    if (!today || (!due && !referenceLimit)) return [];
+
+    if (referenceLimit && today > referenceLimit) {
+      return ["Vencido"];
+    }
+
+    if (due) {
+      const diffDays = Math.round((due - today) / 86400000);
+      if (diffDays >= 0 && diffDays <= 20) {
+        return ["Vence em 20d"];
+      }
+    }
+
+    return ["No Prazo"];
+  }
+
+  function sanitizeSubstatusOptionSet(optionSets = {}) {
+    const next = { ...(optionSets || {}) };
+    next.substatus = normalizeSubstatusLabels(next.substatus || []);
+    return next;
+  }
+
+  function sanitizeSubstatusIndexes(indexes = {}) {
+    const next = { ...(indexes || {}) };
+    const source = indexes?.substatus;
+    const entries = source instanceof Map ? Array.from(source.entries()) : Object.entries(source || {});
+    const target = new Map();
+
+    entries.forEach(([rawKey, ids]) => {
+      const key = sanitizeSubstatusLabel(rawKey);
+      if (!key) return;
+      if (!target.has(key)) target.set(key, []);
+      target.get(key).push(...(ids || []));
+    });
+
+    Array.from(target.keys()).forEach((key) => {
+      target.set(key, Array.from(new Set(target.get(key) || [])));
+    });
+
+    next.substatus = target;
+    return next;
   }
 
   function substatusListOf(demand) {
     const status = primaryStatusOf(demand);
-    const substatuses = [];
-
-    if (status === "Cancelado") {
-      substatuses.push("Cancelado");
-      return normalizeSubstatusLabels(substatuses);
+    if (status === "Cancelado") return ["Cancelado"];
+    if (hasSemVinculoSubstatus(demand)) return ["Sem Vinculo"];
+    if (
+      (status === "Realizado" && !hasRealizedDate(demand)) ||
+      needsTechnicalClosure(demand) ||
+      (status === "Realizado" && isWaitingClosure(demand))
+    ) {
+      return ["Ag Encerramento"];
     }
+    if (demand.perda) return ["Perda"];
 
-    if (status === "Realizado" && !hasRealizedDate(demand)) {
-      substatuses.push("Ag Encerramento");
-    }
+    const dueClasses = normalizeSubstatusLabels(dueClassesOf(demand));
+    if (dueClasses.length) return [dueClasses[0]];
 
-    if (status === "Realizado" && isWaitingClosure(demand)) {
-      substatuses.push("Ag Encerramento");
-    }
+    if (pendingIssuesOf(demand).length) return ["Pendente"];
 
-    if (demand.perda) {
-      substatuses.push("Perda");
-    }
-
-    if (status === "Realizado" && !isWaitingClosure(demand)) {
-      const dueClass = dueClassOf(demand);
-      if (dueClass) substatuses.push(dueClass);
-    }
-
-    if (status !== "Realizado") {
-      const dueClass = dueClassOf(demand);
-      if (dueClass) substatuses.push(dueClass);
-    }
-
-    if (pendingIssuesOf(demand).length) {
-      substatuses.push("Pendente");
-    }
-
-    return normalizeSubstatusLabels(substatuses);
+    return [];
   }
 
   function statusListOf(demand) {
@@ -1092,14 +1245,18 @@
     if (status === "A Planejar") return "status-planejar";
     if (status === "Planejado") return "status-planejado";
     if (status === "Replanejado") return "status-replanejado";
-    if (status === "Realizado" || status === "No Prazo")
-      return "status-realizado";
+    if (status === "Realizado") return "status-realizado";
+    if (status === "No Prazo") return "status-neutral";
+    if (status === "Ag Encerramento") return "status-planejado";
+    if (status === "Antecipado") return "status-realizado";
+    if (status === "Sem Vinculo") return "status-planejado";
+    if (status === "Vence em 20d") return "status-warning";
+    if (status === "Vencido") return "status-perda";
     if (status === "Cancelado" || status === "Cancelado") return "status-perda";
     if (status === "Cadastrado") return "status-realizado";
     if (status === "Nao cadastrado" || status === "Sem centro")
       return "status-perda";
     if (status === "Fora do Prazo") return "status-fora-prazo";
-    if (status === "Avaliar Status no SAP") return "status-fora-prazo";
     if (status === "Perda" || status === "Pendente") return "status-perda";
     return "status-planejado";
   }
@@ -2499,6 +2656,7 @@
       onStage?.("Reutilizando base consolidada local...");
       state.cache.baseSources = persistentProcessedBase.baseSources;
       state.cache.basePortfolio = persistentProcessedBase.basePortfolio;
+      hydrateSourcePresenceCache(state.cache.baseSources);
       return state.cache.baseSources;
     }
 
@@ -2513,6 +2671,7 @@
       state.cache.basePortfolio =
         dataStore.get("derived", "basePortfolio") ||
         buildBasePortfolioCache(cachedBaseSources);
+      hydrateSourcePresenceCache(state.cache.baseSources);
       return state.cache.baseSources;
     }
 
@@ -2574,6 +2733,7 @@
       baseRealizados,
       itensLineares: itensLinearesRaw,
     };
+    hydrateSourcePresenceCache(state.cache.baseSources);
 
     state.cache.basePortfolio = perf.measure("buildBasePortfolioCache", () =>
       buildBasePortfolioCache(state.cache.baseSources),
@@ -2804,9 +2964,14 @@
 
     const mergedBase = perf.measure("db:merge-base-supabase", () =>
       baseEnriquecida.map((item) =>
-        enrichDemandWithCentroTrabalho(
-          mergeDemandWithSupabase(item, deltasById.get(item.id)),
-          mapaCentrosTrabalho,
+        annotateDemandOperationalFlags(
+          enrichDemandWithCentroTrabalho(
+            {
+              ...mergeDemandWithSupabase(item, deltasById.get(item.id)),
+              temControleSupabase: deltasById.has(item.id),
+            },
+            mapaCentrosTrabalho,
+          ),
         ),
       ),
     );
@@ -2815,11 +2980,16 @@
       (supabaseData.demandas || [])
         .filter((item) => !baseIds.has(item.id))
         .map((item) =>
-          enrichDemandWithCentroTrabalho(
-            enrichDemandWithItemLinear(item, basePortfolio.mapaItensLineares, {
-              preencherDescricaoSeVazia: true,
-            }),
-            mapaCentrosTrabalho,
+          annotateDemandOperationalFlags(
+            enrichDemandWithCentroTrabalho(
+              {
+                ...enrichDemandWithItemLinear(item, basePortfolio.mapaItensLineares, {
+                  preencherDescricaoSeVazia: true,
+                }),
+                temControleSupabase: true,
+              },
+              mapaCentrosTrabalho,
+            ),
           ),
         ),
     );
@@ -3562,11 +3732,16 @@
   }
 
   function baseFilterOptionsForScope(scope, definition) {
-    return (
+    const options =
       state.cache.filterOptionSets?.[scope]?.[definition.key] ||
       state.filterOptionsCache?.[definition.key] ||
-      []
-    );
+      [];
+
+    if (definition.key === "substatus") {
+      return normalizeSubstatusLabels(options);
+    }
+
+    return options;
   }
 
   function unionIdArrays(arrays = []) {
@@ -3637,7 +3812,9 @@
       if (!index) return;
 
       const selectedIds = unionIdArrays(
-        selected.map((value) => index.get(value) || []),
+        selected.map((value) =>
+          index instanceof Map ? index.get(value) || [] : index?.[value] || [],
+        ),
       );
 
       candidateIds = candidateIds
@@ -3822,13 +3999,7 @@
         )
       : stateRef.allOptions;
 
-    if (stateRef.query) return filtered;
-
-    const selected = filtered.filter((option) => stateRef.selectedSet.has(option));
-    const unselected = filtered.filter(
-      (option) => !stateRef.selectedSet.has(option),
-    );
-    return [...selected, ...unselected];
+    return filtered;
   }
 
   function renderMultiFilterOptions(host) {

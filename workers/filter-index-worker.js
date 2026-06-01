@@ -31,24 +31,12 @@
   }
 
   function dueClassOf(demand) {
-    if (!demand.vencimento) return "";
-    const due = toDate(demand.vencimento);
-    if (!due) return "";
-    const today = toDate(new Date().toISOString());
-    if (!today) return "";
-    if (demand.dataRealizada) {
-      const realized = toDate(demand.dataRealizada);
-      const min = toDate(demand.toleranciaMin);
-      const max = toDate(demand.toleranciaMax || demand.vencimento);
-      if ((min && realized < min) || (max && realized > max)) {
-        return "Fora do Prazo";
-      }
-      return "No Prazo";
-    }
-    if (due < today) return "Vencido";
-    const diffDays = Math.round((due - today) / 86400000);
-    if (diffDays <= 20) return "Vence em 20d";
-    return "";
+    const dueClasses = dueClassesOf(demand);
+    return (
+      dueClasses.find((item) =>
+        ["Antecipado", "Fora do Prazo", "No Prazo", "Vencido", "Vence em 20d"].includes(item),
+      ) || ""
+    );
   }
 
   function hasSapStatusText(demand, token) {
@@ -73,14 +61,19 @@
     return (
       statusSistema.includes("ENTE") ||
       statusSistema.includes("ENCE") ||
-      statusUsuario.includes("ENCR") ||
-      statusUsuario.includes("ENTE") ||
-      statusUsuario.includes("ENCE")
+      ((statusUsuario.includes("ENCR") ||
+        statusUsuario.includes("ENTE") ||
+        statusUsuario.includes("ENCE")) &&
+        !statusSistema.includes("LIB"))
     );
   }
 
   function hasRealizedDate(demand) {
     return Boolean(dateText(demand.dataRealizada));
+  }
+
+  function hasUserWaitingClosureStatus(demand) {
+    return normalizeText(demand.statusUsuario).includes("ENCR");
   }
 
   function isWaitingClosure(demand) {
@@ -92,17 +85,74 @@
     return hasOpenSystemStatus && !hasSapSystemClosureStatus(demand);
   }
 
-  function hasLibConfStatus(demand) {
-    const statusText = `${normalizeText(demand.statusSistema)} ${normalizeText(
-      demand.statusUsuario,
-    )}`;
-    return statusText.includes("LIB") && statusText.includes("CONF");
+  function needsTechnicalClosure(demand) {
+    if (isCanceledBySap(demand)) return false;
+    if (hasSapSystemClosureStatus(demand)) return false;
+    return hasRealizedDate(demand) || hasUserWaitingClosureStatus(demand);
+  }
+
+  function sanitizeSubstatusLabel(value) {
+    const text = String(value || "").trim();
+    if (!text || text === "Avaliar Status no SAP") return "";
+    if (text === "Encerrado no SAP BO sem data realizada") {
+      return "Ag Encerramento";
+    }
+    return text;
+  }
+
+  function normalizeSubstatusLabels(substatuses = []) {
+    return Array.from(
+      new Set((substatuses || []).map(sanitizeSubstatusLabel).filter(Boolean)),
+    );
+  }
+
+  function isFutureControlId(value) {
+    return /^ID-[^-]+-[^-]+-/i.test(String(value || "").trim());
+  }
+
+  function hasSemVinculoSubstatus(demand) {
+    return demand?.semVinculoOperacional === true;
+  }
+
+  function dueClassesOf(demand) {
+    if (isCanceledBySap(demand)) return [];
+
+    const today = toDate(new Date().toISOString());
+    const due = toDate(demand.vencimento);
+    const min = toDate(demand.toleranciaMin);
+    const max = toDate(demand.toleranciaMax);
+    const realized = hasRealizedDate(demand) ? toDate(demand.dataRealizada) : null;
+    const referenceLimit = max || due;
+
+    if (realized) {
+      if (min && realized < min) {
+        return ["Antecipado"];
+      } else if (referenceLimit && realized > referenceLimit) {
+        return ["Fora do Prazo"];
+      } else {
+        return ["No Prazo"];
+      }
+    }
+
+    if (!today || (!due && !referenceLimit)) return [];
+
+    if (referenceLimit && today > referenceLimit) {
+      return ["Vencido"];
+    }
+
+    if (due) {
+      const diffDays = Math.round((due - today) / 86400000);
+      if (diffDays >= 0 && diffDays <= 20) {
+        return ["Vence em 20d"];
+      }
+    }
+
+    return ["No Prazo"];
   }
 
   function primaryStatusOf(demand) {
     if (isCanceledBySap(demand)) return "Cancelado";
     if (isRealizedBySapStatus(demand)) return "Realizado";
-    if (demand.dataRealizada && hasLibConfStatus(demand)) return "Realizado";
     if (demand.dataReplanejadaAtual) return "Replanejado";
     if (demand.dataPlanejada) return "Planejado";
     return "A Planejar";
@@ -110,24 +160,21 @@
 
   function substatusListOf(demand) {
     const status = primaryStatusOf(demand);
-    const substatuses = [];
-
     if (status === "Cancelado") return ["Cancelado"];
-    if (status === "Realizado" && !hasRealizedDate(demand)) {
-      substatuses.push("Encerrado no SAP BO sem data realizada");
+    if (hasSemVinculoSubstatus(demand)) return ["Sem Vinculo"];
+    if (
+      (status === "Realizado" && !hasRealizedDate(demand)) ||
+      needsTechnicalClosure(demand) ||
+      (status === "Realizado" && isWaitingClosure(demand))
+    ) {
+      return ["Ag Encerramento"];
     }
-    if (status === "Realizado" && isWaitingClosure(demand)) {
-      substatuses.push("Ag Encerramento");
-    }
-    if (hasRealizedDate(demand) && !hasLibConfStatus(demand)) {
-      substatuses.push("Avaliar Status no SAP");
-    }
-    if (demand.perda) substatuses.push("Perda");
+    if (demand.perda) return ["Perda"];
 
-    const dueClass = dueClassOf(demand);
-    if (dueClass) substatuses.push(dueClass);
+    const dueClasses = normalizeSubstatusLabels(dueClassesOf(demand));
+    if (dueClasses.length) return [dueClasses[0]];
 
-    return Array.from(new Set(substatuses));
+    return [];
   }
 
   function monthName(month) {

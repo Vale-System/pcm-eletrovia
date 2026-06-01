@@ -4063,6 +4063,19 @@
     );
   }
 
+  function closeAllMultiFilterDetails(exceptDetail = null) {
+    $$("[data-filter-details]").forEach((details) => {
+      if (exceptDetail && details === exceptDetail) return;
+      details.open = false;
+    });
+  }
+
+  function focusMultiFilterSearch(details) {
+    const input = details?.querySelector("[data-multi-search]");
+    if (!input) return;
+    global.requestAnimationFrame(() => input.focus());
+  }
+
   function updateMultiFilterStateFromInput(input) {
     const host = multiFilterHostFromEventTarget(input);
     const stateRef = host?.__multiFilterState;
@@ -11005,6 +11018,26 @@
       if (button) {
         switchView(button.dataset.view);
       }
+    });
+
+    document.addEventListener(
+      "toggle",
+      (event) => {
+        const details = event.target;
+        if (!(details instanceof HTMLDetailsElement)) return;
+        if (!details.matches("[data-filter-details]")) return;
+
+        if (details.open) {
+          closeAllMultiFilterDetails(details);
+          focusMultiFilterSearch(details);
+        }
+      },
+      true,
+    );
+
+    document.addEventListener("click", (event) => {
+      if (event.target.closest("[data-filter-details]")) return;
+      closeAllMultiFilterDetails();
     });
 
     $("#userSelect").addEventListener("change", async (event) => {

@@ -601,7 +601,7 @@
     }
     if (centrosSemCadastro.length) {
       leitura.push(
-        `Foram identificados ${centrosSemCadastro.length} centros com necessidade de saneamento cadastral.`,
+        `Foram identificados ${centrosSemCadastro.length} centros com cadastro inconsistente no recorte analisado.`,
       );
     }
 
@@ -730,7 +730,7 @@
     }
     if (semKmRows.length) {
       leitura.push(
-        "Ha demandas sem KM que devem ser saneadas para melhorar analise de interferencia e planejamento de campo.",
+        "Há demandas lineares sem KM informado, o que reduz a precisão da leitura territorial do recorte.",
       );
     }
 
@@ -742,6 +742,192 @@
       demandasSemKm: semKmRows
         .slice(0, DEMANDAS_SEM_KM_LIMIT)
         .map((item) => compactDemand(item, helpers)),
+      leitura,
+    };
+  }
+
+  function normalizePatioText(value) {
+    return String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function isPatioWorkCenter(value) {
+    const centro = normalizePatioText(value).replace(/[^A-Z0-9]/g, "");
+
+    if (!centro) return false;
+
+    // Exemplos: CCUPM1, CCUPM2, CINPM1, CIVPM2, ECEPM1, ECFPM2.
+    return /PM[12]/.test(centro) || /CESSL[0-9]+/.test(centro);
+  }
+
+  function isPatioLocation(value) {
+    const local = normalizePatioText(value);
+
+    if (!local) return false;
+
+    const patioTokens = [
+      "PATIO",
+      "QPMPA",
+      "QPEPA",
+      "QPMPTL",
+      "QPEPC",
+      "QPM",
+      "QPE",
+      "ESTAISL",
+      "ESTAI",
+    ];
+
+    return patioTokens.some((token) => local.includes(token));
+  }
+
+  function isPatioDemand(demanda) {
+    return (
+      isPatioWorkCenter(demanda?.centroTrabalho) ||
+      isPatioLocation(demanda?.localInstalacao)
+    );
+  }
+
+  function splitLinearPatioRows(demandas) {
+    const linearRows = [];
+    const patioRows = [];
+
+    (Array.isArray(demandas) ? demandas : []).forEach((demanda) => {
+      if (isPatioDemand(demanda)) {
+        patioRows.push(demanda);
+      } else {
+        linearRows.push(demanda);
+      }
+    });
+
+    return {
+      linearRows,
+      patioRows,
+    };
+  }
+
+  function patioNameOf(demanda) {
+    const localOriginal = safeText(demanda?.localInstalacao);
+    const centroOriginal = safeText(demanda?.centroTrabalho);
+    const local = normalizePatioText(localOriginal);
+
+    const tokenMatch = local.match(
+      /(QPMPA|QPEPA|QPMPTL[A-Z0-9]*|QPEPC[A-Z0-9]*|QPM[A-Z0-9]*|QPE[A-Z0-9]*|ESTAISL|ESTAI|PATIO[A-Z0-9]*)/,
+    );
+
+    if (tokenMatch?.[1]) {
+      return tokenMatch[1];
+    }
+
+    if (localOriginal) return localOriginal;
+    if (centroOriginal) return centroOriginal;
+
+    return "Pátio não informado";
+  }
+
+  function buildPatiosAnalysis(demandas, helpers = {}) {
+    const patioRows = Array.isArray(demandas) ? demandas : [];
+    const patios = {};
+
+    patioRows.forEach((item) => {
+      const patio = patioNameOf(item);
+      if (!patios[patio]) {
+        patios[patio] = {
+          patio,
+          quantidade: 0,
+          centros: new Set(),
+          gerencias: new Set(),
+          vencidas: 0,
+          criticas: 0,
+          semTolerancia: 0,
+          foraJanela: 0,
+        };
+      }
+
+      patios[patio].quantidade += 1;
+      if (isFilled(item.centroTrabalho)) patios[patio].centros.add(item.centroTrabalho);
+      if (isFilled(item.gerencia)) patios[patio].gerencias.add(item.gerencia);
+      if (isDemandVencida(item, helpers)) patios[patio].vencidas += 1;
+      if (isCriticalDemand(item)) patios[patio].criticas += 1;
+
+      const minDate = toDate(item.toleranciaMin, helpers);
+      const maxDate = toDate(item.toleranciaMax, helpers);
+      const effectiveDate = effectivePlanningDate(item, helpers);
+      if (!minDate && !maxDate) {
+        patios[patio].semTolerancia += 1;
+      } else if (effectiveDate) {
+        const beforeMin = minDate && effectiveDate < minDate;
+        const afterMax = maxDate && effectiveDate > maxDate;
+        if (beforeMin || afterMax) patios[patio].foraJanela += 1;
+      }
+    });
+
+    const rankingPatios = Object.values(patios)
+      .sort((a, b) => b.quantidade - a.quantidade)
+      .map((item) => ({
+        patio: item.patio,
+        quantidade: item.quantidade,
+        centros: Array.from(item.centros),
+        gerencias: Array.from(item.gerencias),
+        vencidas: item.vencidas,
+        criticas: item.criticas,
+        semTolerancia: item.semTolerancia,
+        foraJanela: item.foraJanela,
+      }));
+
+    const resumo = {
+      totalPatio: patioRows.length,
+      patiosDistintos: rankingPatios.length,
+      semTolerancia: patioRows.filter((item) => !toDate(item.toleranciaMin, helpers) && !toDate(item.toleranciaMax, helpers)).length,
+      vencidas: patioRows.filter((item) => isDemandVencida(item, helpers)).length,
+      criticas: patioRows.filter(isCriticalDemand).length,
+    };
+
+    const fatores = [
+      {
+        fator: "Demandas em patio vencidas",
+        quantidade: resumo.vencidas,
+        severidade: "Alta",
+        descricao: "Atividades em patio com vencimento expirado.",
+      },
+      {
+        fator: "Demandas em patio criticas",
+        quantidade: resumo.criticas,
+        severidade: "Alta",
+        descricao: "Carteira critica posicionada em patios operacionais.",
+      },
+      {
+        fator: "Demandas em patio sem tolerancia",
+        quantidade: resumo.semTolerancia,
+        severidade: "Moderada",
+        descricao: "Janela operacional sem parametrizacao de tolerancia.",
+      },
+    ].filter((item) => item.quantidade > 0);
+
+    const leitura = [];
+    if (rankingPatios[0]) {
+      leitura.push(
+        `O patio ${rankingPatios[0].patio} concentra o maior volume de demandas do recorte analisado.`,
+      );
+    }
+    if (resumo.vencidas > 0) {
+      leitura.push(
+        `Ha ${resumo.vencidas} demandas de patio vencidas exigindo tratamento operacional prioritario.`,
+      );
+    }
+    if (resumo.semTolerancia > 0) {
+      leitura.push(
+        `Foram identificadas ${resumo.semTolerancia} demandas de patio sem parametrizacao de tolerancia.`,
+      );
+    }
+
+    return {
+      resumo,
+      rankingPatios,
+      fatores,
       leitura,
     };
   }
@@ -1143,9 +1329,40 @@
     return "Sem restricao climatica relevante identificada no diagnostico.";
   }
 
+  function buildClimateSegmentSummary(rows, centerField, placeField) {
+    const safeRows = Array.isArray(rows) ? rows : [];
+    const centerGroups = groupBy(
+      safeRows,
+      (item) => safeText(item?.[centerField]) || "Sem centro",
+    );
+    const placeGroups = groupBy(
+      safeRows,
+      (item) => safeText(item?.[placeField]) || "Sem local",
+    );
+
+    return {
+      total: safeRows.length,
+      sensiveis: safeRows.filter((item) => safeText(item?.sensibilidade) !== "Baixo").length,
+      alto: safeRows.filter((item) => safeText(item?.riscoClimatico) === "Alto").length,
+      medio: safeRows.filter((item) => safeText(item?.riscoClimatico) === "Medio").length,
+      baixo: safeRows.filter((item) => safeText(item?.riscoClimatico) === "Baixo").length,
+      rankingCentros: sortEntriesDesc(centerGroups).map(([nome, items]) => ({
+        nome,
+        quantidade: items.length,
+      })),
+      rankingLocais: sortEntriesDesc(placeGroups).map(([nome, items]) => ({
+        nome,
+        quantidade: items.length,
+      })),
+    };
+  }
+
   function buildClimaAnalysis(demandas, helpers = {}, contexto = {}) {
     const runtime = getClimaRuntime();
+    const { linearRows, patioRows } = splitLinearPatioRows(demandas);
     const rows = [];
+    const rowsLinear = [];
+    const rowsPatio = [];
     const porDataMap = {};
     const porCentroMap = {};
     const porTipoAtividadeMap = {};
@@ -1185,6 +1402,8 @@
       };
 
       rows.push(criticalItem);
+      if (isPatioDemand(demanda)) rowsPatio.push(criticalItem);
+      else rowsLinear.push(criticalItem);
 
       if (clima.sensibilidade.nivel !== "Baixo") resumo.sensiveisAoClima += 1;
       if (clima.nivel === "Alto") resumo.altoRiscoClimatico += 1;
@@ -1248,6 +1467,18 @@
         return safeText(a.dataOperacional).localeCompare(safeText(b.dataOperacional));
       })
       .slice(0, CLIMA_CRITICO_LIMIT);
+    const segmentos = {
+      malhaLinear: buildClimateSegmentSummary(
+        rowsLinear,
+        "centroTrabalho",
+        "localInstalacao",
+      ),
+      areasPatio: buildClimateSegmentSummary(
+        rowsPatio,
+        "centroTrabalho",
+        "localInstalacao",
+      ),
+    };
 
     const leitura = [];
     leitura.push(
@@ -1261,6 +1492,16 @@
     if (resumo.semLocalOuCentro > 0) {
       leitura.push(
         "A ausencia de KM ou local de instalacao em parte das demandas reduz a precisao da avaliacao climatica por trecho.",
+      );
+    }
+    if (segmentos.malhaLinear.total > 0) {
+      leitura.push(
+        `A malha linear concentra ${segmentos.malhaLinear.total} demandas avaliadas no recorte climatico atual.`,
+      );
+    }
+    if (segmentos.areasPatio.total > 0) {
+      leitura.push(
+        `As areas de patio somam ${segmentos.areasPatio.total} demandas no recorte climatico e exigem leitura dedicada de patio.`,
       );
     }
     if (!runtime.climate) {
@@ -1319,6 +1560,15 @@
       disponivel: true,
       fonte: climaAvailabilityText(runtime),
       resumo,
+      segmentos,
+      resumoLinear: {
+        totalAnalisado: linearRows.length,
+        totalClimatico: segmentos.malhaLinear.total,
+      },
+      resumoPatio: {
+        totalAnalisado: patioRows.length,
+        totalClimatico: segmentos.areasPatio.total,
+      },
       porData,
       porCentro,
       porTipoAtividade,
@@ -1489,6 +1739,7 @@
   function gerarDiagnostico(demandas, contexto = {}) {
     const rows = Array.isArray(demandas) ? demandas : [];
     const helpers = contexto.helpers || {};
+    const { linearRows, patioRows } = splitLinearPatioRows(rows);
 
     const diagnostico = {
       meta: buildMeta(rows, contexto),
@@ -1500,8 +1751,11 @@
       planejadores: buildPlanejadoresAnalysis(rows, helpers),
       supervisoes: buildSupervisoesAnalysis(rows, helpers),
       gerencias: buildGerenciasAnalysis(rows, helpers),
-      kms: buildKmAnalysis(rows, helpers),
+      kms: buildKmAnalysis(linearRows, helpers),
+      patios: buildPatiosAnalysis(patioRows, helpers),
       tolerancias: buildToleranciasAnalysis(rows, helpers),
+      toleranciasLineares: buildToleranciasAnalysis(linearRows, helpers),
+      riscosLineares: null,
       riscos: null,
       clima: null,
       listaCritica: [],
@@ -1510,6 +1764,7 @@
     };
 
     diagnostico.riscos = buildRiscosAnalysis(rows, helpers);
+    diagnostico.riscosLineares = buildRiscosAnalysis(linearRows, helpers);
     diagnostico.clima = buildClimaAnalysis(rows, helpers, contexto);
     diagnostico.listaCritica = buildListaCritica(rows, helpers);
     diagnostico.recomendacoes = buildRecomendacoes(diagnostico);

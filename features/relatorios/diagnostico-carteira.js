@@ -21,6 +21,7 @@
     centros: "diagSecaoCentros",
     planejadores: "diagSecaoPlanejadores",
     km: "diagSecaoKm",
+    patios: "diagSecaoPatios",
     tolerancias: "diagSecaoTolerancias",
     vencimentos: "diagSecaoVencimentos",
     clima: "diagSecaoClima",
@@ -37,6 +38,7 @@
 
   let diagnosticoContext = {};
   let handlersBound = false;
+  let diagnosticoGenerating = false;
 
   function $(selector) {
     return document.getElementById(selector);
@@ -296,7 +298,65 @@
     console.log(message);
   }
 
+  function showDiagnosticoLoadingToast(message) {
+    const host = document.getElementById("toastHost");
+    if (!host) return null;
+
+    const toast = document.createElement("div");
+    toast.className = "toast loading is-visible";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    toast.innerHTML = `<span class="toast-icon toast-spinner">⟳</span><span>${message}</span>`;
+    host.appendChild(toast);
+
+    return {
+      dismiss(successMessage) {
+        if (successMessage) notifyDiagnostico(successMessage, "success");
+        toast.classList.remove("is-visible");
+        setTimeout(() => toast.remove(), 300);
+      },
+      error(errorMessage) {
+        if (errorMessage) notifyDiagnostico(errorMessage, "error");
+        toast.classList.remove("is-visible");
+        setTimeout(() => toast.remove(), 300);
+      },
+    };
+  }
+
+  function setDiagnosticoGeneratingState(isGenerating) {
+    const dialog = $("diagnosticoCarteiraDialog");
+    const primaryButton = $("generateDiagnosticoCarteira");
+    const cancelButton = $("cancelDiagnosticoCarteira");
+    const closeButton = $("closeDiagnosticoCarteira");
+
+    if (dialog) {
+      dialog.setAttribute("aria-busy", isGenerating ? "true" : "false");
+    }
+
+    if (primaryButton) {
+      if (!primaryButton.dataset.defaultLabel) {
+        primaryButton.dataset.defaultLabel =
+          trimValue(primaryButton.textContent) || "Gerar diagnóstico";
+      }
+
+      primaryButton.disabled = isGenerating;
+      primaryButton.classList.toggle("is-loading", isGenerating);
+      primaryButton.setAttribute("aria-busy", isGenerating ? "true" : "false");
+      primaryButton.textContent = isGenerating
+        ? "Gerando diagnóstico..."
+        : primaryButton.dataset.defaultLabel;
+    }
+
+    [cancelButton, closeButton].forEach((button) => {
+      if (!button) return;
+      button.disabled = isGenerating;
+      button.setAttribute("aria-disabled", isGenerating ? "true" : "false");
+    });
+  }
+
   function handleGenerateDiagnostico() {
+    if (diagnosticoGenerating) return;
+
     try {
       const demandasFiltradas = safeDemandas();
 
@@ -309,38 +369,72 @@
       }
 
       const config = buildDiagnosticoConfig();
+      diagnosticoGenerating = true;
+      setDiagnosticoGeneratingState(true);
 
-      const diagnostico = global.CCEDiagnosticoEngine?.gerarDiagnostico?.(
-        demandasFiltradas,
-        {
-          ...config,
-          usuarioAtual: diagnosticoContext.getState?.()?.currentUser || null,
-          filtrosAtuais: diagnosticoContext.getState?.()?.filters || {},
-          helpers: {
-            primaryStatusOf: diagnosticoContext.primaryStatusOf,
-            substatusListOf: diagnosticoContext.substatusListOf,
-            dueClassOf: diagnosticoContext.dueClassOf,
-            dateText: diagnosticoContext.dateText,
-            toDate: diagnosticoContext.toDate,
-            formatDate: diagnosticoContext.formatDate,
-            formatDateTime: diagnosticoContext.formatDateTime,
-          },
-        },
+      const loadingToast = showDiagnosticoLoadingToast(
+        "Gerando diagnóstico da carteira. Aguarde alguns instantes...",
       );
 
-      if (!diagnostico) {
-        throw new Error("A engine não retornou o diagnóstico técnico.");
-      }
+      global.requestAnimationFrame(() => {
+        global.setTimeout(() => {
+          try {
+            const diagnostico = global.CCEDiagnosticoEngine?.gerarDiagnostico?.(
+              demandasFiltradas,
+              {
+                ...config,
+                usuarioAtual: diagnosticoContext.getState?.()?.currentUser || null,
+                filtrosAtuais: diagnosticoContext.getState?.()?.filters || {},
+                helpers: {
+                  primaryStatusOf: diagnosticoContext.primaryStatusOf,
+                  substatusListOf: diagnosticoContext.substatusListOf,
+                  dueClassOf: diagnosticoContext.dueClassOf,
+                  dateText: diagnosticoContext.dateText,
+                  toDate: diagnosticoContext.toDate,
+                  formatDate: diagnosticoContext.formatDate,
+                  formatDateTime: diagnosticoContext.formatDateTime,
+                },
+              },
+            );
 
-      console.log("Diagnóstico técnico gerado", diagnostico);
+            if (!diagnostico) {
+              throw new Error("A engine não retornou o diagnóstico técnico.");
+            }
 
-      if (!global.CCEDiagnosticoPDF?.gerarPDF) {
-        throw new Error("Módulo de geração de PDF não carregado.");
-      }
+            console.log("Diagnóstico técnico gerado", diagnostico);
 
-      global.CCEDiagnosticoPDF.gerarPDF(diagnostico, config);
+            if (!global.CCEDiagnosticoPDF?.gerarPDF) {
+              throw new Error("Módulo de geração de PDF não carregado.");
+            }
 
-      notifyDiagnostico("Diagnóstico da Carteira gerado com sucesso.", "success");
+            global.CCEDiagnosticoPDF.gerarPDF(diagnostico, config);
+
+            if (loadingToast) {
+              loadingToast.dismiss("Diagnóstico da Carteira gerado com sucesso.");
+            } else {
+              notifyDiagnostico(
+                "Diagnóstico da Carteira gerado com sucesso.",
+                "success",
+              );
+            }
+          } catch (error) {
+            console.error("Erro ao gerar Diagnóstico da Carteira:", error);
+
+            const message = `Erro ao gerar diagnóstico: ${
+              error?.message || "erro inesperado"
+            }`;
+
+            if (loadingToast) {
+              loadingToast.error(message);
+            } else {
+              notifyDiagnostico(message, "error");
+            }
+          } finally {
+            diagnosticoGenerating = false;
+            setDiagnosticoGeneratingState(false);
+          }
+        }, 40);
+      });
     } catch (error) {
       console.error("Erro ao gerar Diagnóstico da Carteira:", error);
 

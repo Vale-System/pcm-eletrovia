@@ -889,12 +889,12 @@ label {
 .carteira-filter-actions {
   align-items: center;
   display: grid;
-  gap: 10px;
+  gap: 8px;
   grid-template-columns:
-    minmax(160px, 1.25fr)
-    minmax(92px, 0.72fr)
-    minmax(184px, 1.35fr)
-    minmax(116px, 0.9fr);
+    minmax(150px, 1.1fr)
+    minmax(82px, 0.58fr)
+    minmax(170px, 1.2fr)
+    minmax(108px, 0.78fr);
   justify-content: stretch;
   padding-bottom: 0;
   width: 100%;
@@ -903,27 +903,29 @@ label {
 .carteira-filter-actions .button {
   align-items: center;
   display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
   justify-content: center;
-  min-height: 40px;
-  padding: 0 16px;
+  min-height: 32px;
+  padding: 5px 10px;
   white-space: nowrap;
   width: 100%;
 }
 
 .carteira-filter-actions #toggleAdvancedFilters {
-  min-width: 164px;
+  min-width: 0;
 }
 
 .carteira-filter-actions #clearFilters {
-  min-width: 86px;
+  min-width: 0;
 }
 
 .carteira-filter-actions #openDiagnosticoCarteira {
-  min-width: 184px;
+  min-width: 0;
 }
 
 .carteira-filter-actions #exportCsv {
-  min-width: 116px;
+  min-width: 0;
 }
 
 .button,

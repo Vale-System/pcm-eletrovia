@@ -25,6 +25,7 @@
       "diagSecaoPlanejadores",
     ],
     km: ["km", "analiseKmTrecho", "diagSecaoKm"],
+    patios: ["patios", "analisePatios", "diagSecaoPatios"],
     tolerancias: [
       "tolerancias",
       "toleranciasJanelas",
@@ -113,6 +114,38 @@
     const text = safeText(value, "");
     if (!text) return "-";
     return text.length > max ? `${text.slice(0, max - 1)}...` : text;
+  }
+
+  function normalizePatioPdfText(value) {
+    return String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function isPatioText(value) {
+    const text = normalizePatioPdfText(value);
+    const compact = text.replace(/[^A-Z0-9]/g, "");
+
+    if (!text) return false;
+
+    if (/PM[12]/.test(compact) || /CESSL[0-9]+/.test(compact)) return true;
+
+    const patioTokens = [
+      "PATIO",
+      "QPMPA",
+      "QPEPA",
+      "QPMPTL",
+      "QPEPC",
+      "QPM",
+      "QPE",
+      "ESTAISL",
+      "ESTAI",
+    ];
+
+    return patioTokens.some((token) => text.includes(token));
   }
 
   function slugFileName(value) {
@@ -309,12 +342,25 @@
     });
 
     const boxHeight = Math.max(options.minHeight || 18, headerHeight + textHeight + 7);
-    drawRoundedBox(doc, x, y, w, boxHeight, options.fillColor || THEME.lightGray, THEME.border);
+    let boxY = y;
+
+    if (options.pageTitle && options.pageSubtitle) {
+      boxY = ensureSpace(
+        doc,
+        y,
+        boxHeight + (options.bottomSpacing || 0),
+        options.pageTitle,
+        options.pageSubtitle,
+        options.pageOptions || {},
+      );
+    }
+
+    drawRoundedBox(doc, x, boxY, w, boxHeight, options.fillColor || THEME.lightGray, THEME.border);
 
     applyText(doc, 8.2, THEME.greenDark, "bold");
-    doc.text(safeText(title), x + 4, y + 5.5);
+    doc.text(safeText(title), x + 4, boxY + 5.5);
 
-    let cursor = y + 10;
+    let cursor = boxY + 10;
     applyText(doc, 8.2, THEME.text, "normal");
     items.forEach((paragraph) => {
       const lines = splitText(doc, paragraph, bodyWidth);
@@ -322,7 +368,7 @@
       cursor += lines.length * lineHeight + gap;
     });
 
-    return y + boxHeight;
+    return boxY + boxHeight;
   }
 
   function tableCommonStyles(themeType = "green") {
@@ -1120,26 +1166,43 @@
 
   function addKmRiscosPage(doc, diagnostico, Charts, config) {
     let y = addPage(doc, "KM, Tolerancias e Riscos", "Rastreabilidade ferroviaria e exposicao operacional");
+    const kms = diagnostico.kms || {};
+    const tolerancias = diagnostico.toleranciasLineares || diagnostico.tolerancias || {};
+    const riscos = diagnostico.riscosLineares || diagnostico.riscos || {};
+    const kmTrechos = (kms.rankingTrechos || [])
+      .map((item) => ({
+        ...item,
+        centros: (item.centros || []).filter((centro) => !isPatioText(centro)),
+        locais: (item.locais || []).filter((local) => !isPatioText(local)),
+      }))
+      .filter(
+        (item) =>
+          !isPatioText(item.trecho) &&
+          !isPatioText(item.kmInicio) &&
+          !isPatioText(item.kmFim) &&
+          !(item.centros || []).some(isPatioText) &&
+          !(item.locais || []).some(isPatioText),
+      );
 
     const cards = [];
     if (isSectionEnabled(config, "km")) {
       cards.push(
-        { label: "Com KM", value: formatNumber(diagnostico.kms.comKm), note: formatPercent(diagnostico.kms.percentualComKm), variant: "default" },
-        { label: "Sem KM", value: formatNumber(diagnostico.kms.semKm), note: "Saneamento cadastral", variant: "warning" },
+        { label: "Com KM", value: formatNumber(kms.comKm), note: formatPercent(kms.percentualComKm), variant: "default" },
+        { label: "Sem KM", value: formatNumber(kms.semKm), note: "Sem KM informado", variant: "warning" },
       );
     }
     if (isSectionEnabled(config, "tolerancias")) {
       cards.push(
-        { label: "Com tolerancia", value: formatNumber(diagnostico.tolerancias.comTolerancia), note: "Base parametrizada", variant: "success" },
-        { label: "Sem tolerancia", value: formatNumber(diagnostico.tolerancias.semTolerancia), note: "Analise de janela", variant: "warning" },
-        { label: "Fora da janela", value: formatNumber(diagnostico.tolerancias.foraJanela), note: "Planejamento fora do limite", variant: "danger" },
+        { label: "Com tolerancia", value: formatNumber(tolerancias.comTolerancia), note: "Base parametrizada", variant: "success" },
+        { label: "Sem tolerancia", value: formatNumber(tolerancias.semTolerancia), note: "Analise de janela", variant: "warning" },
+        { label: "Fora da janela", value: formatNumber(tolerancias.foraJanela), note: "Planejamento fora do limite", variant: "danger" },
       );
     }
     cards.push({
       label: "Risco geral",
-      value: formatNumber(diagnostico.riscos.scoreRiscoGeral),
-      note: `Nivel ${safeText(diagnostico.riscos.nivelRisco)}`,
-      variant: riskVariant(diagnostico.riscos.nivelRisco),
+      value: formatNumber(riscos.scoreRiscoGeral),
+      note: `Nivel ${safeText(riscos.nivelRisco)}`,
+      variant: riskVariant(riscos.nivelRisco),
     });
 
     const cardW = 42.5;
@@ -1157,7 +1220,7 @@
           h: 42,
           title: "Rastreabilidade por trecho",
           data: mapRowsForChart(
-            diagnostico.kms.rankingTrechos.map((item) => ({
+            kmTrechos.map((item) => ({
               label: item.trecho,
               value: item.quantidade,
             })),
@@ -1174,7 +1237,7 @@
         h: 42,
         title: "Fatores de risco",
         data: mapRowsForChart(
-          diagnostico.riscos.fatores.map((item) => ({
+          (riscos.fatores || []).map((item) => ({
             label: item.fator,
             value: item.quantidade,
           })),
@@ -1194,9 +1257,9 @@
       273,
       "Leitura tecnica",
       [
-        ...(isSectionEnabled(config, "km") ? diagnostico.kms.leitura || [] : []),
-        ...(isSectionEnabled(config, "tolerancias") ? diagnostico.tolerancias.leitura || [] : []),
-        ...(diagnostico.riscos.leitura || []),
+        ...(isSectionEnabled(config, "km") ? kms.leitura || [] : []),
+        ...(isSectionEnabled(config, "tolerancias") ? tolerancias.leitura || [] : []),
+        ...(riscos.leitura || []),
       ],
       { fillColor: THEME.white, minHeight: 20 },
     ) + 5;
@@ -1206,7 +1269,7 @@
       y = addAutoTable(doc, {
         startY: y + 2,
         head: [["Trecho", "KM Inicio", "KM Fim", "Qtd", "Centros", "Locais"]],
-        body: diagnostico.kms.rankingTrechos.slice(0, 12).map((item) => [
+        body: kmTrechos.slice(0, 12).map((item) => [
           truncateTextValue(item.trecho, 30),
           safeText(item.kmInicio),
           safeText(item.kmFim),
@@ -1225,7 +1288,7 @@
       addAutoTable(doc, {
         startY: y + 2,
         head: [["Fator de risco", "Quantidade", "Severidade", "Descricao"]],
-        body: diagnostico.riscos.fatores.map((item) => [
+        body: (riscos.fatores || []).map((item) => [
           safeText(item.fator),
           formatNumber(item.quantidade),
           safeText(item.severidade),
@@ -1236,11 +1299,103 @@
     }
   }
 
+  function addPatiosRiscosPage(doc, diagnostico, Charts) {
+    const patios = diagnostico.patios || {};
+    const resumo = patios.resumo || {};
+    let y = addPage(
+      doc,
+      "Patios, Tolerancias e Riscos",
+      "Leitura operacional dedicada aos patios ferroviarios",
+    );
+
+    const cards = [
+      { label: "Demandas em patio", value: formatNumber(resumo.totalPatio), note: "Recorte de patio", variant: "default" },
+      { label: "Patios distintos", value: formatNumber(resumo.patiosDistintos), note: "Locais agrupados", variant: "info" },
+      { label: "Sem tolerancia", value: formatNumber(resumo.semTolerancia), note: "Sem janela definida", variant: "warning" },
+      { label: "Vencidas", value: formatNumber(resumo.vencidas), note: "Exposicao operacional", variant: "danger" },
+      { label: "Criticas", value: formatNumber(resumo.criticas), note: "Sensibilidade elevada", variant: "danger" },
+    ];
+
+    const cardW = 51;
+    cards.forEach((card, index) => {
+      drawExecutiveCard(doc, PAGE.marginX + index * (cardW + 4), y, cardW, 24, card);
+    });
+    y += 30;
+
+    if (shouldIncludeCharts() && Charts) {
+      Charts.drawHorizontalBarChart(doc, {
+        x: PAGE.marginX,
+        y,
+        w: 132,
+        h: 42,
+        title: "Patios com maior concentracao",
+        data: mapRowsForChart(
+          (patios.rankingPatios || []).map((item) => ({
+            label: item.patio,
+            value: item.quantidade,
+          })),
+          "label",
+          "value",
+          8,
+        ),
+      });
+      Charts.drawHorizontalBarChart(doc, {
+        x: 149,
+        y,
+        w: 136,
+        h: 42,
+        title: "Fatores de risco em patio",
+        data: mapRowsForChart(
+          (patios.fatores || []).map((item) => ({
+            label: item.fator,
+            value: item.quantidade,
+          })),
+          "label",
+          "value",
+          8,
+        ),
+        color: THEME.red,
+      });
+      y += 48;
+    }
+
+    y = addTechnicalReadingBox(
+      doc,
+      PAGE.marginX,
+      y,
+      273,
+      "Leitura tecnica",
+      patios.leitura || ["Nao foram identificadas demandas de patio no recorte filtrado."],
+      { fillColor: THEME.white, minHeight: 20 },
+    ) + 5;
+
+    drawSectionTitle(doc, "Patios com maior concentracao", PAGE.marginX, y);
+    addAutoTable(doc, {
+      startY: y + 2,
+      head: [["Patio", "Qtd", "Centros", "Gerencias", "Vencidas", "Criticas", "Sem tolerancia", "Fora da janela"]],
+      body: (patios.rankingPatios || []).slice(0, 12).map((item) => [
+        truncateTextValue(item.patio, 42),
+        formatNumber(item.quantidade),
+        truncateTextValue((item.centros || []).slice(0, 3).join(", "), 28),
+        truncateTextValue((item.gerencias || []).slice(0, 2).join(", "), 24),
+        formatNumber(item.vencidas),
+        formatNumber(item.criticas),
+        formatNumber(item.semTolerancia),
+        formatNumber(item.foraJanela),
+      ]),
+      themeType: "info",
+      emptyMessage: "Sem demandas de patio no recorte atual.",
+    });
+  }
+
   function addClimaPage(doc, diagnostico, Charts) {
     let y = addPage(doc, "Diagnostico Climatico", "Sensibilidade climatica e risco operacional de campo");
 
     const clima = diagnostico.clima || {};
     const resumo = clima.resumo || {};
+    const segmentos = clima.segmentos || {};
+    const malhaLinear = segmentos.malhaLinear || {};
+    const areasPatio = segmentos.areasPatio || {};
 
     const cards = [
       { label: "Demandas analisadas", value: formatNumber(resumo.totalAnalisado), note: "Recorte avaliado", variant: "default" },
@@ -1256,6 +1411,39 @@
       drawExecutiveCard(doc, PAGE.marginX + index * (cardW + 3), y, cardW, 24, card);
     });
     y += 30;
+
+    const segmentY = y;
+    const segmentBottomLeft = addTechnicalReadingBox(
+      doc,
+      PAGE.marginX,
+      segmentY,
+      132,
+      "Clima na malha linear",
+      [
+        `${formatNumber(malhaLinear.total)} demandas avaliadas na malha linear.`,
+        `${formatNumber(malhaLinear.alto)} em alto risco e ${formatNumber(malhaLinear.medio)} em risco medio.`,
+        malhaLinear.rankingCentros?.[0]
+          ? `Maior concentracao em ${safeText(malhaLinear.rankingCentros[0].nome)}.`
+          : "Sem concentracao linear relevante no recorte.",
+        ],
+      { fillColor: THEME.white, minHeight: 28 },
+    );
+    const segmentBottomRight = addTechnicalReadingBox(
+      doc,
+      149,
+      segmentY,
+      136,
+      "Clima em areas de patio",
+      [
+        `${formatNumber(areasPatio.total)} demandas avaliadas em areas de patio.`,
+        `${formatNumber(areasPatio.alto)} em alto risco e ${formatNumber(areasPatio.medio)} em risco medio.`,
+        areasPatio.rankingLocais?.[0]
+          ? `Maior concentracao em ${safeText(areasPatio.rankingLocais[0].nome)}.`
+          : "Sem concentracao de patio relevante no recorte.",
+        ],
+      { fillColor: THEME.white, minHeight: 28 },
+    );
+    y = Math.max(segmentBottomLeft, segmentBottomRight) + 5;
 
     if (shouldIncludeCharts() && Charts) {
       Charts.drawHorizontalBarChart(doc, {
@@ -1298,8 +1486,48 @@
       clima.leitura || [
         "Nao havia dados climaticos carregados no momento da geracao do relatorio.",
       ],
-      { fillColor: THEME.white, minHeight: 20 },
+      {
+        fillColor: THEME.white,
+        minHeight: 20,
+        bottomSpacing: 18,
+        pageTitle: "Diagnostico Climatico",
+        pageSubtitle: "Sensibilidade climatica e risco operacional de campo",
+      },
     ) + 5;
+
+    y = ensureSpace(
+      doc,
+      y,
+      30,
+      "Diagnostico Climatico",
+      "Sensibilidade climatica e risco operacional de campo",
+    );
+    drawSectionTitle(doc, "Recorte climatico por ambiente", PAGE.marginX, y);
+    y = addAutoTable(doc, {
+      startY: y + 2,
+      head: [["Ambiente", "Demandas", "Sensiveis", "Alto risco", "Medio risco", "Baixo risco", "Maior concentracao"]],
+      body: [
+        [
+          "Malha linear",
+          formatNumber(malhaLinear.total),
+          formatNumber(malhaLinear.sensiveis),
+          formatNumber(malhaLinear.alto),
+          formatNumber(malhaLinear.medio),
+          formatNumber(malhaLinear.baixo),
+          safeText(malhaLinear.rankingCentros?.[0]?.nome, "-"),
+        ],
+        [
+          "Areas de patio",
+          formatNumber(areasPatio.total),
+          formatNumber(areasPatio.sensiveis),
+          formatNumber(areasPatio.alto),
+          formatNumber(areasPatio.medio),
+          formatNumber(areasPatio.baixo),
+          safeText(areasPatio.rankingLocais?.[0]?.nome, "-"),
+        ],
+      ],
+      themeType: "info",
+    }) + 5;
 
     drawSectionTitle(doc, "Demandas criticas de clima", PAGE.marginX, y);
     addAutoTable(doc, {
@@ -1354,7 +1582,7 @@
       273,
       "Diretriz de leitura",
       [
-        "A lista abaixo prioriza demandas com combinacao de vencimento, criticidade, ausencia de saneamento cadastral e risco tecnico consolidado.",
+        "A lista abaixo prioriza demandas com combinacao de vencimento, criticidade, ausencia de referencia territorial e risco tecnico consolidado.",
       ],
       { fillColor: THEME.white, minHeight: 18 },
     ) + 5;
@@ -1474,6 +1702,9 @@
     }
     if (isSectionEnabled(config, "km") || isSectionEnabled(config, "tolerancias")) {
       addKmRiscosPage(doc, diagnostico, Charts, config);
+    }
+    if ((diagnostico.patios?.resumo?.totalPatio || 0) > 0) {
+      addPatiosRiscosPage(doc, diagnostico, Charts);
     }
     if (isSectionEnabled(config, "clima")) {
       addClimaPage(doc, diagnostico, Charts);

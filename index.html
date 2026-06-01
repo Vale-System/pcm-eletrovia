@@ -15,7 +15,7 @@
     />
     <link
       rel="stylesheet"
-      href="features/relatorios/relatorios.css?v=20260531-diag-preset-01"
+      href="features/relatorios/relatorios.css?v=20260601-diag-loading-feedback-01"
     />
     <script defer src="assets/vendor/xlsx.full.min.js?v=20260507-01"></script>
     <script
@@ -54,11 +54,11 @@
     ></script>
     <script
       defer
-      src="features/relatorios/diagnostico-config.js?v=20260531-diag-preset-01"
+      src="features/relatorios/diagnostico-config.js?v=20260601-diag-patios-modal-03"
     ></script>
     <script
       defer
-      src="features/relatorios/diagnostico-engine.js?v=20260531-diag-hotfix-02"
+      src="features/relatorios/diagnostico-engine.js?v=20260601-diag-validacao-final-01"
     ></script>
     <script
       defer
@@ -66,13 +66,13 @@
     ></script>
     <script
       defer
-      src="features/relatorios/diagnostico-pdf.js?v=20260531-diag-hotfix-02"
+      src="features/relatorios/diagnostico-pdf.js?v=20260601-diag-validacao-final-01"
     ></script>
     <script
       defer
-      src="features/relatorios/diagnostico-carteira.js?v=20260531-diag-preset-01"
+      src="features/relatorios/diagnostico-carteira.js?v=20260601-diag-loading-feedback-01"
     ></script>
-    <script defer src="app.js?v=20260601-fixed-filter-order-01"></script>
+    <script defer src="app.js?v=20260601-filter-open-close-01"></script>
   </head>
   <body>
     <section
@@ -1916,6 +1916,10 @@
   <label class="diag-check-card">
     <input id="diagSecaoKm" type="checkbox" checked />
     <span>Análise por KM e trecho</span>
+  </label>
+  <label class="diag-check-card">
+    <input id="diagSecaoPatios" type="checkbox" checked />
+    <span>Análise por pátio</span>
   </label>
   <label class="diag-check-card">
     <input id="diagSecaoTolerancias" type="checkbox" />

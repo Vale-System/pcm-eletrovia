@@ -212,6 +212,7 @@
     futurePageSize: 50,
     futureSearch: "",
     futureFormCollapsed: false,
+    futureCardExpanded: {},
 
     advancedFilters: false,
     identity: null,
@@ -8168,19 +8169,38 @@
     return status === "Realizado" || Boolean(dateText(item.dataRealizada));
   }
 
-  function setFutureFormCollapsed(collapsed) {
-    state.futureFormCollapsed = Boolean(collapsed);
+  function openFutureDemandDialog() {
+    const dialog = $("#futureDemandDialog");
+    if (!dialog) return;
 
-    const form = $("#futureDemandForm");
-    const toggle = $("#toggleFutureDemandForm");
-    if (form) form.classList.toggle("hidden", state.futureFormCollapsed);
-    if (toggle) {
-      toggle.textContent = state.futureFormCollapsed ? "Mostrar" : "Recolher";
-      toggle.setAttribute(
-        "aria-expanded",
-        state.futureFormCollapsed ? "false" : "true",
-      );
+    $("#futureDemandForm")?.reset();
+    if (typeof dialog.showModal === "function") {
+      dialog.showModal();
+      return;
     }
+
+    dialog.setAttribute("open", "open");
+  }
+
+  function closeFutureDemandDialog() {
+    const dialog = $("#futureDemandDialog");
+    if (!dialog) return;
+
+    if (typeof dialog.close === "function") {
+      dialog.close();
+      return;
+    }
+
+    dialog.removeAttribute("open");
+  }
+
+  function isFutureCardExpanded(demandId) {
+    return state.futureCardExpanded[demandId] !== false;
+  }
+
+  function toggleFutureCardExpanded(demandId) {
+    state.futureCardExpanded[demandId] = !isFutureCardExpanded(demandId);
+    renderFutureDemandas();
   }
 
   function filteredFutureDemandas() {
@@ -8290,7 +8310,7 @@
       pageRows
         .map((item) => {
           return `
-          <article class="future-card" data-future-card="${escapeHtml(item.id)}">
+          <article class="future-card ${isFutureCardExpanded(item.id) ? "" : "is-collapsed"}" data-future-card="${escapeHtml(item.id)}">
             <header>
               <div>
                 <h3>${escapeHtml(item.descricao || "-")}</h3>
@@ -8306,36 +8326,47 @@
                   ${escapeHtml(item.competencia || "-")}
                 </span>
               </div>
-              ${statusChipGroup(statusListOf(item))}
+              <div class="future-card-header-actions">
+                ${statusChipGroup(statusListOf(item))}
+                <button
+                  class="button secondary future-card-toggle"
+                  type="button"
+                  data-toggle-future-card="${escapeHtml(item.id)}"
+                >
+                  ${isFutureCardExpanded(item.id) ? "Recolher" : "Expandir"}
+                </button>
+              </div>
             </header>
 
-            <div class="detail-grid" style="margin-top: 10px;">
-              <div class="detail-item">
-                <span>Vencimento</span>
-                <strong>${formatDate(item.vencimento)}</strong>
+            <div class="future-card-body">
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span>Vencimento</span>
+                  <strong>${formatDate(item.vencimento)}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Frequência</span>
+                  <strong>${escapeHtml(item.frequencia || "-")}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Gerência</span>
+                  <strong>${escapeHtml(item.gerencia || "-")}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Supervisão</span>
+                  <strong>${escapeHtml(item.supervisao || "-")}</strong>
+                </div>
               </div>
-              <div class="detail-item">
-                <span>Frequência</span>
-                <strong>${escapeHtml(item.frequencia || "-")}</strong>
-              </div>
-              <div class="detail-item">
-                <span>Gerência</span>
-                <strong>${escapeHtml(item.gerencia || "-")}</strong>
-              </div>
-              <div class="detail-item">
-                <span>Supervisão</span>
-                <strong>${escapeHtml(item.supervisao || "-")}</strong>
-              </div>
-            </div>
 
-            <div class="suggestion-list" id="suggestions-${escapeHtml(item.id)}">
-              ${
-                false
-                  ? `<span class="muted">Esta demanda já possui OM SAP vinculada. Sugestão não necessária.</span>`
-                  : `<button class="button secondary planner-only" type="button" data-load-suggestions="${escapeHtml(item.id)}">
-                      Ver sugestões de vínculo
-                    </button>`
-              }
+              <div class="suggestion-list" id="suggestions-${escapeHtml(item.id)}">
+                ${
+                  false
+                    ? `<span class="muted">Esta demanda já possui OM SAP vinculada. Sugestão não necessária.</span>`
+                    : `<button class="button secondary planner-only" type="button" data-load-suggestions="${escapeHtml(item.id)}">
+                        Ver sugestões de vínculo
+                      </button>`
+                }
+              </div>
             </div>
           </article>
         `;
@@ -8380,7 +8411,6 @@
     }
 
     applyPermissions();
-    setFutureFormCollapsed(state.futureFormCollapsed);
   }
 
   function renderFutureSuggestions(futureId) {
@@ -8578,6 +8608,7 @@
       detalhe: record.descricao,
     });
     event.currentTarget.reset();
+    closeFutureDemandDialog();
     upsertDemandLocally(saved || record);
     appendLogLocally(savedLog);
     refreshUiAfterLocalSave("Demanda futura criada.");
@@ -10953,11 +10984,27 @@
     $("#saveValidBatch").addEventListener("click", () => saveBatch(false));
     $("#saveConfirmedBatch").addEventListener("click", () => saveBatch(true));
     $("#downloadTemplate").addEventListener("click", downloadTemplate);
+    $("#openFutureDemandModal")?.addEventListener(
+      "click",
+      openFutureDemandDialog,
+    );
     $("#futureDemandForm").addEventListener("submit", createFutureDemand);
-    $("#toggleFutureDemandForm")?.addEventListener("click", () => {
-      setFutureFormCollapsed(!state.futureFormCollapsed);
-    });
+    $("#closeFutureDemandDialog")?.addEventListener(
+      "click",
+      closeFutureDemandDialog,
+    );
+    $("#cancelFutureDemandDialog")?.addEventListener(
+      "click",
+      closeFutureDemandDialog,
+    );
     $("#futureDemandList").addEventListener("click", (event) => {
+      const toggleCardButton = event.target.closest("[data-toggle-future-card]");
+
+      if (toggleCardButton) {
+        toggleFutureCardExpanded(toggleCardButton.dataset.toggleFutureCard);
+        return;
+      }
+
       const suggestionButton = event.target.closest("[data-load-suggestions]");
 
       if (suggestionButton) {

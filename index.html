@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" href="assets/favicon.png?v=2" />
     <link rel="shortcut icon" type="image/png" href="assets/favicon.png?v=2" />
     <link rel="apple-touch-icon" href="assets/favicon.png?v=2" />
-    <link rel="stylesheet" href="styles.css?v=20260531-csv-progress-01" />
+    <link rel="stylesheet" href="styles.css?v=20260601-filter-row-03" />
     <link rel="stylesheet" href="features/clima/clima.css?v=20260529-01" />
     <link
       rel="stylesheet"
@@ -72,7 +72,7 @@
       defer
       src="features/relatorios/diagnostico-carteira.js?v=20260531-diag-preset-01"
     ></script>
-    <script defer src="app.js?v=20260531-csv-progress-01"></script>
+    <script defer src="app.js?v=20260601-futuras-modal-01"></script>
   </head>
   <body>
     <section
@@ -559,7 +559,7 @@
                 <option value="nao">Não</option>
               </select>
             </label>
-            <div class="filter-actions">
+            <div class="filter-actions carteira-filter-actions">
               <button
                 class="button secondary"
                 id="toggleAdvancedFilters"
@@ -745,98 +745,18 @@
             <div>
               <h2>Demandas Futuras/Sistemáticas</h2>
             </div>
+            <div class="toolbar-actions">
+              <button
+                class="button planner-only"
+                id="openFutureDemandModal"
+                type="button"
+              >
+                Nova ID
+              </button>
+            </div>
           </div>
 
           <div class="future-layout">
-            <section class="future-form-panel">
-              <div class="future-form-header">
-                <div>
-                  <h2>Criar ID Demanda Futura</h2>
-                  <span>Cadastre uma nova demanda futura ou sistemática.</span>
-                </div>
-                <button
-                  class="button secondary planner-only"
-                  id="toggleFutureDemandForm"
-                  type="button"
-                  aria-expanded="true"
-                >
-                  Recolher
-                </button>
-              </div>
-
-              <form class="future-form" id="futureDemandForm">
-              <label class="span-2">
-                ID da Demanda
-                <input
-                  name="id"
-                  placeholder="Ex.: DF-2026-001 ou ID_Demanda_Controle"
-                />
-              </label>
-              <label>
-                Descrição
-                <input
-                  name="descricao"
-                  required
-                  placeholder="Ex.: Inspeção preventiva em via energizada"
-                />
-              </label>
-              <label>
-                Tipo de Demanda
-                <select name="tipoDemanda" required>
-                  <option value="Sistemática">Sistemática</option>
-                  <option value="Antecipada">Antecipada</option>
-                  <option value="Extraordinária">Extraordinária</option>
-                </select>
-              </label>
-              <label>
-                Centro Trabalho
-                <input
-                  name="centroTrabalho"
-                  required
-                  placeholder="EVT-PCM-01"
-                />
-              </label>
-              <label>
-                Local Instalação
-                <input
-                  name="localInstalacao"
-                  required
-                  placeholder="ELV-TR-0001"
-                />
-              </label>
-              <label>
-                Competência Prevista
-                <input name="competencia" required placeholder="2026-06" />
-              </label>
-              <label>
-                Vencimento Previsto
-                <input name="vencimento" required type="date" />
-              </label>
-              <label>
-                Frequência
-                <select name="frequencia">
-                  <option value="Mensal">Mensal</option>
-                  <option value="Bimestral">Bimestral</option>
-                  <option value="Trimestral">Trimestral</option>
-                  <option value="Semestral">Semestral</option>
-                  <option value="Anual">Anual</option>
-                  <option value="Única">Única</option>
-                </select>
-              </label>
-              <label>
-                Responsável
-                <input name="responsavel" placeholder="Nome do responsável" />
-              </label>
-              <label class="span-2">
-                Observação
-                <textarea name="comentario" rows="3"></textarea>
-              </label>
-              <button class="button planner-only" type="submit">
-                Criar Demanda Futura
-              </button>
-              </form>
-            </section>
-
             <section class="future-list">
               <div class="panel-toolbar">
                 <div>
@@ -1731,6 +1651,118 @@
           </button>
         </div>
       </form>
+    </dialog>
+
+    <dialog id="futureDemandDialog" class="modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <span>Demandas Futuras/Sistemáticas</span>
+            <h2>Criar ID Demanda Futura</h2>
+          </div>
+          <button
+            class="icon-button"
+            id="closeFutureDemandDialog"
+            type="button"
+            aria-label="Fechar"
+          >
+            ×
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="future-modal-intro">
+            Cadastre uma nova demanda futura ou sistemática e salve diretamente
+            na base operacional.
+          </p>
+          <div class="future-modal-panel">
+            <form class="future-form" id="futureDemandForm">
+              <label class="span-2">
+                ID da Demanda
+                <input
+                  name="id"
+                  placeholder="Ex.: DF-2026-001 ou ID_Demanda_Controle"
+                />
+              </label>
+              <label>
+                Descrição
+                <input
+                  name="descricao"
+                  required
+                  placeholder="Ex.: Inspeção preventiva em via energizada"
+                />
+              </label>
+              <label>
+                Tipo de Demanda
+                <select name="tipoDemanda" required>
+                  <option value="Sistemática">Sistemática</option>
+                  <option value="Antecipada">Antecipada</option>
+                  <option value="Extraordinária">Extraordinária</option>
+                </select>
+              </label>
+              <label>
+                Centro Trabalho
+                <input
+                  name="centroTrabalho"
+                  required
+                  placeholder="EVT-PCM-01"
+                />
+              </label>
+              <label>
+                Local Instalação
+                <input
+                  name="localInstalacao"
+                  required
+                  placeholder="ELV-TR-0001"
+                />
+              </label>
+              <label>
+                Competência Prevista
+                <input name="competencia" required placeholder="2026-06" />
+              </label>
+              <label>
+                Vencimento Previsto
+                <input name="vencimento" required type="date" />
+              </label>
+              <label>
+                Frequência
+                <select name="frequencia">
+                  <option value="Mensal">Mensal</option>
+                  <option value="Bimestral">Bimestral</option>
+                  <option value="Trimestral">Trimestral</option>
+                  <option value="Semestral">Semestral</option>
+                  <option value="Anual">Anual</option>
+                  <option value="Única">Única</option>
+                </select>
+              </label>
+              <label>
+                Responsável
+                <input name="responsavel" placeholder="Nome do responsável" />
+              </label>
+              <label class="span-2">
+                Observação
+                <textarea name="comentario" rows="3"></textarea>
+              </label>
+            </form>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            class="button secondary"
+            id="cancelFutureDemandDialog"
+            type="button"
+          >
+            Cancelar
+          </button>
+          <button
+            class="button planner-only"
+            id="submitFutureDemandDialog"
+            type="submit"
+            form="futureDemandForm"
+          >
+            Criar Demanda Futura
+          </button>
+        </div>
+      </div>
     </dialog>
 
     <dialog id="diagnosticoCarteiraDialog" class="diag-dialog">

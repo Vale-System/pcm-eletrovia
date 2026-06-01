@@ -886,6 +886,46 @@ label {
   grid-column: span 2;
 }
 
+.carteira-filter-actions {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns:
+    minmax(160px, 1.25fr)
+    minmax(92px, 0.72fr)
+    minmax(184px, 1.35fr)
+    minmax(116px, 0.9fr);
+  justify-content: stretch;
+  padding-bottom: 0;
+  width: 100%;
+}
+
+.carteira-filter-actions .button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.carteira-filter-actions #toggleAdvancedFilters {
+  min-width: 164px;
+}
+
+.carteira-filter-actions #clearFilters {
+  min-width: 86px;
+}
+
+.carteira-filter-actions #openDiagnosticoCarteira {
+  min-width: 184px;
+}
+
+.carteira-filter-actions #exportCsv {
+  min-width: 116px;
+}
+
 .button,
 .icon-button {
   border: 0;
@@ -901,7 +941,12 @@ label {
 .button {
   background: var(--green-700);
   color: var(--white);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
   padding: 8px 12px;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .button svg {
@@ -1661,7 +1706,7 @@ label {
 }
 
 .future-layout {
-  grid-template-columns: 380px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .upload-panel,
@@ -1764,39 +1809,19 @@ label {
   border-left-color: var(--red-700);
 }
 
-.future-form-panel {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 12px 28px rgba(14, 45, 35, 0.05);
-  overflow: hidden;
-}
-
-.future-form-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 14px 12px;
-  border-bottom: 1px solid rgba(8, 76, 54, 0.08);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.98),
-    rgba(246, 251, 248, 0.98)
-  );
-}
-
-.future-form-header h2 {
+.future-modal-intro {
+  color: var(--gray-700);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
   margin: 0;
-  font-size: 14px;
 }
 
-.future-form-header span {
-  color: var(--gray-600);
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  font-weight: 600;
+.future-modal-panel {
+  background: linear-gradient(180deg, #ffffff, #f7fbf8);
+  border: 1px solid rgba(8, 76, 54, 0.1);
+  border-radius: 16px;
+  padding: 10px;
 }
 
 .future-form {
@@ -1805,10 +1830,6 @@ label {
   gap: 10px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: 14px;
-}
-
-.future-form.hidden {
-  display: none;
 }
 
 .span-2 {
@@ -1821,8 +1842,10 @@ label {
 }
 
 .future-demand-list {
+  align-content: start;
   display: grid;
   gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   max-height: calc(100vh - 240px);
   overflow: auto;
   padding-right: 4px;
@@ -1831,6 +1854,8 @@ label {
 .future-card {
   border: 1px solid var(--gray-200);
   border-radius: var(--radius);
+  display: grid;
+  gap: 10px;
   padding: 12px;
 }
 
@@ -1843,6 +1868,28 @@ label {
 
 .future-card h3 {
   margin-bottom: 4px;
+}
+
+.future-card-header-actions {
+  align-items: flex-end;
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.future-card-toggle {
+  min-height: 32px;
+  min-width: 96px;
+  padding: 0 12px;
+}
+
+.future-card-body {
+  display: grid;
+  gap: 10px;
+}
+
+.future-card.is-collapsed .future-card-body {
+  display: none;
 }
 
 .suggestion-list {
@@ -2911,6 +2958,13 @@ label {
     flex-direction: column;
   }
 
+  .carteira-filter-actions {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
   .row-actions,
   .detail-actions,
   .quality-actions {
@@ -3456,9 +3510,10 @@ body.is-login-required {
 .future-toolbar-pro {
   display: flex;
   align-items: flex-end;
+  grid-column: 1 / -1;
   justify-content: space-between;
   gap: 16px;
-  margin: 18px 0 20px;
+  margin: 0 0 20px;
   padding: 14px;
   border: 1px solid rgba(8, 76, 54, 0.1);
   border-radius: 18px;
@@ -3629,6 +3684,10 @@ body.is-login-required {
 
   .future-pagination-pro {
     justify-content: space-between;
+  }
+
+  .future-demand-list {
+    grid-template-columns: 1fr;
   }
 }
 /* ============================================================

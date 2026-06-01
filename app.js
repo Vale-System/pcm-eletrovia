@@ -943,11 +943,12 @@
   function isRealizedBySapStatus(demand) {
     const statusSistema = normalizeText(demand.statusSistema);
     const statusUsuario = normalizeText(demand.statusUsuario);
+    const systemStillOpenByLib = statusSistema.includes("LIB");
 
     return (
       statusSistema.includes("ENTE") ||
       statusSistema.includes("ENCE") ||
-      statusUsuario.includes("ENCR") ||
+      (statusUsuario.includes("ENCR") && !systemStillOpenByLib) ||
       statusUsuario.includes("ENTE") ||
       statusUsuario.includes("ENCE")
     );
@@ -994,10 +995,6 @@
       return "Realizado";
     }
 
-    if (demand.dataRealizada && hasLibConfStatus(demand)) {
-      return "Realizado";
-    }
-
     if (demand.dataReplanejadaAtual) {
       return "Replanejado";
     }
@@ -1018,25 +1015,35 @@
     return Array.from(new Set(issues));
   }
 
+  function normalizeSubstatusLabels(substatuses = []) {
+    return Array.from(
+      new Set(
+        (substatuses || [])
+          .map((item) =>
+            item === "Encerrado no SAP BO sem data realizada"
+              ? "Ag Encerramento"
+              : item,
+          )
+          .filter((item) => item && item !== "Avaliar Status no SAP"),
+      ),
+    );
+  }
+
   function substatusListOf(demand) {
     const status = primaryStatusOf(demand);
     const substatuses = [];
 
     if (status === "Cancelado") {
       substatuses.push("Cancelado");
-      return Array.from(new Set(substatuses));
+      return normalizeSubstatusLabels(substatuses);
     }
 
     if (status === "Realizado" && !hasRealizedDate(demand)) {
-      substatuses.push("Encerrado no SAP BO sem data realizada");
+      substatuses.push("Ag Encerramento");
     }
 
     if (status === "Realizado" && isWaitingClosure(demand)) {
       substatuses.push("Ag Encerramento");
-    }
-
-    if (hasRealizedDate(demand) && status !== "Realizado") {
-      substatuses.push("Avaliar Status no SAP");
     }
 
     if (demand.perda) {
@@ -1057,7 +1064,7 @@
       substatuses.push("Pendente");
     }
 
-    return Array.from(new Set(substatuses));
+    return normalizeSubstatusLabels(substatuses);
   }
 
   function statusListOf(demand) {

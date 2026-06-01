@@ -524,6 +524,10 @@
     } else {
       state.db.demandas.unshift(normalized);
     }
+
+    state.db.demandas = consolidateCarteiraByRealizedOrder(
+      state.db.demandas.map(normalizeDemandRecord),
+    );
   }
 
   function iconSvg(name) {
@@ -1031,7 +1035,7 @@
       substatuses.push("Ag Encerramento");
     }
 
-    if (hasRealizedDate(demand) && !hasLibConfStatus(demand)) {
+    if (hasRealizedDate(demand) && status !== "Realizado") {
       substatuses.push("Avaliar Status no SAP");
     }
 
@@ -2813,7 +2817,9 @@
         ),
     );
     const demandas = perf.measure("db:normalize-demandas", () =>
-      [...demandasSomenteSupabase, ...mergedBase].map(normalizeDemandRecord),
+      consolidateCarteiraByRealizedOrder(
+        [...demandasSomenteSupabase, ...mergedBase].map(normalizeDemandRecord),
+      ),
     );
 
     state.db = {
@@ -8538,14 +8544,32 @@
     const future = demandById(futureId);
     const target = demandById(targetId);
     if (!future || !target) return;
-    future.ordem = target.ordem;
-    future.origem = "Demanda Antecipada Vinculada ao SAP";
-    future.vinculadaEm = new Date().toISOString();
-    future.statusSistema = target.statusSistema;
-    future.prioridade = target.prioridade;
-    future.toleranciaMin = target.toleranciaMin;
-    future.toleranciaMax = target.toleranciaMax;
-    const saved = await state.repo.upsertDemanda(prepareDemandForSave(future));
+
+    const mergedFuture = prepareDemandForSave({
+      ...future,
+      ordem: target.ordem,
+      origem: "Demanda Antecipada Vinculada ao SAP",
+      vinculadaEm: new Date().toISOString(),
+      statusSistema: target.statusSistema || future.statusSistema || "",
+      statusUsuario: target.statusUsuario || future.statusUsuario || "",
+      prioridade: target.prioridade || future.prioridade || "",
+      toleranciaMin: target.toleranciaMin || future.toleranciaMin || "",
+      toleranciaMax: target.toleranciaMax || future.toleranciaMax || "",
+      dataPlanejada: future.dataPlanejada || target.dataPlanejada || "",
+      dataReplanejadaAtual:
+        future.dataReplanejadaAtual || target.dataReplanejadaAtual || "",
+      dataRealizada: target.dataRealizada || future.dataRealizada || "",
+      origemRealizacao:
+        target.origemRealizacao || future.origemRealizacao || "",
+      perda: target.perda ?? future.perda ?? false,
+      motivoPerda: target.motivoPerda || future.motivoPerda || "",
+      justificativaPerda:
+        target.justificativaPerda || future.justificativaPerda || "",
+      comentario: future.comentario || target.comentario || "",
+      usuarioResponsavel: state.currentUser.email,
+    });
+
+    const saved = await state.repo.upsertDemanda(mergedFuture);
     const savedLog = await state.repo.addLog({
       usuario: state.currentUser.email,
       acao: "Vínculo Demanda/Ordem",
@@ -8553,7 +8577,8 @@
       referencia: future.id,
       detalhe: `Vinculada à ordem ${target.ordem}`,
     });
-    upsertDemandLocally(saved || future);
+
+    upsertDemandLocally(saved || mergedFuture);
     appendLogLocally(savedLog);
     refreshUiAfterLocalSave("Demanda futura vinculada à ordem SAP.");
   }

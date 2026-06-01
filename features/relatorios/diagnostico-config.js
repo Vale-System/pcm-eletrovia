@@ -8,6 +8,7 @@
         diagSecaoCapa: true,
         diagSecaoResumoExecutivo: true,
         diagSecaoKpis: true,
+        diagSecaoPrioridades: true,
         diagSecaoPlanejamento: false,
         diagSecaoCentros: true,
         diagSecaoPlanejadores: false,
@@ -28,7 +29,7 @@
       }),
       tituloPadrao: "Diagnóstico Executivo da Carteira",
       descricao:
-        "Relatório sintético para leitura gerencial, com KPIs, riscos, vencimentos e recomendações.",
+        "Relatório sintético para leitura gerencial, com KPIs, prioridades, riscos, vencimentos e recomendações.",
     }),
     m1: Object.freeze({
       label: "Planejamento M+1",
@@ -36,6 +37,7 @@
         diagSecaoCapa: true,
         diagSecaoResumoExecutivo: true,
         diagSecaoKpis: true,
+        diagSecaoPrioridades: true,
         diagSecaoPlanejamento: true,
         diagSecaoCentros: true,
         diagSecaoPlanejadores: true,
@@ -56,7 +58,7 @@
       }),
       tituloPadrao: "Diagnóstico de Planejamento M+1",
       descricao:
-        "Relatório completo para reunião de planejamento de curto prazo, com datas, vencimentos, tolerâncias, centros, KM e clima.",
+        "Relatório completo para reunião de planejamento de curto prazo, com prioridades, datas, vencimentos, tolerâncias, centros, KM e clima.",
     }),
     planejador: Object.freeze({
       label: "Por Planejador de Curto",
@@ -64,6 +66,7 @@
         diagSecaoCapa: true,
         diagSecaoResumoExecutivo: true,
         diagSecaoKpis: true,
+        diagSecaoPrioridades: true,
         diagSecaoPlanejamento: true,
         diagSecaoCentros: false,
         diagSecaoPlanejadores: true,
@@ -84,7 +87,7 @@
       }),
       tituloPadrao: "Diagnóstico por Planejador de Curto",
       descricao:
-        "Relatório focado em carga, aderência, vencimentos e pendências por planejador.",
+        "Relatório focado em carga, prioridades, aderência, vencimentos e pendências por planejador.",
     }),
     centro: Object.freeze({
       label: "Por Centro de Trabalho",
@@ -92,6 +95,7 @@
         diagSecaoCapa: true,
         diagSecaoResumoExecutivo: true,
         diagSecaoKpis: true,
+        diagSecaoPrioridades: true,
         diagSecaoPlanejamento: true,
         diagSecaoCentros: true,
         diagSecaoPlanejadores: false,
@@ -112,7 +116,7 @@
       }),
       tituloPadrao: "Diagnóstico por Centro de Trabalho",
       descricao:
-        "Relatório focado em centro, local de instalação, KM, vencimentos, tolerâncias e riscos de execução.",
+        "Relatório focado em centro, prioridades, local de instalação, KM, vencimentos, tolerâncias e riscos de execução.",
     }),
     supervisao: Object.freeze({
       label: "Por Supervisão/Gerência",
@@ -120,6 +124,7 @@
         diagSecaoCapa: true,
         diagSecaoResumoExecutivo: true,
         diagSecaoKpis: true,
+        diagSecaoPrioridades: true,
         diagSecaoPlanejamento: true,
         diagSecaoCentros: true,
         diagSecaoPlanejadores: true,
@@ -140,7 +145,7 @@
       }),
       tituloPadrao: "Diagnóstico por Supervisão/Gerência",
       descricao:
-        "Relatório para gestão da carteira por supervisão ou gerência, com foco em distribuição, risco, centros e vencimentos.",
+        "Relatório para gestão da carteira por supervisão ou gerência, com foco em prioridades, distribuição, risco, centros e vencimentos.",
     }),
     clima: Object.freeze({
       label: "Risco Climático",
@@ -148,6 +153,7 @@
         diagSecaoCapa: true,
         diagSecaoResumoExecutivo: true,
         diagSecaoKpis: true,
+        diagSecaoPrioridades: true,
         diagSecaoPlanejamento: true,
         diagSecaoCentros: true,
         diagSecaoPlanejadores: false,
@@ -168,7 +174,7 @@
       }),
       tituloPadrao: "Diagnóstico de Risco Climático",
       descricao:
-        "Relatório focado em atividades sensíveis ao clima, datas planejadas, centros críticos e recomendações de janela operacional.",
+        "Relatório focado em atividades sensíveis ao clima, prioridades, datas planejadas, centros críticos e recomendações de janela operacional.",
     }),
     completo: Object.freeze({
       label: "Completo",
@@ -176,6 +182,7 @@
         diagSecaoCapa: true,
         diagSecaoResumoExecutivo: true,
         diagSecaoKpis: true,
+        diagSecaoPrioridades: true,
         diagSecaoPlanejamento: true,
         diagSecaoCentros: true,
         diagSecaoPlanejadores: true,
@@ -196,12 +203,12 @@
       }),
       tituloPadrao: "Diagnóstico Completo da Carteira",
       descricao:
-        "Relatório completo com todas as seções técnicas disponíveis.",
+        "Relatório completo com todas as seções técnicas disponíveis, incluindo prioridades operacionais.",
     }),
   });
 
   const diagnosticoConfig = Object.freeze({
-    reportName: "Diagnostico da Carteira",
+    reportName: "Diagnóstico da Carteira",
     centralName: "Central de Controle PCM Eletrovia",
     palette: Object.freeze({
       primary: "#105c44",
@@ -219,24 +226,25 @@
       { id: "m1", label: "Planejamento M+1" },
       { id: "planejador", label: "Por Planejador de Curto" },
       { id: "centro", label: "Por Centro de Trabalho" },
-      { id: "supervisao", label: "Por Supervisao/Gerencia" },
-      { id: "clima", label: "Risco Climatico" },
+      { id: "supervisao", label: "Por Supervisão/Gerência" },
+      { id: "clima", label: "Risco Climático" },
       { id: "completo", label: "Completo" },
     ]),
     selectableSections: Object.freeze([
       { id: "diagSecaoCapa", label: "Capa executiva" },
       { id: "diagSecaoResumoExecutivo", label: "Resumo executivo" },
       { id: "diagSecaoKpis", label: "KPIs da carteira" },
+      { id: "diagSecaoPrioridades", label: "Prioridades operacionais" },
       { id: "diagSecaoPlanejamento", label: "Planejamento por data" },
-      { id: "diagSecaoCentros", label: "Analise por centro de trabalho" },
-      { id: "diagSecaoPlanejadores", label: "Analise por planejador de curto" },
-      { id: "diagSecaoKm", label: "Analise por KM e trecho" },
-      { id: "diagSecaoPatios", label: "Analise por patio" },
-      { id: "diagSecaoTolerancias", label: "Tolerancias e janelas de execucao" },
+      { id: "diagSecaoCentros", label: "Análise por centro de trabalho" },
+      { id: "diagSecaoPlanejadores", label: "Análise por planejador de curto" },
+      { id: "diagSecaoKm", label: "Análise por KM e trecho" },
+      { id: "diagSecaoPatios", label: "Análise por pátio" },
+      { id: "diagSecaoTolerancias", label: "Tolerâncias e janelas de execução" },
       { id: "diagSecaoVencimentos", label: "Vencimentos e atrasos" },
-      { id: "diagSecaoClima", label: "Risco climatico" },
-      { id: "diagSecaoListaCritica", label: "Lista critica de acompanhamento" },
-      { id: "diagSecaoRecomendacoes", label: "Recomendacoes tecnicas" },
+      { id: "diagSecaoClima", label: "Risco climático" },
+      { id: "diagSecaoListaCritica", label: "Lista crítica de acompanhamento" },
+      { id: "diagSecaoRecomendacoes", label: "Recomendações técnicas" },
     ]),
     REPORT_SECTION_PRESETS,
   });

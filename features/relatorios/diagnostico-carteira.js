@@ -17,6 +17,7 @@
     capa: "diagSecaoCapa",
     resumo: "diagSecaoResumoExecutivo",
     kpis: "diagSecaoKpis",
+    prioridades: "diagSecaoPrioridades",
     planejamento: "diagSecaoPlanejamento",
     centros: "diagSecaoCentros",
     planejadores: "diagSecaoPlanejadores",

@@ -258,6 +258,69 @@
     return normalizeText(demanda?.critico) === "sim";
   }
 
+  function rawPrioridadeValue(demanda) {
+    return (
+      demanda?.prioridade ??
+      demanda?.Prioridade ??
+      demanda?.PRIORIDADE ??
+      demanda?.priority ??
+      ""
+    );
+  }
+
+  function normalizePrioridade(value) {
+    const text = normalizeText(value);
+
+    if (!text) return "Nao informada";
+
+    if (
+      text.includes("alta") ||
+      text.includes("alto") ||
+      text === "a" ||
+      text.includes("high") ||
+      text.includes("urgente") ||
+      text.includes("imediata")
+    ) {
+      return "Alta";
+    }
+
+    if (
+      text.includes("media") ||
+      text.includes("medio") ||
+      text === "m" ||
+      text.includes("medium")
+    ) {
+      return "Media";
+    }
+
+    if (
+      text.includes("baixa") ||
+      text.includes("baixo") ||
+      text === "b" ||
+      text.includes("low")
+    ) {
+      return "Baixa";
+    }
+
+    return safeText(value) || "Nao informada";
+  }
+
+  function isPrioridadeAlta(demanda) {
+    return normalizePrioridade(rawPrioridadeValue(demanda)) === "Alta";
+  }
+
+  function isPrioridadeMedia(demanda) {
+    return normalizePrioridade(rawPrioridadeValue(demanda)) === "Media";
+  }
+
+  function prioridadePesoRisco(demanda) {
+    const prioridade = normalizePrioridade(rawPrioridadeValue(demanda));
+
+    if (prioridade === "Alta") return 2;
+    if (prioridade === "Media") return 1;
+    return 0;
+  }
+
   function isCentroCadastrado(demanda) {
     return (
       normalizeText(demanda?.centroTrabalhoStatus) === "cadastrado" ||
@@ -451,6 +514,142 @@
       dataPlanejada: dateText(demanda?.dataPlanejada, helpers),
       status: getStatus(demanda, helpers),
       critico: safeText(demanda?.critico),
+      prioridade: normalizePrioridade(rawPrioridadeValue(demanda)),
+    };
+  }
+
+  function buildPrioridadesAnalysis(demandas, helpers = {}) {
+    const total = demandas.length || 0;
+
+    const grupos = {
+      Alta: [],
+      Media: [],
+      Baixa: [],
+      "Nao informada": [],
+    };
+
+    demandas.forEach((demanda) => {
+      const prioridade = normalizePrioridade(rawPrioridadeValue(demanda));
+
+      if (!grupos[prioridade]) {
+        grupos[prioridade] = [];
+      }
+
+      grupos[prioridade].push(demanda);
+    });
+
+    const porPrioridade = Object.entries(grupos)
+      .map(([prioridade, rows]) => ({
+        prioridade,
+        quantidade: rows.length,
+        percentual: formatPercent(rows.length, total),
+        abertas: rows.filter((item) => isOpenStatus(getStatus(item, helpers))).length,
+        vencidas: rows.filter((item) => isDemandVencida(item, helpers)).length,
+        criticas: rows.filter((item) => isCriticalDemand(item)).length,
+        planejadas: rows.filter((item) => getStatus(item, helpers) === "Planejado").length,
+        realizadas: rows.filter((item) => getStatus(item, helpers) === "Realizado").length,
+      }))
+      .filter((item) => item.quantidade > 0)
+      .sort((a, b) => {
+        const order = {
+          Alta: 1,
+          Media: 2,
+          Baixa: 3,
+          "Nao informada": 4,
+        };
+
+        return (order[a.prioridade] || 99) - (order[b.prioridade] || 99);
+      });
+
+    const altas = grupos.Alta || [];
+    const medias = grupos.Media || [];
+    const baixas = grupos.Baixa || [];
+    const naoInformadas = grupos["Nao informada"] || [];
+
+    const altasAbertas = altas.filter((item) =>
+      isOpenStatus(getStatus(item, helpers)),
+    );
+
+    const altasVencidas = altas.filter((item) =>
+      isDemandVencida(item, helpers),
+    );
+
+    const altasCriticas = altas.filter((item) =>
+      isCriticalDemand(item) && isOpenStatus(getStatus(item, helpers)),
+    );
+
+    const rankingCentrosAlta = sortEntriesDesc(
+      groupBy(altasAbertas, (item) => safeText(item.centroTrabalho) || "Sem centro"),
+    )
+      .map(([centroTrabalho, rows]) => ({
+        centroTrabalho,
+        quantidade: rows.length,
+        vencidas: rows.filter((item) => isDemandVencida(item, helpers)).length,
+        criticas: rows.filter((item) => isCriticalDemand(item)).length,
+      }))
+      .slice(0, 15);
+
+    const listaPrioridadeAlta = altasAbertas
+      .map((item) => ({
+        ...compactDemand(item, helpers),
+        gerencia: safeText(item.gerencia),
+        supervisao: safeText(item.supervisao),
+        dataReplanejadaAtual: dateText(item.dataReplanejadaAtual, helpers),
+        toleranciaMin: dateText(item.toleranciaMin, helpers),
+        toleranciaMax: dateText(item.toleranciaMax, helpers),
+        motivoPrioridade:
+          isDemandVencida(item, helpers)
+            ? "Prioridade alta vencida"
+            : isCriticalDemand(item)
+              ? "Prioridade alta crítica"
+              : "Prioridade alta aberta",
+      }))
+      .sort((a, b) => safeText(a.vencimento).localeCompare(safeText(b.vencimento)))
+      .slice(0, 50);
+
+    const leitura = [];
+
+    if (altas.length) {
+      leitura.push(
+        `O recorte possui ${altas.length} demandas classificadas como prioridade alta, exigindo acompanhamento mais rigoroso do planejamento de curto prazo.`,
+      );
+    }
+
+    if (altasVencidas.length) {
+      leitura.push(
+        `Foram identificadas ${altasVencidas.length} demandas de prioridade alta vencidas, indicando necessidade de reprogramação ou regularização imediata.`,
+      );
+    }
+
+    if (altasCriticas.length) {
+      leitura.push(
+        `Há ${altasCriticas.length} demandas simultaneamente críticas e de prioridade alta, o que representa maior exposição operacional.`,
+      );
+    }
+
+    if (naoInformadas.length) {
+      leitura.push(
+        `Existem ${naoInformadas.length} demandas sem prioridade informada, reduzindo a qualidade da priorização da carteira.`,
+      );
+    }
+
+    return {
+      total,
+      alta: altas.length,
+      media: medias.length,
+      baixa: baixas.length,
+      naoInformada: naoInformadas.length,
+      altasAbertas: altasAbertas.length,
+      altasVencidas: altasVencidas.length,
+      altasCriticas: altasCriticas.length,
+      percentualAlta: formatPercent(altas.length, total),
+      percentualMedia: formatPercent(medias.length, total),
+      percentualBaixa: formatPercent(baixas.length, total),
+      percentualNaoInformada: formatPercent(naoInformadas.length, total),
+      porPrioridade,
+      rankingCentrosAlta,
+      listaPrioridadeAlta,
+      leitura,
     };
   }
 
@@ -492,10 +691,10 @@
 
     const leitura = [];
     if (vencidas.length) {
-      leitura.push(`Foram identificadas ${vencidas.length} demandas vencidas com necessidade de tratamento prioritario.`);
+      leitura.push(`Foram identificadas ${vencidas.length} demandas vencidas com necessidade de tratamento prioritário.`);
     }
     if (proximas7d.length) {
-      leitura.push(`Ha ${proximas7d.length} demandas em janela de vencimento nos proximos 7 dias.`);
+      leitura.push(`Há ${proximas7d.length} demandas em janela de vencimento nos próximos 7 dias.`);
     }
 
     return {
@@ -891,36 +1090,36 @@
         fator: "Demandas em patio vencidas",
         quantidade: resumo.vencidas,
         severidade: "Alta",
-        descricao: "Atividades em patio com vencimento expirado.",
+        descricao: "Atividades em pátio com vencimento expirado.",
       },
       {
-        fator: "Demandas em patio criticas",
+        fator: "Demandas em pátio críticas",
         quantidade: resumo.criticas,
         severidade: "Alta",
-        descricao: "Carteira critica posicionada em patios operacionais.",
+        descricao: "Carteira crítica posicionada em pátios operacionais.",
       },
       {
-        fator: "Demandas em patio sem tolerancia",
+        fator: "Demandas em pátio sem tolerância",
         quantidade: resumo.semTolerancia,
         severidade: "Moderada",
-        descricao: "Janela operacional sem parametrizacao de tolerancia.",
+        descricao: "Janela operacional sem parametrização de tolerância.",
       },
     ].filter((item) => item.quantidade > 0);
 
     const leitura = [];
     if (rankingPatios[0]) {
       leitura.push(
-        `O patio ${rankingPatios[0].patio} concentra o maior volume de demandas do recorte analisado.`,
+        `O pátio ${rankingPatios[0].patio} concentra o maior volume de demandas do recorte analisado.`,
       );
     }
     if (resumo.vencidas > 0) {
       leitura.push(
-        `Ha ${resumo.vencidas} demandas de patio vencidas exigindo tratamento operacional prioritario.`,
+        `Há ${resumo.vencidas} demandas de pátio vencidas exigindo tratamento operacional prioritário.`,
       );
     }
     if (resumo.semTolerancia > 0) {
       leitura.push(
-        `Foram identificadas ${resumo.semTolerancia} demandas de patio sem parametrizacao de tolerancia.`,
+        `Foram identificadas ${resumo.semTolerancia} demandas de pátio sem parametrização de tolerância.`,
       );
     }
 
@@ -970,11 +1169,11 @@
     const leitura = [];
     if (foraJanela > 0) {
       leitura.push(
-        `Foram identificadas ${foraJanela} demandas planejadas fora da janela de tolerancia.`,
+        `Foram identificadas ${foraJanela} demandas planejadas fora da janela de tolerância.`,
       );
     }
     if (semTolerancia > 0) {
-      leitura.push(`Ha ${semTolerancia} demandas sem tolerancias definidas na base.`);
+      leitura.push(`Há ${semTolerancia} demandas sem tolerâncias definidas na base.`);
     }
 
     return {
@@ -996,9 +1195,15 @@
     const soonLimit = addDays(today, 7);
 
     if (isDemandVencida(demanda, helpers)) reasons.push("Vencida");
-    if (isCriticalDemand(demanda) && isOpenStatus(status)) reasons.push("Critica aberta");
+    if (isCriticalDemand(demanda) && isOpenStatus(status)) reasons.push("Crítica aberta");
+    if (isPrioridadeAlta(demanda) && isOpenStatus(status)) {
+      reasons.push("Prioridade alta aberta");
+    }
+    if (isPrioridadeMedia(demanda) && isDemandVencida(demanda, helpers)) {
+      reasons.push("Prioridade média vencida");
+    }
     if (dueDate && plannedDate && plannedDate > dueDate) {
-      reasons.push("Planejada apos vencimento");
+      reasons.push("Planejada após vencimento");
     }
     if (!hasKm(demanda)) reasons.push("Sem KM");
     if (!isCentroCadastrado(demanda)) reasons.push("Sem centro cadastrado");
@@ -1010,7 +1215,7 @@
       normalizedDue <= soonLimit &&
       isOpenStatus(status)
     ) {
-      reasons.push("Proxima do vencimento");
+      reasons.push("Próxima do vencimento");
     }
 
     return reasons;
@@ -1022,14 +1227,20 @@
       criticasAbertas: demandas.filter(
         (item) => isCriticalDemand(item) && isOpenStatus(getStatus(item, helpers)),
       ).length,
+      prioridadeAltaAberta: demandas.filter(
+        (item) => isPrioridadeAlta(item) && isOpenStatus(getStatus(item, helpers)),
+      ).length,
+      prioridadeAltaVencida: demandas.filter(
+        (item) => isPrioridadeAlta(item) && isDemandVencida(item, helpers),
+      ).length,
       semKm: demandas.filter((item) => !hasKm(item)).length,
       semCentro: demandas.filter((item) => !isCentroCadastrado(item)).length,
       semPlanejador: demandas.filter((item) => !isFilled(item.planejadorCurto)).length,
       proximasVencimento: demandas.filter((item) =>
-        riscoReasonsFor(item, helpers).includes("Proxima do vencimento"),
+        riscoReasonsFor(item, helpers).includes("Próxima do vencimento"),
       ).length,
       planejamentoAtrasado: demandas.filter((item) =>
-        riscoReasonsFor(item, helpers).includes("Planejada apos vencimento"),
+        riscoReasonsFor(item, helpers).includes("Planejada após vencimento"),
       ).length,
       reprogramacoes: demandas.filter((item) => isFilled(item.dataReplanejadaAtual)).length,
     };
@@ -1052,6 +1263,18 @@
         quantidade: summary.planejamentoAtrasado,
         severidade: "Alta",
         descricao: "Programacao posicionada depois da data de vencimento.",
+      },
+      {
+        fator: "Prioridade alta aberta",
+        quantidade: summary.prioridadeAltaAberta,
+        severidade: "Alta",
+        descricao: "Demandas de maior prioridade ainda abertas no recorte.",
+      },
+      {
+        fator: "Prioridade alta vencida",
+        quantidade: summary.prioridadeAltaVencida,
+        severidade: "Alta",
+        descricao: "Demandas de prioridade alta com vencimento expirado.",
       },
       {
         fator: "Demandas sem KM",
@@ -1088,6 +1311,8 @@
     let rawScore = 0;
     rawScore += Math.min(summary.vencidas * 3, 36);
     rawScore += Math.min(summary.criticasAbertas * 2, 24);
+    rawScore += Math.min(summary.prioridadeAltaAberta * 2, 18);
+    rawScore += Math.min(summary.prioridadeAltaVencida * 3, 24);
     rawScore += Math.min(summary.semKm, 12);
     rawScore += Math.min(summary.semCentro * 2, 16);
     rawScore += Math.min(summary.semPlanejador, 8);
@@ -1482,51 +1707,51 @@
 
     const leitura = [];
     leitura.push(
-      `O recorte possui ${resumo.sensiveisAoClima} demandas com sensibilidade climatica elevada ou moderada, concentradas em atividades de campo e interferencia externa.`,
+      `O recorte possui ${resumo.sensiveisAoClima} demandas com sensibilidade climática elevada ou moderada, concentradas em atividades de campo e interferência externa.`,
     );
     if (resumo.altoRiscoClimatico > 0) {
       leitura.push(
-        `Foram identificadas ${resumo.altoRiscoClimatico} demandas com alto risco climatico operacional para a janela analisada.`,
+        `Foram identificadas ${resumo.altoRiscoClimatico} demandas com alto risco climático operacional para a janela analisada.`,
       );
     }
     if (resumo.semLocalOuCentro > 0) {
       leitura.push(
-        "A ausencia de KM ou local de instalacao em parte das demandas reduz a precisao da avaliacao climatica por trecho.",
+        "A ausência de KM ou local de instalação em parte das demandas reduz a precisão da avaliação climática por trecho.",
       );
     }
     if (segmentos.malhaLinear.total > 0) {
       leitura.push(
-        `A malha linear concentra ${segmentos.malhaLinear.total} demandas avaliadas no recorte climatico atual.`,
+        `A malha linear concentra ${segmentos.malhaLinear.total} demandas avaliadas no recorte climático atual.`,
       );
     }
     if (segmentos.areasPatio.total > 0) {
       leitura.push(
-        `As areas de patio somam ${segmentos.areasPatio.total} demandas no recorte climatico e exigem leitura dedicada de patio.`,
+        `As áreas de pátio somam ${segmentos.areasPatio.total} demandas no recorte climático e exigem leitura dedicada de pátio.`,
       );
     }
     if (!runtime.climate) {
-      leitura.push("Nao havia dados climaticos carregados no momento da geracao do relatorio.");
+      leitura.push("Não havia dados climáticos carregados no momento da geração do relatório.");
     }
 
     const recomendacoes = [];
     if (resumo.altoRiscoClimatico > 0) {
       recomendacoes.push({
         prioridade: "Alta",
-        titulo: "Validar janela de execucao para demandas sensiveis",
+        titulo: "Validar janela de execução para demandas sensíveis",
         descricao:
-          "Demandas com alto risco climatico exigem confirmacao de condicao de campo antes da mobilizacao.",
+          "Demandas com alto risco climático exigem confirmação de condição de campo antes da mobilização.",
         acaoSugerida:
-          "Revisar sequenciamento, janela operacional e contingencia de chuva para as atividades de maior score.",
+          "Revisar sequenciamento, janela operacional e contingência de chuva para as atividades de maior score.",
       });
     }
     if (porData[0]?.quantidade > 8) {
       recomendacoes.push({
         prioridade: "Media",
-        titulo: "Redistribuir concentracao por data operacional",
+        titulo: "Redistribuir concentração por data operacional",
         descricao:
-          "Foi observada concentracao de demandas sensiveis em datas especificas do recorte.",
+          "Foi observada concentração de demandas sensíveis em datas específicas do recorte.",
         acaoSugerida:
-          "Avaliar redistribuicao da execucao para reduzir exposicao operacional a variacao climatica.",
+          "Avaliar redistribuição da execução para reduzir exposição operacional à variação climática.",
       });
     }
     if (
@@ -1540,7 +1765,7 @@
         descricao:
           "Atividades de drenagem e talude aparecem com sensibilidade elevada no recorte atual.",
         acaoSugerida:
-          "Executar inspeção preventiva e confirmar condicao de estabilidade antes de janela de chuva.",
+          "Executar inspeção preventiva e confirmar condição de estabilidade antes de janela de chuva.",
       });
     }
     if (
@@ -1548,11 +1773,11 @@
     ) {
       recomendacoes.push({
         prioridade: "Media",
-        titulo: "Reforcar avaliacao de seguranca em energia externa",
+        titulo: "Reforçar avaliação de segurança em energia externa",
         descricao:
-          "Atividades de SPDA, aterramento ou iluminacao externa demandam cuidado adicional sob chuva.",
+          "Atividades de SPDA, aterramento ou iluminação externa demandam cuidado adicional sob chuva.",
         acaoSugerida:
-          "Validar seguranca eletrica e condicao de campo antes da liberacao da equipe.",
+          "Validar segurança elétrica e condição de campo antes da liberação da equipe.",
       });
     }
 
@@ -1590,6 +1815,7 @@
           descricao: safeText(item.descricao),
           status: getStatus(item, helpers),
           substatus: getSubstatusList(item, helpers).join(" | "),
+          prioridade: normalizePrioridade(rawPrioridadeValue(item)),
           gerencia: safeText(item.gerencia),
           supervisao: safeText(item.supervisao),
           centroTrabalho: safeText(item.centroTrabalho),
@@ -1638,6 +1864,7 @@
       tolerancias,
       kms,
       clima,
+      prioridades,
     } = diagnosticoParcial;
 
     if (resumo.vencidas > 0) {
@@ -1645,25 +1872,45 @@
         prioridade: "Alta",
         titulo: "Reavaliar demandas vencidas",
         descricao: `Existem ${resumo.vencidas} demandas vencidas no recorte atual.`,
-        acaoSugerida: "Priorizar regularizacao, replanejamento ou encerramento tecnico das demandas vencidas.",
+        acaoSugerida: "Priorizar regularização, replanejamento ou encerramento técnico das demandas vencidas.",
       });
     }
 
     if (resumo.criticas > 0) {
       recomendacoes.push({
         prioridade: "Alta",
-        titulo: "Priorizar demandas criticas abertas",
-        descricao: `Foram identificadas ${resumo.criticas} demandas classificadas como criticas.`,
-        acaoSugerida: "Estabelecer sequenciamento prioritario para atividades criticas ainda abertas.",
+        titulo: "Priorizar demandas críticas abertas",
+        descricao: `Foram identificadas ${resumo.criticas} demandas classificadas como críticas.`,
+        acaoSugerida: "Estabelecer sequenciamento prioritário para atividades críticas ainda abertas.",
+      });
+    }
+
+    if (prioridades?.altasVencidas > 0) {
+      recomendacoes.push({
+        prioridade: "Alta",
+        titulo: "Tratar prioridades altas vencidas",
+        descricao: `Existem ${prioridades.altasVencidas} demandas de prioridade alta vencidas no recorte analisado.`,
+        acaoSugerida:
+          "Revisar imediatamente a programação, confirmar restrições de campo e definir plano de regularização com o planejador responsável.",
+      });
+    }
+
+    if (prioridades?.altasCriticas > 0) {
+      recomendacoes.push({
+        prioridade: "Alta",
+        titulo: "Priorizar demandas altas e críticas",
+        descricao: `Foram identificadas ${prioridades.altasCriticas} demandas simultaneamente de prioridade alta e criticidade elevada.`,
+        acaoSugerida:
+          "Tratar como pauta prioritária na reunião de planejamento, avaliando janela, material, recurso e risco operacional.",
       });
     }
 
     if (planejamento.diasComMaiorCarga[0]?.quantidade > 10) {
       recomendacoes.push({
         prioridade: "Media",
-        titulo: "Redistribuir concentracao de carga",
-        descricao: "Ha concentracao relevante de atividades em dias especificos da programacao.",
-        acaoSugerida: "Avaliar redistribuicao da carga para reduzir risco de saturacao operacional.",
+        titulo: "Redistribuir concentração de carga",
+        descricao: "Há concentração relevante de atividades em dias específicos da programação.",
+        acaoSugerida: "Avaliar redistribuição da carga para reduzir risco de saturação operacional.",
       });
     }
 
@@ -1679,9 +1926,9 @@
     if (tolerancias.foraJanela > 0) {
       recomendacoes.push({
         prioridade: "Media",
-        titulo: "Revisar planejamento fora da tolerancia",
+        titulo: "Revisar planejamento fora da tolerância",
         descricao: `Foram encontradas ${tolerancias.foraJanela} demandas planejadas fora da janela permitida.`,
-        acaoSugerida: "Revisar datas planejadas e ajustar a programacao conforme a tolerancia operacional.",
+        acaoSugerida: "Revisar datas planejadas e ajustar a programação conforme a tolerância operacional.",
       });
     }
 
@@ -1689,8 +1936,8 @@
       recomendacoes.push({
         prioridade: "Alta",
         titulo: "Atribuir planejadores de curto",
-        descricao: `Ha ${planejadores.semPlanejador} demandas sem planejador de curto definido.`,
-        acaoSugerida: "Designar responsaveis para evitar perda de rastreabilidade de planejamento.",
+        descricao: `Há ${planejadores.semPlanejador} demandas sem planejador de curto definido.`,
+        acaoSugerida: "Designar responsáveis para evitar perda de rastreabilidade de planejamento.",
       });
     }
 
@@ -1702,34 +1949,34 @@
     const { resumo, centros, riscos, vencimentos, planejamento, clima } = diagnostico;
 
     paragraphs.push(
-      `A carteira filtrada possui ${resumo.total} demandas, com ${resumo.percentualPlanejado}% do volume em programacao e ${resumo.percentualRealizado}% ja realizado.`,
+      `A carteira filtrada possui ${resumo.total} demandas, com ${resumo.percentualPlanejado}% do volume em programação e ${resumo.percentualRealizado}% já realizado.`,
     );
 
     if (centros.ranking[0]) {
       paragraphs.push(
-        `O maior peso operacional esta concentrado no centro ${centros.ranking[0].centroTrabalho}, exigindo acompanhamento de capacidade e aderencia da execucao.`,
+        `O maior peso operacional está concentrado no centro ${centros.ranking[0].centroTrabalho}, exigindo acompanhamento de capacidade e aderência da execução.`,
       );
     }
 
     if (vencimentos.vencidas.length || resumo.proximasVencimento20d) {
       paragraphs.push(
-        `Foram identificadas ${vencimentos.vencidas.length} demandas vencidas e ${resumo.proximasVencimento20d} proximas do vencimento em 20 dias, indicando necessidade de priorizacao no curto prazo.`,
+        `Foram identificadas ${vencimentos.vencidas.length} demandas vencidas e ${resumo.proximasVencimento20d} próximas do vencimento em 20 dias, indicando necessidade de priorização no curto prazo.`,
       );
     }
 
     paragraphs.push(
-      `O nivel de risco consolidado do recorte foi classificado como ${riscos.nivelRisco.toLowerCase()}, com score ${riscos.scoreRiscoGeral}.`,
+      `O nível de risco consolidado do recorte foi classificado como ${riscos.nivelRisco.toLowerCase()}, com score ${riscos.scoreRiscoGeral}.`,
     );
 
     if (planejamento.diasComMaiorCarga[0]) {
       paragraphs.push(
-        `A maior concentracao de carga planejada ocorre em ${planejamento.diasComMaiorCarga[0].data}, ponto que merece avaliacao de balanceamento operacional.`,
+        `A maior concentração de carga planejada ocorre em ${planejamento.diasComMaiorCarga[0].data}, ponto que merece avaliação de balanceamento operacional.`,
       );
     }
 
     if (clima?.resumo?.altoRiscoClimatico > 0) {
       paragraphs.push(
-        `A leitura climatica identificou ${clima.resumo.altoRiscoClimatico} demandas com alta exposicao meteorologica para a janela operacional considerada.`,
+        `A leitura climática identificou ${clima.resumo.altoRiscoClimatico} demandas com alta exposição meteorológica para a janela operacional considerada.`,
       );
     }
 
@@ -1745,6 +1992,7 @@
       meta: buildMeta(rows, contexto),
       resumo: buildResumo(rows, helpers),
       status: buildStatusAnalysis(rows, helpers),
+      prioridades: buildPrioridadesAnalysis(rows, helpers),
       vencimentos: buildVencimentosAnalysis(rows, helpers),
       planejamento: buildPlanejamentoAnalysis(rows, helpers),
       centros: buildCentrosAnalysis(rows, helpers),

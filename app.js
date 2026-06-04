@@ -450,7 +450,8 @@
       return null;
     }
 
-    const workerUrl = "./workers/filter-index-worker.js?v=20260601-substatus-06";
+    const workerUrl =
+      "./workers/filter-index-worker.js?v=20260601-substatus-06";
     const payload = {
       demandas,
       definitions: FILTER_DEFINITIONS,
@@ -550,7 +551,9 @@
         temControleSupabase: true,
       }),
     );
-    const index = state.db.demandas.findIndex((item) => item.id === normalized.id);
+    const index = state.db.demandas.findIndex(
+      (item) => item.id === normalized.id,
+    );
 
     if (index >= 0) {
       state.db.demandas[index] = normalized;
@@ -950,7 +953,13 @@
     const dueClasses = dueClassesOf(demand);
     return (
       dueClasses.find((item) =>
-        ["Antecipado", "Fora do Prazo", "No Prazo", "Vencido", "Vence em 20d"].includes(item),
+        [
+          "Antecipado",
+          "Fora do Prazo",
+          "No Prazo",
+          "Vencido",
+          "Vence em 20d",
+        ].includes(item),
       ) || ""
     );
   }
@@ -1080,7 +1089,8 @@
     if (demand?.semVinculoOperacional === true) return true;
 
     const status = primaryStatusOf(demand);
-    const hasPlanningStatus = status === "Planejado" || status === "Replanejado";
+    const hasPlanningStatus =
+      status === "Planejado" || status === "Replanejado";
     const id = String(demand?.id || "").trim();
     const ordem = String(demand?.ordem || "").trim();
     const sourcePresence = state.cache.sourcePresence || {};
@@ -1108,7 +1118,8 @@
     if (!demand) return demand;
 
     const status = primaryStatusOf(demand);
-    const hasPlanningStatus = status === "Planejado" || status === "Replanejado";
+    const hasPlanningStatus =
+      status === "Planejado" || status === "Replanejado";
     const id = String(demand.id || "").trim();
     const ordem = String(demand.ordem || "").trim();
     const sourcePresence = state.cache.sourcePresence || {};
@@ -1143,7 +1154,9 @@
     const due = toDate(demand.vencimento);
     const min = toDate(demand.toleranciaMin);
     const max = toDate(demand.toleranciaMax);
-    const realized = hasRealizedDate(demand) ? toDate(demand.dataRealizada) : null;
+    const realized = hasRealizedDate(demand)
+      ? toDate(demand.dataRealizada)
+      : null;
     const referenceLimit = max || due;
 
     if (realized) {
@@ -1181,7 +1194,10 @@
   function sanitizeSubstatusIndexes(indexes = {}) {
     const next = { ...(indexes || {}) };
     const source = indexes?.substatus;
-    const entries = source instanceof Map ? Array.from(source.entries()) : Object.entries(source || {});
+    const entries =
+      source instanceof Map
+        ? Array.from(source.entries())
+        : Object.entries(source || {});
     const target = new Map();
 
     entries.forEach(([rawKey, ids]) => {
@@ -1413,8 +1429,10 @@
     overlay.setAttribute("aria-hidden", "false");
     titleElement && (titleElement.textContent = title);
     messageElement && (messageElement.textContent = message);
-    percentElement && (percentElement.textContent = `${Math.max(0, Math.min(100, Math.round(percent)))}%`);
-    progressBar && (progressBar.style.width = `${Math.max(0, Math.min(100, percent))}%`);
+    percentElement &&
+      (percentElement.textContent = `${Math.max(0, Math.min(100, Math.round(percent)))}%`);
+    progressBar &&
+      (progressBar.style.width = `${Math.max(0, Math.min(100, percent))}%`);
     metaElement && (metaElement.textContent = meta);
   }
 
@@ -2601,7 +2619,9 @@
   }
 
   function buildBasePortfolioCache(baseSources) {
-    const mapaItensLineares = buildItensLinearesMap(baseSources.itensLineares || []);
+    const mapaItensLineares = buildItensLinearesMap(
+      baseSources.itensLineares || [],
+    );
     const carteiraBase = mergeBaseOrdensEFuturas(
       baseSources.baseOrdens,
       baseSources.baseFuturas,
@@ -2649,8 +2669,9 @@
     }
 
     const cacheKey = processedBaseCacheKey();
-    const persistentProcessedBase =
-      !force ? await readProcessedBaseCache(cacheKey) : null;
+    const persistentProcessedBase = !force
+      ? await readProcessedBaseCache(cacheKey)
+      : null;
 
     if (persistentProcessedBase) {
       onStage?.("Reutilizando base consolidada local...");
@@ -2827,86 +2848,142 @@
   }
 
   function normalizeScopeValue(value) {
-    return normalizeCentroTrabalho(value).replace(/\s+/g, " ");
+    return normalizeCentroTrabalho(value)
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
   }
 
-  function centroResponsabilidadeNivel(cadastro) {
-    const nivel = normalizeText(cadastro?.nivelResponsabilidade || "");
-    if (nivel.includes("GERENCIA")) return "gerencia";
-    if (nivel.includes("SUPERVISAO")) return "supervisao";
-    if (nivel.includes("CENTRO")) return "centro";
-    if (cadastro?.centroTrabalho || cadastro?.centroTrabalhoChave)
-      return "centro";
-    if (cadastro?.supervisao) return "supervisao";
-    return "gerencia";
-  }
-
-  function centroResponsabilidadeChave(cadastro) {
-    const chaveInformada = normalizeScopeValue(cadastro?.centroTrabalhoChave);
-    if (/^(CENTRO|SUPERVISAO|GERENCIA)::/.test(chaveInformada)) {
-      return chaveInformada;
+  function buildResponsabilidadeScopeKey({
+    nivel,
+    gerencia,
+    supervisao,
+    centroTrabalho,
+  }) {
+    if (nivel === "gerencia") {
+      return `GERENCIA::${normalizeScopeValue(gerencia)}`;
     }
-    const nivel = centroResponsabilidadeNivel(cadastro);
-    const gerencia = normalizeScopeValue(cadastro?.gerencia);
-    const supervisao = normalizeScopeValue(cadastro?.supervisao);
-    const centro = normalizeScopeValue(
-      chaveInformada || cadastro?.centroTrabalho,
+
+    if (nivel === "supervisao") {
+      return `SUPERVISAO::${normalizeScopeValue(gerencia)}::${normalizeScopeValue(supervisao)}`;
+    }
+
+    return `CENTRO::${normalizeScopeValue(centroTrabalho)}`;
+  }
+
+  function responsavelNivelRotulo(nivel) {
+    const value = String(nivel || "").toLowerCase();
+
+    if (value === "gerencia") return "Gerência";
+    if (value === "supervisao") return "Supervisão";
+
+    return "Centro";
+  }
+
+  function responsavelPlanejamentoRotulo(item) {
+    const nivel = String(item?.nivel || "centro").toLowerCase();
+
+    if (nivel === "gerencia") return item?.gerencia || "-";
+    if (nivel === "supervisao") return item?.supervisao || "-";
+
+    return item?.centroTrabalho || "-";
+  }
+
+  function findResponsavelPlanejamentoForDemanda(demanda, mapaResponsaveis) {
+    const keys = [
+      buildResponsabilidadeScopeKey({
+        nivel: "centro",
+        centroTrabalho: demanda.centroTrabalho,
+      }),
+      buildResponsabilidadeScopeKey({
+        nivel: "supervisao",
+        gerencia: demanda.gerencia,
+        supervisao: demanda.supervisao,
+      }),
+      buildResponsabilidadeScopeKey({
+        nivel: "gerencia",
+        gerencia: demanda.gerencia,
+      }),
+    ];
+
+    for (const key of keys) {
+      const found = mapaResponsaveis.get(key);
+
+      if (found && found.ativo !== false) {
+        return found;
+      }
+    }
+
+    return null;
+  }
+
+  function centroCadastroChave(centro) {
+    return normalizeCentroTrabalho(
+      centro?.centroTrabalhoChave || centro?.centroTrabalho || "",
+    );
+  }
+
+  function enrichDemandWithCentroTrabalho(
+    demanda,
+    mapaCentros,
+    mapaResponsaveis = new Map(),
+  ) {
+    const chaveCentro = normalizeCentroTrabalho(demanda.centroTrabalho);
+    const cadastroCentro =
+      mapaCentros.get(chaveCentro) ||
+      mapaCentros.get(`CENTRO::${normalizeScopeValue(demanda.centroTrabalho)}`);
+
+    const responsavel = findResponsavelPlanejamentoForDemanda(
+      demanda,
+      mapaResponsaveis,
     );
 
-    if (nivel === "centro") return `CENTRO::${centro}`;
-    if (nivel === "supervisao") return `SUPERVISAO::${gerencia}::${supervisao}`;
-    return `GERENCIA::${gerencia}`;
-  }
+    const centroCadastrado = !!cadastroCentro;
 
-  function findResponsabilidadeForDemand(demanda, cadastros) {
-    const gerencia = normalizeScopeValue(demanda.gerencia);
-    const supervisao = normalizeScopeValue(demanda.supervisao);
-    const centro = normalizeScopeValue(demanda.centroTrabalho);
-    const candidates = [
-      `CENTRO::${centro}`,
-      `SUPERVISAO::${gerencia}::${supervisao}`,
-      `GERENCIA::${gerencia}`,
-    ];
-    return candidates.map((key) => cadastros.get(key)).find(Boolean);
-  }
+    const base = {
+      ...demanda,
 
-  function enrichDemandWithCentroTrabalho(demanda, mapaCentros) {
-    const chaveCentro = normalizeCentroTrabalho(demanda.centroTrabalho);
-    const cadastro = findResponsabilidadeForDemand(demanda, mapaCentros);
+      gerencia:
+        cadastroCentro?.gerencia ||
+        responsavel?.gerencia ||
+        demanda.gerencia ||
+        "",
+      supervisao:
+        cadastroCentro?.supervisao ||
+        responsavel?.supervisao ||
+        demanda.supervisao ||
+        "",
 
-    if (!cadastro) {
-      return {
-        ...demanda,
-        centroTrabalhoChave: chaveCentro,
-        centroTrabalhoCadastrado: !chaveCentro ? null : false,
-        centroTrabalhoStatus: !chaveCentro ? "Sem centro" : "Nao cadastrado",
-      };
+      centroTrabalhoChave: cadastroCentro?.centroTrabalhoChave || chaveCentro,
+
+      centroTrabalhoCadastrado: !chaveCentro ? null : centroCadastrado,
+      centroTrabalhoStatus: !chaveCentro
+        ? "Sem centro"
+        : centroCadastrado
+          ? "Cadastrado"
+          : "Nao cadastrado",
+    };
+
+    if (!responsavel) {
+      return base;
     }
 
     return {
-      ...demanda,
+      ...base,
 
-      // Se a base SAP já vier com gerência/supervisão, você pode escolher manter ou sobrescrever.
-      // Aqui estou sobrescrevendo pelo Supabase, porque ele vira a fonte oficial.
-      gerencia: cadastro.gerencia || demanda.gerencia || "",
-      supervisao: cadastro.supervisao || demanda.supervisao || "",
+      planejadorCurto: responsavel.planejadorCurto || "",
+      planejadorCurtoEmail: responsavel.planejadorCurtoEmail || "",
+      planejadorCurtoMatricula: responsavel.planejadorCurtoMatricula || "",
 
-      planejadorCurto: cadastro.planejadorCurto || "",
-      planejadorCurtoEmail: cadastro.planejadorCurtoEmail || "",
-      planejadorCurtoMatricula: cadastro.planejadorCurtoMatricula || "",
+      planejadorOM: responsavel.planejadorOM || "",
+      planejadorOMEmail: responsavel.planejadorOMEmail || "",
+      planejadorOMMatricula: responsavel.planejadorOMMatricula || "",
 
-      planejadorOM: cadastro.planejadorOM || "",
-      planejadorOMEmail: cadastro.planejadorOMEmail || "",
-      planejadorOMMatricula: cadastro.planejadorOMMatricula || "",
+      programador: responsavel.programador || "",
+      programadorEmail: responsavel.programadorEmail || "",
+      programadorMatricula: responsavel.programadorMatricula || "",
 
-      programador: cadastro.programador || "",
-      programadorEmail: cadastro.programadorEmail || "",
-      programadorMatricula: cadastro.programadorMatricula || "",
-
-      centroTrabalhoChave: cadastro.centroTrabalhoChave || chaveCentro,
-      centroTrabalhoCadastrado: true,
-      centroTrabalhoStatus: "Cadastrado",
-      centroResponsabilidadeNivel: centroResponsabilidadeNivel(cadastro),
+      responsavelPlanejamentoNivel: responsavel.nivel || "centro",
+      responsavelPlanejamentoChave: responsavel.scopeKey || "",
     };
   }
 
@@ -2931,16 +3008,41 @@
       state.repo.getAll(),
     );
 
-    const mapaCentrosTrabalho = new Map(
-      (supabaseData.centrosTrabalho || [])
+    const mapaCentrosTrabalho = new Map();
+
+    (supabaseData.centrosTrabalho || [])
+      .filter((item) => item.ativo !== false)
+      .forEach((item) => {
+        const chaveNormal = centroCadastroChave(item);
+        const chaveCentro = `CENTRO::${normalizeScopeValue(item.centroTrabalho)}`;
+
+        if (chaveNormal) mapaCentrosTrabalho.set(chaveNormal, item);
+        if (chaveCentro) mapaCentrosTrabalho.set(chaveCentro, item);
+      });
+
+    const mapaResponsaveisPlanejamento = new Map(
+      (supabaseData.responsaveisPlanejamento || [])
         .filter((item) => item.ativo !== false)
-        .map((item) => [centroResponsabilidadeChave(item), item]),
+        .map((item) => [
+          item.scopeKey ||
+            buildResponsabilidadeScopeKey({
+              nivel: item.nivel,
+              gerencia: item.gerencia,
+              supervisao: item.supervisao,
+              centroTrabalho: item.centroTrabalho,
+            }),
+          item,
+        ]),
     );
 
     onStage?.("Validando centros e responsáveis...");
     const baseEnriquecida = perf.measure("db:enrich-base-centros", () =>
       basePortfolio.demandas.map((demanda) =>
-        enrichDemandWithCentroTrabalho(demanda, mapaCentrosTrabalho),
+        enrichDemandWithCentroTrabalho(
+          demanda,
+          mapaCentrosTrabalho,
+          mapaResponsaveisPlanejamento,
+        ),
       ),
     );
 
@@ -2959,6 +3061,7 @@
         baseIds,
         deltasById,
         mapaCentrosTrabalho,
+        mapaResponsaveisPlanejamento,
       }),
     );
 
@@ -2983,9 +3086,13 @@
           annotateDemandOperationalFlags(
             enrichDemandWithCentroTrabalho(
               {
-                ...enrichDemandWithItemLinear(item, basePortfolio.mapaItensLineares, {
-                  preencherDescricaoSeVazia: true,
-                }),
+                ...enrichDemandWithItemLinear(
+                  item,
+                  basePortfolio.mapaItensLineares,
+                  {
+                    preencherDescricaoSeVazia: true,
+                  },
+                ),
                 temControleSupabase: true,
               },
               mapaCentrosTrabalho,
@@ -3005,6 +3112,7 @@
       qualityBaseRealizados: baseSources.baseRealizados || [],
       usuarios: supabaseData.usuarios || [],
       centrosTrabalho: supabaseData.centrosTrabalho || [],
+      responsaveisPlanejamento: supabaseData.responsaveisPlanejamento || [],
       feriasSubstituicoes: supabaseData.feriasSubstituicoes || [],
       configuracoes: supabaseData.configuracoes || {},
       parametros: supabaseData.parametros || {},
@@ -3099,6 +3207,7 @@
     baseIds,
     deltasById,
     mapaCentrosTrabalho,
+    mapaResponsaveisPlanejamento,
   }) {
     const baseRecords = [
       ...baseOrdens.map((item, index) =>
@@ -3143,6 +3252,7 @@
               item.qualidadeIdInformado || item.idDemandaInformado || "",
           },
           mapaCentrosTrabalho,
+          mapaResponsaveisPlanejamento,
         ),
       );
     });
@@ -3799,7 +3909,8 @@
 
     const indexes = state.cache.filterIndexes || {};
     const meta = indexes.__meta || {};
-    const allDemandIds = meta.allDemandIds || state.db?.demandas?.map((item) => item.id) || [];
+    const allDemandIds =
+      meta.allDemandIds || state.db?.demandas?.map((item) => item.id) || [];
     let candidateIds = null;
 
     FILTER_DEFINITIONS.forEach((definition) => {
@@ -4037,7 +4148,10 @@
     }
 
     if (footerHost) {
-      const hiddenCount = Math.max(0, orderedOptions.length - visibleOptions.length);
+      const hiddenCount = Math.max(
+        0,
+        orderedOptions.length - visibleOptions.length,
+      );
       footerHost.innerHTML = hiddenCount
         ? `
           <div class="multi-footer-meta">Mostrando ${visibleOptions.length} de ${orderedOptions.length}</div>
@@ -4143,7 +4257,8 @@
   function collectIndicatorFilters() {
     const filters = {};
     $$("[data-indicator-multi-filter]").forEach((field) => {
-      filters[field.dataset.indicatorMultiFilter] = selectedValuesFromMultiHost(field);
+      filters[field.dataset.indicatorMultiFilter] =
+        selectedValuesFromMultiHost(field);
     });
     filters.quickSearch = $("#indicatorQuickSearch")?.value.trim() || "";
     state.indicatorFilters = filters;
@@ -7094,7 +7209,8 @@
       });
     }
 
-    if (context.action === "planejar") appendHistoryLocally("planejamento", savedHistory);
+    if (context.action === "planejar")
+      appendHistoryLocally("planejamento", savedHistory);
     if (context.action === "replanejar")
       appendHistoryLocally("replanejamento", savedHistory);
     if (context.action === "realizado")
@@ -8858,7 +8974,10 @@
 
   function summarizeIndicatorDemands(demands) {
     const cacheKey = `${state.cache.indicatorFilterKey}:${demands.length}`;
-    if (state.cache.indicatorSummaryKey === cacheKey && state.cache.indicatorSummary) {
+    if (
+      state.cache.indicatorSummaryKey === cacheKey &&
+      state.cache.indicatorSummary
+    ) {
       return state.cache.indicatorSummary;
     }
 
@@ -8879,7 +8998,8 @@
 
       gerenciaCounts[gerencia] = (gerenciaCounts[gerencia] || 0) + 1;
       tipoOmCounts[tipoOm] = (tipoOmCounts[tipoOm] || 0) + 1;
-      competenciaCounts[competencia] = (competenciaCounts[competencia] || 0) + 1;
+      competenciaCounts[competencia] =
+        (competenciaCounts[competencia] || 0) + 1;
 
       if (item.dataReplanejadaAtual) {
         const supervisao = item.supervisao || "Não informado";
@@ -8920,12 +9040,7 @@
     return result;
   }
 
-  function updateIndicatorHero({
-    adherenceRate,
-    stats,
-    overdue,
-    dueSoon,
-  }) {
+  function updateIndicatorHero({ adherenceRate, stats, overdue, dueSoon }) {
     const spotlightMetric = $("#indicatorSpotlightMetric");
     const spotlightNote = $("#indicatorSpotlightNote");
     const spotlightMeta = $("#indicatorSpotlightMeta");
@@ -10057,33 +10172,34 @@
 
   function renderCentrosTrabalhoAdmin() {
     const centros = state.db.centrosTrabalho || [];
+    const responsaveis = state.db.responsaveisPlanejamento || [];
     const centrosNaoCadastrados = missingCentrosTrabalho();
 
     $("#adminContent").innerHTML = `
     <div class="admin-grid admin-grid-wide">
       <form class="admin-form" id="centroTrabalhoForm">
         <label>
-          Nivel de Responsabilidade
+          Nível de Responsabilidade
           <select name="nivelResponsabilidade">
             <option value="centro" selected>Centro de Trabalho</option>
-            <option value="supervisao">Supervisao</option>
-            <option value="gerencia">Gerencia</option>
+            <option value="supervisao">Supervisão</option>
+            <option value="gerencia">Gerência</option>
           </select>
         </label>
 
-        <label>
+        <label data-scope-field="centroTrabalho">
           Centro de Trabalho
           <input name="centroTrabalho" placeholder="Ex.: EVT-PCM-01" />
         </label>
 
-        <label>
+        <label data-scope-field="gerencia">
           Gerência
-          <input name="gerencia" required placeholder="Ex.: Gerência Eletrovia" />
+          <input name="gerencia" placeholder="Ex.: Gerência Eletrovia" />
         </label>
 
-        <label>
+        <label data-scope-field="supervisao">
           Supervisão
-          <input name="supervisao" required placeholder="Ex.: Supervisão PCM Eletrovia" />
+          <input name="supervisao" placeholder="Ex.: Supervisão PCM Eletrovia" />
         </label>
 
         <label>
@@ -10151,7 +10267,7 @@
 
         <div class="admin-form-actions span-2">
           <button class="button" type="submit">
-            Salvar Centro de Trabalho
+            Salvar Responsabilidade
           </button>
           <button
             class="button secondary"
@@ -10186,21 +10302,27 @@
             : ""
         }
         ${
-          centros.length
-            ? centros
+          responsaveis.length
+            ? responsaveis
                 .map(
                   (item) => `
                     <div class="admin-list-item">
                       <div>
-                        <strong>${escapeHtml(item.centroTrabalho || "-")}</strong>
+                        <strong>${escapeHtml(responsavelPlanejamentoRotulo(item))}</strong>
                         <div class="muted">
-                          ${escapeHtml(item.gerencia || "-")}
+                          Nível: ${escapeHtml(responsavelNivelRotulo(item.nivel))}
                           |
-                          ${escapeHtml(item.supervisao || "-")}
+                          ${escapeHtml(
+                            [
+                              item.gerencia,
+                              item.supervisao,
+                              item.centroTrabalho,
+                            ]
+                              .filter(Boolean)
+                              .join(" | ") || "-",
+                          )}
                         </div>
                         <div class="muted">
-                          Nivel: ${escapeHtml(centroResponsabilidadeNivel(item))}
-                          |
                           Planejador Curto: ${escapeHtml(item.planejadorCurto || "-")}
                           |
                           Planejador OM: ${escapeHtml(item.planejadorOM || "-")}
@@ -10214,7 +10336,7 @@
                       <button
                         class="button secondary"
                         type="button"
-                        data-edit-centro="${escapeHtml(centroResponsabilidadeChave(item))}"
+                        data-edit-responsavel="${escapeHtml(item.scopeKey)}"
                       >
                         Editar
                       </button>
@@ -10222,22 +10344,76 @@
                   `,
                 )
                 .join("")
-            : '<div class="empty-detail"><strong>Nenhum centro de trabalho cadastrado</strong><span>Cadastre o primeiro centro para enriquecer a carteira.</span></div>'
+            : '<div class="empty-detail"><strong>Nenhum responsável cadastrado</strong><span>Cadastre responsáveis por gerência, supervisão ou centro.</span></div>'
         }
       </div>
     </div>
   `;
 
-    $("#centroTrabalhoForm").addEventListener("submit", async (event) => {
+    const form = $("#centroTrabalhoForm");
+
+    function updateCentroResponsabilidadeForm(level, options = {}) {
+      const preserveHiddenValues = options.preserveHiddenValues === true;
+
+      const scope = String(level || "centro").toLowerCase();
+
+      const visibility = {
+        gerencia: true,
+        supervisao: scope === "supervisao" || scope === "centro",
+        centroTrabalho: scope === "centro",
+      };
+
+      const requiredByLevel = {
+        gerencia: true,
+        supervisao: scope === "supervisao" || scope === "centro",
+        centroTrabalho: scope === "centro",
+      };
+
+      ["gerencia", "supervisao", "centroTrabalho"].forEach((fieldName) => {
+        const label = form.querySelector(`[data-scope-field="${fieldName}"]`);
+        const input = form[fieldName];
+
+        if (!label || !input) return;
+
+        const shouldShow = visibility[fieldName] === true;
+
+        label.hidden = !shouldShow;
+        input.required = requiredByLevel[fieldName] === true;
+
+        if (!shouldShow && !preserveHiddenValues) {
+          input.value = "";
+        }
+      });
+    }
+
+    form.nivelResponsabilidade.addEventListener("change", (event) => {
+      updateCentroResponsabilidadeForm(event.currentTarget.value);
+    });
+    updateCentroResponsabilidadeForm(form.nivelResponsabilidade.value, {
+      preserveHiddenValues: true,
+    });
+
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
       const form = new FormData(event.currentTarget);
       const record = Object.fromEntries(form.entries());
+      const nivel = String(record.nivelResponsabilidade || "centro").trim();
+
+      if (!String(record.gerencia || "").trim()) {
+        showToast("Informe a gerência responsável.", "error");
+        return;
+      }
 
       if (
-        record.nivelResponsabilidade === "centro" &&
-        !String(record.centroTrabalho || "").trim()
+        (nivel === "supervisao" || nivel === "centro") &&
+        !String(record.supervisao || "").trim()
       ) {
+        showToast("Informe a supervisão responsável para esse nível.", "error");
+        return;
+      }
+
+      if (nivel === "centro" && !String(record.centroTrabalho || "").trim()) {
         showToast(
           "Informe o Centro de Trabalho para cadastro por centro.",
           "error",
@@ -10248,54 +10424,75 @@
       record.ativo = record.ativo === "true";
       record.usuario = state.currentUser.email;
 
-      await state.repo.upsertCentroTrabalho(record);
+      await state.repo.upsertResponsavelPlanejamento({
+        nivel: record.nivelResponsabilidade || "centro",
+        gerencia: record.gerencia || "",
+        supervisao: record.supervisao || "",
+        centroTrabalho: record.centroTrabalho || "",
+
+        planejadorCurto: record.planejadorCurto || "",
+        planejadorCurtoEmail: record.planejadorCurtoEmail || "",
+        planejadorCurtoMatricula: record.planejadorCurtoMatricula || "",
+
+        planejadorOM: record.planejadorOM || "",
+        planejadorOMEmail: record.planejadorOMEmail || "",
+        planejadorOMMatricula: record.planejadorOMMatricula || "",
+
+        programador: record.programador || "",
+        programadorEmail: record.programadorEmail || "",
+        programadorMatricula: record.programadorMatricula || "",
+
+        area: record.area || "",
+        observacao: record.observacao || "",
+        ativo: record.ativo,
+        usuario: state.currentUser.email,
+      });
 
       await state.repo.addLog({
         usuario: state.currentUser.email,
         acao: "Cadastro Centro de Trabalho",
-        lista: "cadastro_centros_trabalho",
+        lista: "cadastro_responsaveis_planejamento",
         referencia:
           record.centroTrabalho || record.supervisao || record.gerencia,
         detalhe: `${record.nivelResponsabilidade || "centro"} | ${record.gerencia || "-"} | ${record.supervisao || "-"}`,
         modulo: "CONFIGURACOES",
       });
 
-      await refreshAfterSave("Centro de trabalho salvo com sucesso.");
+      await refreshAfterSave("Responsabilidade salva com sucesso.");
     });
 
     $("#clearCentroTrabalhoForm").addEventListener("click", () => {
-      const form = $("#centroTrabalhoForm");
       form.reset();
       form.nivelResponsabilidade.value = "centro";
       form.ativo.value = "true";
+      updateCentroResponsabilidadeForm("centro");
       form.centroTrabalho.focus();
     });
 
     $("#adminContent").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-edit-centro]");
+      const button = event.target.closest("[data-edit-responsavel]");
       const newButton = event.target.closest("[data-new-centro]");
       if (!button && !newButton) return;
 
       if (newButton) {
-        const form = $("#centroTrabalhoForm");
         form.reset();
         form.nivelResponsabilidade.value = "centro";
+        updateCentroResponsabilidadeForm("centro");
         form.centroTrabalho.value = newButton.dataset.newCentro || "";
         form.ativo.value = "true";
         form.gerencia.focus();
         return;
       }
 
-      const centro = centros.find(
-        (item) =>
-          centroResponsabilidadeChave(item) === button.dataset.editCentro,
+      const centro = responsaveis.find(
+        (item) => item.scopeKey === button.dataset.editResponsavel,
       );
 
       if (!centro) return;
 
-      const form = $("#centroTrabalhoForm");
+      const nivelCadastro = centroResponsabilidadeNivel(centro);
 
-      form.nivelResponsabilidade.value = centroResponsabilidadeNivel(centro);
+      form.nivelResponsabilidade.value = centro.nivel || "centro";
       form.centroTrabalho.value = centro.centroTrabalho || "";
       form.gerencia.value = centro.gerencia || "";
       form.supervisao.value = centro.supervisao || "";
@@ -10312,6 +10509,10 @@
       form.area.value = centro.area || "";
       form.observacao.value = centro.observacao || "";
       form.ativo.value = centro.ativo !== false ? "true" : "false";
+
+      updateCentroResponsabilidadeForm(form.nivelResponsabilidade.value, {
+        preserveHiddenValues: true,
+      });
     });
   }
 
@@ -10513,8 +10714,8 @@
     if (!state.db.parametrosDisponiveis) {
       $("#adminContent").innerHTML = `
         <div class="empty-detail">
-          <strong>Parametros ainda nao migrados</strong>
-          <span>A tabela parametros_sistema nao existe no Supabase atual. A aba fica somente informativa para evitar gravacao falsa.</span>
+          <strong>Parâmetros ainda não migrados</strong>
+          <span>A tabela parametros_sistema não existe no Supabase atual. A aba fica somente informativa para evitar gravação falsa.</span>
         </div>
       `;
       return;
@@ -10527,7 +10728,7 @@
         <label>Biblioteca SAP BO<input name="sharePointLibrary" value="${escapeHtml(params.sharePointLibrary || "")}" /></label>
         <label>Arquivo SAP BO<input name="sapExcelFileName" value="${escapeHtml(params.sapExcelFileName || "")}" /></label>
         <label>Arquivo de Realizados SAP BO<input name="realizedExcelFileName" value="${escapeHtml(params.realizedExcelFileName || "base_realizados_sap.xlsx")}" /></label>
-        <button class="button" type="submit">Salvar ParÃ¢metros</button>
+        <button class="button" type="submit">Salvar Parâmetros</button>
       </form>
     `;
     $("#parameterForm").addEventListener("submit", async (event) => {
@@ -10537,12 +10738,12 @@
       );
       await state.repo.addLog({
         usuario: state.currentUser.email,
-        acao: "ParÃ¢metros",
+        acao: "Parâmetros",
         lista: "Parametros_Sistema",
         referencia: "Geral",
-        detalhe: "ParÃ¢metros atualizados.",
+        detalhe: "Parâmetros atualizados.",
       });
-      await refreshAfterSave("ParÃ¢metros salvos com sucesso.");
+      await refreshAfterSave("Parâmetros salvos com sucesso.");
     });
   }
 
@@ -10640,13 +10841,13 @@
         component: "Supabase",
         status: state.repo?.mode ? "OK" : "Falha",
         updatedAt: lastUpdate,
-        detail: `${state.repo?.mode || "Repositorio indisponivel"} | ${supabaseDemandas} demandas somente Supabase.`,
+        detail: `${state.repo?.mode || "Repositório indisponível"} | ${supabaseDemandas} demandas somente Supabase.`,
       },
       {
         component: "Cloudflare Worker",
         status: cloudflareUrl ? "OK" : "Alerta",
         updatedAt: lastUpdate,
-        detail: cloudflareUrl || "Worker nao informado no adaptador.",
+        detail: cloudflareUrl || "Worker não informado no adaptador.",
       },
       {
         component: "cadastro_centros_trabalho",
@@ -10663,12 +10864,12 @@
           : "Sem falhas recentes registradas em logs.",
       },
       {
-        component: "Parametros do sistema",
+        component: "Parâmetros do sistema",
         status: state.db?.parametrosDisponiveis ? "OK" : "Alerta",
         updatedAt: lastUpdate,
         detail: state.db?.parametrosDisponiveis
-          ? "Tabela de parametros disponivel."
-          : "Parametros ainda nao migrados ou indisponiveis.",
+          ? "Tabela de parâmetros disponível."
+          : "Parâmetros ainda não migrados ou indisponíveis.",
       },
     ];
   }
@@ -10754,7 +10955,9 @@
 
     const delimiter = ";";
     const formatDateForCsv = (value) =>
-      typeof formatDate === "function" ? formatDate(value) : String(value ?? "");
+      typeof formatDate === "function"
+        ? formatDate(value)
+        : String(value ?? "");
     const formatDateTimeForCsv = (value) =>
       typeof formatDateTime === "function"
         ? formatDateTime(value)
@@ -11234,7 +11437,9 @@
       closeFutureDemandDialog,
     );
     $("#futureDemandList").addEventListener("click", (event) => {
-      const toggleCardButton = event.target.closest("[data-toggle-future-card]");
+      const toggleCardButton = event.target.closest(
+        "[data-toggle-future-card]",
+      );
 
       if (toggleCardButton) {
         toggleFutureCardExpanded(toggleCardButton.dataset.toggleFutureCard);
@@ -11765,4 +11970,3 @@
 
   document.addEventListener("DOMContentLoaded", init);
 })(window, document);
-

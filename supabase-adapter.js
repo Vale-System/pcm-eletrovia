@@ -19,6 +19,7 @@
     cargasLoteItens: "cargas_lote_itens",
     evidencias: "evidencias",
     centrosTrabalho: "cadastro_centros_trabalho",
+    responsaveisPlanejamento: "cadastro_responsaveis_planejamento",
     feriasSubstituicoes: "ferias_substituicoes",
     // parametros: "parametros_sistema",
   };
@@ -188,7 +189,7 @@
 
       if (signature === previousSignature) {
         throw new Error(
-          `PaginaÃ§Ã£o repetida ao carregar ${table}. Verifique limit/offset no Worker.`,
+          `Paginação repetida ao carregar ${table}. Verifique limit/offset no Worker.`,
         );
       }
 
@@ -423,26 +424,77 @@
       .trim();
   }
 
+  function inferNivelResponsabilidadeFromChave(chave) {
+    const value = String(chave || "")
+      .toUpperCase()
+      .trim();
+
+    if (value.startsWith("GERENCIA::")) return "gerencia";
+    if (value.startsWith("SUPERVISAO::")) return "supervisao";
+    if (value.startsWith("CENTRO::")) return "centro";
+
+    return "centro";
+  }
+
   function mapCentroTrabalho(row) {
+    const centroTrabalhoChave = row.centro_trabalho_chave || "";
+
     return {
       id: row.id,
       centroTrabalho: row.centro_trabalho || "",
-      centroTrabalhoChave: row.centro_trabalho_chave || "",
-      nivelResponsabilidade: row.nivel_responsabilidade || "",
+      centroTrabalhoChave,
+      nivelResponsabilidade:
+        inferNivelResponsabilidadeFromChave(centroTrabalhoChave),
+
       gerencia: row.gerencia || "",
       supervisao: row.supervisao || "",
+
       planejadorCurto: row.planejador_curto || "",
       planejadorCurtoEmail: row.planejador_curto_email || "",
       planejadorCurtoMatricula: row.planejador_curto_matricula || "",
+
       planejadorOM: row.planejador_om || "",
       planejadorOMEmail: row.planejador_om_email || "",
       planejadorOMMatricula: row.planejador_om_matricula || "",
+
       programador: row.programador || "",
       programadorEmail: row.programador_email || "",
       programadorMatricula: row.programador_matricula || "",
+
       area: row.area || "",
       observacao: row.observacao || "",
       ativo: row.ativo !== false,
+    };
+  }
+
+  function mapResponsavelPlanejamento(row) {
+    return {
+      id: row.id,
+      nivel: row.nivel || "centro",
+      scopeKey: row.scope_key || "",
+
+      gerencia: row.gerencia || "",
+      supervisao: row.supervisao || "",
+      centroTrabalho: row.centro_trabalho || "",
+
+      planejadorCurto: row.planejador_curto || "",
+      planejadorCurtoEmail: row.planejador_curto_email || "",
+      planejadorCurtoMatricula: row.planejador_curto_matricula || "",
+
+      planejadorOM: row.planejador_om || "",
+      planejadorOMEmail: row.planejador_om_email || "",
+      planejadorOMMatricula: row.planejador_om_matricula || "",
+
+      programador: row.programador || "",
+      programadorEmail: row.programador_email || "",
+      programadorMatricula: row.programador_matricula || "",
+
+      area: row.area || "",
+      observacao: row.observacao || "",
+      ativo: row.ativo !== false,
+
+      createdAt: row.created_at || "",
+      updatedAt: row.updated_at || "",
     };
   }
 
@@ -542,6 +594,32 @@
     };
   }
 
+  function normalizeResponsabilidadeKey(value) {
+    return String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+
+  function buildResponsabilidadeScopeKey({
+    nivel,
+    gerencia,
+    supervisao,
+    centroTrabalho,
+  }) {
+    if (nivel === "gerencia") {
+      return `GERENCIA::${normalizeResponsabilidadeKey(gerencia)}`;
+    }
+
+    if (nivel === "supervisao") {
+      return `SUPERVISAO::${normalizeResponsabilidadeKey(gerencia)}::${normalizeResponsabilidadeKey(supervisao)}`;
+    }
+
+    return `CENTRO::${normalizeResponsabilidadeKey(centroTrabalho)}`;
+  }
+
   class SupabaseRepository {
     constructor() {
       this.mode = "Banco de Dados";
@@ -598,144 +676,163 @@
       }
 
       this._pendingAll = (async () => {
-      const [
-        demandas,
-        usuarios,
-        motivos,
-        justificativas,
-        perfisPerda,
-        justificativasPerda,
-        historicoPlanejamento,
-        historicoReplanejamento,
-        historicoRealizadoPerdas,
-        logs,
-        centrosTrabalho,
-        feriasSubstituicoes,
-      ] = await Promise.all([
-        selectAll(
-          TABLES.controle,
-          [
-            "select=",
+        const [
+          demandas,
+          usuarios,
+          motivos,
+          justificativas,
+          perfisPerda,
+          justificativasPerda,
+          historicoPlanejamento,
+          historicoReplanejamento,
+          historicoRealizadoPerdas,
+          logs,
+          centrosTrabalho,
+          responsaveisPlanejamento,
+          feriasSubstituicoes,
+        ] = await Promise.all([
+          selectAll(
+            TABLES.controle,
             [
-              "id_demanda_controle",
-              "ordem_sap",
-              "tipo_demanda",
-              "descricao",
-              "gerencia",
-              "centro_trabalho",
-              "local_instalacao",
-              "vencimento",
-              "competencia",
-              "tipo_om",
-              "prioridade",
-              "critico",
-              "status_sistema",
-              "status_usuario",
-              "tolerancia_min",
-              "tolerancia_max",
-              "data_planejada",
-              "data_replanejada",
-              "data_realizada",
-              "status_operacional",
-              "substatus_operacional",
-              "perda",
-              "motivo_perda",
-              "justificativa_perda",
-              "comentario",
-              "usuario_responsavel",
-              "data_ultima_atualizacao",
-              "updated_at",
-              "origem_informacao",
-              "fonte_registro",
-              "quantidade_replanejamentos",
-              "frequencia",
-              "observacao",
-              "vinculada_em",
-            ].join(","),
-            "&ativo=eq.true&order=id_demanda_controle.asc",
-          ].join(""),
-        ),
-        selectAll(TABLES.usuarios, "select=*&ativo=eq.true"),
-        selectAll(
-          TABLES.motivos,
-          "select=*&ativo=eq.true&order=ordem_exibicao.asc",
-        ),
-        selectAll(
-          TABLES.justificativas,
-          "select=*&ativo=eq.true&order=ordem_exibicao.asc",
-        ),
-        selectAll(
-          TABLES.perfisPerda,
-          "select=*&ativo=eq.true&order=ordem_exibicao.asc",
-        ),
-        selectAll(
-          TABLES.justificativasPerda,
-          "select=*&ativo=eq.true&order=ordem_exibicao.asc",
-        ),
-        selectAll(
-          TABLES.historicoPlanejamento,
-          "select=*&order=data_hora_alteracao.desc&limit=2000",
-        ),
-        selectAll(
-          TABLES.historicoReplanejamento,
-          "select=*&order=data_hora_alteracao.desc&limit=2000",
-        ),
-        selectAll(
-          TABLES.historicoRealizadoPerdas,
-          "select=*&order=data_hora_registro.desc&limit=2000",
-        ),
-        selectAll(TABLES.logs, "select=*&order=data_hora.desc&limit=500"),
-        selectAll(TABLES.centrosTrabalho, "select=*&order=centro_trabalho.asc"),
-        selectAllOptional(
-          TABLES.feriasSubstituicoes,
-          "select=*&order=data_inicio.desc",
-        ),
-      ]);
+              "select=",
+              [
+                "id_demanda_controle",
+                "ordem_sap",
+                "tipo_demanda",
+                "descricao",
+                "gerencia",
+                "centro_trabalho",
+                "local_instalacao",
+                "vencimento",
+                "competencia",
+                "tipo_om",
+                "prioridade",
+                "critico",
+                "status_sistema",
+                "status_usuario",
+                "tolerancia_min",
+                "tolerancia_max",
+                "data_planejada",
+                "data_replanejada",
+                "data_realizada",
+                "status_operacional",
+                "substatus_operacional",
+                "perda",
+                "motivo_perda",
+                "justificativa_perda",
+                "comentario",
+                "usuario_responsavel",
+                "data_ultima_atualizacao",
+                "updated_at",
+                "origem_informacao",
+                "fonte_registro",
+                "quantidade_replanejamentos",
+                "frequencia",
+                "observacao",
+                "vinculada_em",
+              ].join(","),
+              "&ativo=eq.true&order=id_demanda_controle.asc",
+            ].join(""),
+          ),
+          selectAll(TABLES.usuarios, "select=*&ativo=eq.true"),
+          selectAll(
+            TABLES.motivos,
+            "select=*&ativo=eq.true&order=ordem_exibicao.asc",
+          ),
+          selectAll(
+            TABLES.justificativas,
+            "select=*&ativo=eq.true&order=ordem_exibicao.asc",
+          ),
+          selectAll(
+            TABLES.perfisPerda,
+            "select=*&ativo=eq.true&order=ordem_exibicao.asc",
+          ),
+          selectAll(
+            TABLES.justificativasPerda,
+            "select=*&ativo=eq.true&order=ordem_exibicao.asc",
+          ),
+          selectAll(
+            TABLES.historicoPlanejamento,
+            "select=*&order=data_hora_alteracao.desc&limit=2000",
+          ),
+          selectAll(
+            TABLES.historicoReplanejamento,
+            "select=*&order=data_hora_alteracao.desc&limit=2000",
+          ),
+          selectAll(
+            TABLES.historicoRealizadoPerdas,
+            "select=*&order=data_hora_registro.desc&limit=2000",
+          ),
+          selectAll(TABLES.logs, "select=*&order=data_hora.desc&limit=500"),
+          selectAll(TABLES.centrosTrabalho, "select=*"),
+          selectAllOptional(TABLES.responsaveisPlanejamento, "select=*"),
+          selectAllOptional(
+            TABLES.feriasSubstituicoes,
+            "select=*&order=data_inicio.desc",
+          ),
+        ]);
 
-      const parametrosMap = {};
+        const parametrosMap = {};
 
-      const payload = {
-        demandas: demandas.map(mapControleToDemand),
-        usuarios: usuarios.map(mapUser),
-        centrosTrabalho: centrosTrabalho.map(mapCentroTrabalho),
-        configuracoes: {
-          motivos: motivos.map((item) => ({
-            id: item.chave,
-            nome: item.motivo,
-            ativo: item.ativo !== false,
-          })),
-          justificativas: justificativas.map((item) => ({
-            id: item.chave,
-            motivoId: item.motivo_chave,
-            nome: item.justificativa,
-            ativo: item.ativo !== false,
-          })),
-          perfisPerda: perfisPerda.map((item) => ({
-            id: item.chave,
-            nome: item.perfil_perda,
-            ativo: item.ativo !== false,
-          })),
-          justificativasPerda: justificativasPerda.map((item) => ({
-            id: item.chave,
-            perfilId: item.perfil_chave,
-            nome: item.justificativa_perda,
-            ativo: item.ativo !== false,
-          })),
-        },
-        parametros: parametrosMap,
-        parametrosDisponiveis: false,
-        historicoPlanejamento: historicoPlanejamento.map(
-          mapHistoricoPlanejamento,
-        ),
-        historicoReplanejamento: historicoReplanejamento.map(
-          mapHistoricoReplanejamento,
-        ),
-        historicoRealizadoPerdas: historicoRealizadoPerdas.map(
-          mapHistoricoRealizadoPerda,
-        ),
-        feriasSubstituicoes: feriasSubstituicoes.map(mapFeriasSubstituicao),
-        logs: logs.map(mapLog),
-      };
+        const payload = {
+          demandas: demandas.map(mapControleToDemand),
+          usuarios: usuarios.map(mapUser),
+          centrosTrabalho: centrosTrabalho
+            .map(mapCentroTrabalho)
+            .sort((a, b) =>
+              normalizeCentroTrabalho(
+                a.centroTrabalhoChave || a.centroTrabalho,
+              ).localeCompare(
+                normalizeCentroTrabalho(
+                  b.centroTrabalhoChave || b.centroTrabalho,
+                ),
+              ),
+            ),
+          responsaveisPlanejamento: responsaveisPlanejamento
+            .map(mapResponsavelPlanejamento)
+            .sort((a, b) =>
+              normalizeCentroTrabalho(a.scopeKey).localeCompare(
+                normalizeCentroTrabalho(b.scopeKey),
+              ),
+            ),
+          configuracoes: {
+            motivos: motivos.map((item) => ({
+              id: item.chave,
+              nome: item.motivo,
+              ativo: item.ativo !== false,
+            })),
+            justificativas: justificativas.map((item) => ({
+              id: item.chave,
+              motivoId: item.motivo_chave,
+              nome: item.justificativa,
+              ativo: item.ativo !== false,
+            })),
+            perfisPerda: perfisPerda.map((item) => ({
+              id: item.chave,
+              nome: item.perfil_perda,
+              ativo: item.ativo !== false,
+            })),
+            justificativasPerda: justificativasPerda.map((item) => ({
+              id: item.chave,
+              perfilId: item.perfil_chave,
+              nome: item.justificativa_perda,
+              ativo: item.ativo !== false,
+            })),
+          },
+          parametros: parametrosMap,
+          parametrosDisponiveis: false,
+          historicoPlanejamento: historicoPlanejamento.map(
+            mapHistoricoPlanejamento,
+          ),
+          historicoReplanejamento: historicoReplanejamento.map(
+            mapHistoricoReplanejamento,
+          ),
+          historicoRealizadoPerdas: historicoRealizadoPerdas.map(
+            mapHistoricoRealizadoPerda,
+          ),
+          feriasSubstituicoes: feriasSubstituicoes.map(mapFeriasSubstituicao),
+          logs: logs.map(mapLog),
+        };
 
         this._allCache = payload;
         this._allCacheAt = Date.now();
@@ -1204,34 +1301,87 @@
       };
     }
     async upsertCentroTrabalho(record) {
-      const nivelResponsabilidade = String(
-        record.nivelResponsabilidade ||
-          record.nivel_responsabilidade ||
-          "centro",
-      )
-        .trim()
-        .toLowerCase();
       const centroTrabalho = String(record.centroTrabalho || "").trim();
       const gerencia = String(record.gerencia || "").trim();
       const supervisao = String(record.supervisao || "").trim();
 
-      if (nivelResponsabilidade === "centro" && !centroTrabalho) {
+      if (!centroTrabalho) {
         throw new Error("Centro de trabalho é obrigatório.");
       }
 
-      const scopeKey =
-        nivelResponsabilidade === "gerencia"
-          ? `GERENCIA::${normalizeCentroTrabalho(gerencia)}`
-          : nivelResponsabilidade === "supervisao"
-            ? `SUPERVISAO::${normalizeCentroTrabalho(gerencia)}::${normalizeCentroTrabalho(supervisao)}`
-            : `CENTRO::${normalizeCentroTrabalho(centroTrabalho)}`;
+      if (!gerencia) {
+        throw new Error("Gerência é obrigatória.");
+      }
+
+      if (!supervisao) {
+        throw new Error("Supervisão é obrigatória.");
+      }
 
       const payload = {
-        centro_trabalho: centroTrabalho || supervisao || gerencia,
-        centro_trabalho_chave: scopeKey,
-        nivel_responsabilidade: nivelResponsabilidade,
+        centro_trabalho: centroTrabalho,
+        centro_trabalho_chave: normalizeCentroTrabalho(centroTrabalho),
+
         gerencia,
         supervisao,
+
+        area: record.area || "",
+        observacao: record.observacao || "",
+        ativo: record.ativo !== false,
+
+        created_by: record.usuario || "",
+        updated_by: record.usuario || "",
+      };
+
+      const saved = await upsert(
+        TABLES.centrosTrabalho,
+        payload,
+        "centro_trabalho_chave",
+      );
+
+      return saved?.[0] ? mapCentroTrabalho(saved[0]) : record;
+    }
+
+    async upsertResponsavelPlanejamento(record) {
+      const nivel = String(
+        record.nivel || record.nivelResponsabilidade || "centro",
+      )
+        .trim()
+        .toLowerCase();
+
+      const gerencia = String(record.gerencia || "").trim();
+      const supervisao = String(record.supervisao || "").trim();
+      const centroTrabalho = String(record.centroTrabalho || "").trim();
+
+      if (!["gerencia", "supervisao", "centro"].includes(nivel)) {
+        throw new Error("Nível de responsabilidade inválido.");
+      }
+
+      if (!gerencia) {
+        throw new Error("Gerência é obrigatória.");
+      }
+
+      if ((nivel === "supervisao" || nivel === "centro") && !supervisao) {
+        throw new Error("Supervisão é obrigatória para esse nível.");
+      }
+
+      if (nivel === "centro" && !centroTrabalho) {
+        throw new Error("Centro de trabalho é obrigatório para esse nível.");
+      }
+
+      const scopeKey = buildResponsabilidadeScopeKey({
+        nivel,
+        gerencia,
+        supervisao,
+        centroTrabalho,
+      });
+
+      const payload = {
+        nivel,
+        scope_key: scopeKey,
+
+        gerencia,
+        supervisao: nivel === "gerencia" ? null : supervisao,
+        centro_trabalho: nivel === "centro" ? centroTrabalho : null,
 
         planejador_curto: record.planejadorCurto || "",
         planejador_curto_email: record.planejadorCurtoEmail || "",
@@ -1254,12 +1404,12 @@
       };
 
       const saved = await upsert(
-        TABLES.centrosTrabalho,
+        TABLES.responsaveisPlanejamento,
         payload,
-        "centro_trabalho_chave",
+        "scope_key",
       );
 
-      return saved?.[0] ? mapCentroTrabalho(saved[0]) : record;
+      return saved?.[0] ? mapResponsavelPlanejamento(saved[0]) : record;
     }
   }
 

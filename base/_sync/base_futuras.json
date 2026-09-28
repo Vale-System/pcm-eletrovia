@@ -1,8 +1,8 @@
 {
   "base_name": "base_futuras",
   "target_path": "base/base_futuras.json",
-  "lote_id": "base_futuras-20260927-084008-b592b74f",
-  "updated_at_utc": "2026-09-27T08:47:39Z",
-  "sha256": "99e96caf933a02aba6dfd539dc7c2399b0506f98ecf378e5813c95960fa27bb2",
-  "size_bytes": 7634085
+  "lote_id": "base_futuras-20260928-084006-7f78377e",
+  "updated_at_utc": "2026-09-28T08:49:26Z",
+  "sha256": "ef7ba9d1f407527d1a4ad65f5fcee3deaf847d32c7e6df2b06d34ef21d6b854e",
+  "size_bytes": 7604310
 }
